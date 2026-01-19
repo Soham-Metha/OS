@@ -1,10 +1,10 @@
 /* osapi.h */
 
+#include <fcntl.h>
+#include <os.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
-typedef unsigned char uint8;
-typedef unsigned short int uint16;
-typedef unsigned int uint32;
-typedef unsigned long long int uint64;
-
-void printHi();
+#define getposixfd(x) fds[(x)]
+private
+bool isopen(file_discriptor fd);
