@@ -5,5 +5,6 @@
 #include <unistd.h>
 
 #define getposixfd(x) fds[(x)]
+
 private
 bool isopen(file_discriptor fd);
