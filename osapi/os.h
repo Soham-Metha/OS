@@ -23,6 +23,8 @@ typedef unsigned long long int uint64;
 typedef uint16 file_discriptor;
 
 typedef enum Error {
+    ERR_OK = 0,
+    ERR_BAD_IO = 4,
     ERR_BAD_FILE_DESC = 8,
     ERR_COUNT
 } Error;
