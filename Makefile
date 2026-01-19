@@ -1,15 +1,15 @@
 BUILDS := ./build
 
-CC	   := emcc -s -sMINIFY_HTML=0
+CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-LIBS   := -I ./include
+LIBS   := -I ./osapi
+LDFLAG := -sMINIFY_HTML=0
 
-SRC_DIR   := ./src
-MAIN_FILE := $(SRC_DIR)/main.c
-EXEC_FILE := $(BUILDS)/a.js
-SRC_FILES := $(filter-out $(MAIN_FILE), 	$(wildcard $(SRC_DIR)/*.c) )
+EXEC_FILE := $(BUILDS)/shell.js
 
-all: $(EXEC_FILE)
+.PHONY: clean
+
+all: clean $(EXEC_FILE)
 
 run_all: all
 	@python3 -m http.server 8000
@@ -21,10 +21,24 @@ clean: | $(BUILDS)
 	@rm -f $(BUILDS)/*
 	@printf  "\n\e[36m  CLEANED ALL OBJECT FILES AND EXECUTABLES	\e[0m\n\n"
 
-define BUILD_RULE
-$1: $2 | $(BUILDS)
-	@$(CC) $$^ $(CFLAGS) $(LIBS) -o $$@
-	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $$@ ] \e[0m\n\n"
-endef
 
-$(eval $(call BUILD_RULE, $(EXEC_FILE), $(MAIN_FILE) $(SRC_FILES)))
+_OSAPI := $(BUILDS)/osapi.o
+_SHELL := $(BUILDS)/shell.o
+
+osapi.o:  osapi/osapi.c osapi/osapi.h osapi/os.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) $< -c
+
+shell.o: shell/shell.c shell/shell.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) $< -c
+
+$(_OSAPI): osapi.o
+	@mv ./osapi.o $(BUILDS)
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(_SHELL): shell.o
+	@mv ./shell.o $(BUILDS)
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(EXEC_FILE): $(_OSAPI) $(_SHELL)
+	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
