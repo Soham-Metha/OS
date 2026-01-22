@@ -18,10 +18,10 @@ int main(void)
     tty_write_char(&t, '!');
     tty_write_char(&t, '\n');
 
-    for (uint8 i = 0; i < 225; i++)
+    for (uint8 i = 0; i < (screen_width / GLYPH_W); i++)
         tty_write_char(&t, '=');
 
-    tty_write_char(&t, '\n');
+    tty_flush(&t);
 
     return 0;
 }

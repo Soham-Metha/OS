@@ -6,6 +6,11 @@ const input = document.getElementById("kbd");
 
 const ctx = canvas.getContext("2d");
 
+if (window.innerWidth <= 1000) {
+  canvas.width = 800;
+  canvas.height = 400;
+}
+
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
@@ -19,7 +24,7 @@ const fb = imageData.data;
 const IRQ_KEYBOARD = 1;
 
 canvas.addEventListener("touchstart", () => {
-  input.focus();
+  input.focus({ preventScroll: true });
 });
 
 canvas.addEventListener("mousedown", () => {
