@@ -1,5 +1,5 @@
 /* shell.h */
 
-#include <osapi/os.h>
+#include <osapi/osapi.h>
 
 int main(void);

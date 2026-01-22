@@ -1,4 +1,4 @@
-#include "os.h"
+#include "osapi.h"
 
 /* write 1 char */
 public
