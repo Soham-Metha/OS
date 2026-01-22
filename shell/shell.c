@@ -2,14 +2,15 @@
 
 int main(void)
 {
-    uint8 c = load(0);
+
+    store(1, 'H');
+    store(1, 'i');
+    store(1, '!');
+    store(1, '\n');
 
     for (uint8 i = 0; i < 15; i++)
         store(1, '=');
-    store(1, '\n');
 
-    store(1, c);
     store(1, '\n');
-
     return 0;
 }
