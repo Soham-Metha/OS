@@ -2,10 +2,11 @@ BUILDS := ./build
 
 CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-LIBS   := -I ./osapi
-LDFLAG := -sMINIFY_HTML=0
+LIBS   := -I .
+LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry \
+  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
-EXEC_FILE := $(BUILDS)/shell.js
+EXEC_FILE := $(BUILDS)/shell.wasm
 
 .PHONY: clean
 
@@ -22,14 +23,30 @@ clean: | $(BUILDS)
 	@printf  "\n\e[36m  CLEANED ALL OBJECT FILES AND EXECUTABLES	\e[0m\n\n"
 
 
+_HAL   := $(BUILDS)/hal_browser.o
+_KERN  := $(BUILDS)/kernel.o
 _OSAPI := $(BUILDS)/osapi.o
 _SHELL := $(BUILDS)/shell.o
 
-osapi.o:  osapi/osapi.c osapi/osapi.h osapi/os.h | $(BUILDS)
+hal_browser.o:  hal/hal_browser.c hal/hal.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) $< -c
+
+kernel.o:  kernel/kernel.c kernel/kernel.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) $< -c
+
+osapi.o:  osapi/osapi.c osapi/os.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) $< -c
 
 shell.o: shell/shell.c shell/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) $< -c
+
+$(_HAL): hal_browser.o
+	@mv ./hal_browser.o $(BUILDS)
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(_KERN): kernel.o
+	@mv ./kernel.o $(BUILDS)
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_OSAPI): osapi.o
 	@mv ./osapi.o $(BUILDS)
@@ -39,6 +56,6 @@ $(_SHELL): shell.o
 	@mv ./shell.o $(BUILDS)
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(EXEC_FILE): $(_OSAPI) $(_SHELL)
+$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL)
 	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
