@@ -1,5 +1,6 @@
 #include "kernel.h"
 #include <hal/hal.h>
+#include <hal/interrupt.h>
 
 Error errno;
 
@@ -7,7 +8,7 @@ private
 int _k_read(file_discriptor fd)
 {
     (void)fd;
-    return hal_read_char();
+    return tty_read_char();
 }
 
 private
