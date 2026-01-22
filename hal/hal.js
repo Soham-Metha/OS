@@ -45,6 +45,17 @@ function keyboardListener(e) {
   window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(code));
 }
 
+input.addEventListener("input", (e) => {
+  const value = input.value;
+
+  for (let i = 0; i < value.length; i++) {
+    const ch = value.charCodeAt(i);
+    window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(ch));
+  }
+
+  input.value = "";
+});
+
 input.addEventListener("keydown", keyboardListener);
 window.addEventListener("keydown", keyboardListener);
 
