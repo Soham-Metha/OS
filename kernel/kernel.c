@@ -8,14 +8,14 @@ private
 int _k_read(file_discriptor fd)
 {
     (void)fd;
-    return tty_read_char();
+    return tty_read_char(active_tty);
 }
 
 private
 int _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
-    hal_write_char(c);
+    tty_write_char(active_tty, c);
     return ERR_OK;
 }
 
