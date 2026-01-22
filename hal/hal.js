@@ -15,6 +15,9 @@ ctx.textBaseline = "top";
 const BG = "black";
 const FG = "lime";
 
+// IRQ
+const IRQ_KEYBOARD = 1;
+
 // Screen state
 let cursorX = 0;
 let cursorY = 0;
@@ -25,19 +28,24 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 ctx.fillStyle = FG;
 
 // ===============================
-// Input buffer (keyboard)
+// keyboard
 // ===============================
-const inputBuffer = [];
 
 window.addEventListener("keydown", (e) => {
+  if (!window.kernel.wasm) return;
+
+  let code = 0;
+
   if (e.key.length === 1) {
-    inputBuffer.push(e.key.charCodeAt(0));
+    code = e.key.charCodeAt(0);
   } else if (e.key === "Enter") {
-    inputBuffer.push(10); // '\n'
-  } else if (e.key === "Backspace") {
-    inputBuffer.push(8);
+    code = 10; // '\n'
+  } else {
+    return;
   }
-  e.preventDefault();
+
+  console.log(window.kernel.wasm.exports);
+  window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(code));
 });
 
 // ===============================
@@ -81,14 +89,6 @@ function __hal_write_char(c) {
     scroll_screen();
     cursorY = ROWS - 1;
   }
-}
-
-// Non-blocking read
-function __hal_read_char() {
-  if (inputBuffer.length === 0) {
-    return -1;
-  }
-  return inputBuffer.shift();
 }
 
 // ===============================

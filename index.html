@@ -25,21 +25,25 @@
   </head>
   <body>
     <canvas id="screen" width="800" height="400"></canvas>
-
+    <script>
+      window.kernel = {
+        wasm: null,
+      };
+    </script>
     <script src="./hal/hal.js"></script>
     <script>
       async function boot() {
-        const response = await fetch("../build/shell.wasm");
+        const response = await fetch("./build/shell.wasm");
         const bytes = await response.arrayBuffer();
 
         const imports = {
           env: {
             __hal_write_char,
-            __hal_read_char,
           },
         };
 
         const { instance } = await WebAssembly.instantiate(bytes, imports);
+        window.kernel.wasm = instance;
 
         // Call user-space main()
         if (instance.exports.main) {

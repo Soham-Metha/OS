@@ -4,7 +4,7 @@ CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
 LIBS   := -I .
 LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry \
-  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
+  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 EXEC_FILE := $(BUILDS)/shell.wasm
 
@@ -24,25 +24,32 @@ clean: | $(BUILDS)
 
 
 _HAL   := $(BUILDS)/hal_browser.o
+_TTY   := $(BUILDS)/tty.o 
+_ITR   := $(BUILDS)/interrupt.o
 _KERN  := $(BUILDS)/kernel.o
 _OSAPI := $(BUILDS)/osapi.o
 _SHELL := $(BUILDS)/shell.o
 
-hal_browser.o:  hal/hal_browser.c hal/hal.h | $(BUILDS)
-	@$(CC) $(CFLAGS) $(LIBS) $< -c
+$(_HAL): hal/hal_browser.c hal/hal.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(_TTY): hal/tty.c hal/interrupt.h hal/hal.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(_ITR): hal/interrupt.c hal/interrupt.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 kernel.o:  kernel/kernel.c kernel/kernel.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) $< -c
 
-osapi.o:  osapi/osapi.c osapi/os.h | $(BUILDS)
+osapi.o:  osapi/osapi.c osapi/osapi.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) $< -c
 
 shell.o: shell/shell.c shell/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) $< -c
-
-$(_HAL): hal_browser.o
-	@mv ./hal_browser.o $(BUILDS)
-	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_KERN): kernel.o
 	@mv ./kernel.o $(BUILDS)
@@ -56,6 +63,6 @@ $(_SHELL): shell.o
 	@mv ./shell.o $(BUILDS)
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL)
+$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_TTY) $(_ITR)
 	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
