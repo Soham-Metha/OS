@@ -26,7 +26,7 @@ canvas.addEventListener("mousedown", () => {
   input.focus();
 });
 
-function keyboardListener(e) {
+window.addEventListener("keydown", (e) => {
   if (!window.kernel.wasm) return;
 
   let code = 0;
@@ -43,7 +43,7 @@ function keyboardListener(e) {
 
   console.log(window.kernel.wasm.exports);
   window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(code));
-}
+});
 
 input.addEventListener("input", (e) => {
   const value = input.value;
@@ -55,9 +55,6 @@ input.addEventListener("input", (e) => {
 
   input.value = "";
 });
-
-input.addEventListener("keydown", keyboardListener);
-window.addEventListener("keydown", keyboardListener);
 
 // ===============================
 // HAL exports (WASM imports)
