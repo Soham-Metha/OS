@@ -25,6 +25,8 @@ window.addEventListener("keydown", (e) => {
     code = e.key.charCodeAt(0);
   } else if (e.key === "Enter") {
     code = 10; // '\n'
+  } else if (e.key === "Backspace") {
+    code = 8;
   } else {
     return;
   }
