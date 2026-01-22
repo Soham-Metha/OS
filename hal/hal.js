@@ -59,3 +59,11 @@ function __hal_clear(rgba) {
 function __hal_present() {
   ctx.putImageData(imageData, 0, 0);
 }
+
+function __hal_get_width() {
+  return WIDTH;
+}
+
+function __hal_get_height() {
+  return HEIGHT;
+}

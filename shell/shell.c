@@ -6,8 +6,13 @@
 
 int main(void)
 {
-    tty t = { 0 };
-    tty_init(&t, 225, 55, COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
+    int screen_width  = hal_get_width();
+    int screen_height = hal_get_height();
+
+    tty t             = { 0 };
+    tty_init(&t,
+        (screen_width / GLYPH_W), (screen_height / GLYPH_H),
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
     tty_write_char(&t, 'H');
     tty_write_char(&t, 'i');
     tty_write_char(&t, '!');

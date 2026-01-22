@@ -9,6 +9,8 @@
 extern void __hal_put_pixel(int x, int y, uint32 rgba);
 extern void __hal_clear(uint32 rgba);
 extern void __hal_present(void);
+extern uint32 __hal_get_width(void);
+extern uint32 __hal_get_height(void);
 
 void hal_put_pixel(int x, int y, uint32 rgba)
 {
@@ -25,10 +27,17 @@ void hal_present(void)
     __hal_present();
 }
 
-/* TODO:  move to different file for better organization */
+uint32 hal_get_width()
+{
+    return __hal_get_width();
+}
 
-#define GLYPH_W 8
-#define GLYPH_H 16
+uint32 hal_get_height()
+{
+    return __hal_get_height();
+}
+
+/* TODO:  move to different file for better organization */
 
 // Credits: https://github.com/hubenchang0515/font8x16/
 const uint8 font8x16[][16] = {
