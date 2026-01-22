@@ -4,32 +4,17 @@
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 
-const FONT_SIZE = 16;
-const COLS = Math.floor(canvas.width / FONT_SIZE);
-const ROWS = Math.floor(canvas.height / FONT_SIZE);
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
 
-ctx.font = `${FONT_SIZE}px monospace`;
-ctx.textBaseline = "top";
-
-// Colors
-const BG = "black";
-const FG = "lime";
-
-// IRQ
-const IRQ_KEYBOARD = 1;
-
-// Screen state
-let cursorX = 0;
-let cursorY = 0;
-
-// Clear screen
-ctx.fillStyle = BG;
-ctx.fillRect(0, 0, canvas.width, canvas.height);
-ctx.fillStyle = FG;
+const imageData = ctx.createImageData(WIDTH, HEIGHT);
+const fb = imageData.data;
 
 // ===============================
 // keyboard
 // ===============================
+
+const IRQ_KEYBOARD = 1;
 
 window.addEventListener("keydown", (e) => {
   if (!window.kernel.wasm) return;
@@ -52,58 +37,25 @@ window.addEventListener("keydown", (e) => {
 // HAL exports (WASM imports)
 // ===============================
 
-// Write one character to screen
-function __hal_write_char(c) {
-  if (c === 10) {
-    // '\n'
-    cursorX = 0;
-    cursorY++;
-  } else if (c === 8) {
-    // backspace
-    if (cursorX > 0) {
-      cursorX--;
-      ctx.fillStyle = BG;
-      ctx.fillRect(
-        cursorX * FONT_SIZE,
-        cursorY * FONT_SIZE,
-        FONT_SIZE,
-        FONT_SIZE
-      );
-      ctx.fillStyle = FG;
-    }
-  } else {
-    ctx.fillText(
-      String.fromCharCode(c),
-      cursorX * FONT_SIZE,
-      cursorY * FONT_SIZE
-    );
-    cursorX++;
-  }
+function __hal_put_pixel(x, y, rgba) {
+  if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return;
 
-  if (cursorX >= COLS) {
-    cursorX = 0;
-    cursorY++;
-  }
+  const idx = (y * WIDTH + x) * 4;
+  fb[idx + 0] = (rgba >> 24) & 0xff; // R
+  fb[idx + 1] = (rgba >> 16) & 0xff; // G
+  fb[idx + 2] = (rgba >> 8) & 0xff; // B
+  fb[idx + 3] = (rgba >> 0) & 0xff; // A
+}
 
-  if (cursorY >= ROWS) {
-    scroll_screen();
-    cursorY = ROWS - 1;
+function __hal_clear(rgba) {
+  for (let idx = 0; idx < fb.length; idx += 4) {
+    fb[idx + 0] = (rgba >> 24) & 0xff; // R
+    fb[idx + 1] = (rgba >> 16) & 0xff; // G
+    fb[idx + 2] = (rgba >> 8) & 0xff; // B
+    fb[idx + 3] = (rgba >> 0) & 0xff; // A
   }
 }
 
-// ===============================
-// Scroll screen
-// ===============================
-function scroll_screen() {
-  const img = ctx.getImageData(
-    0,
-    FONT_SIZE,
-    canvas.width,
-    canvas.height - FONT_SIZE
-  );
-  ctx.putImageData(img, 0, 0);
-
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, canvas.height - FONT_SIZE, canvas.width, FONT_SIZE);
-  ctx.fillStyle = FG;
+function __hal_present() {
+  ctx.putImageData(imageData, 0, 0);
 }
