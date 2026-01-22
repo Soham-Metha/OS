@@ -51,7 +51,7 @@ uint8 tty_read_char(tty* t)
 void tty_write_char(tty* t, char c)
 {
     terminal_put_char(&t->term, c);
-    // if (c == '\n')
+    if (c == '\n')
         tty_flush(t);
 }
 
