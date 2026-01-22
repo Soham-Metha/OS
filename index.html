@@ -25,6 +25,16 @@
   </head>
   <body>
     <canvas id="screen" width="1800" height="880"></canvas>
+    <input
+      id="kbd"
+      type="text"
+      autocapitalize="none"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+      style="position: absolute; opacity: 0; left: -1000px; height: 0; width: 0"
+    />
+
     <script>
       window.kernel = {
         wasm: null,
