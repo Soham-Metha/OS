@@ -2,25 +2,19 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>webOS</title>
     <style>
       body {
-        font-family: arial;
+        font-family: "Lucida Console", Monaco, monospace;
         margin: 0;
-        padding: none;
+        background: black;
+        color: white;
       }
 
       #output {
         width: 100%;
-        height: 100%;
-        margin: 0 auto;
-        margin-top: 10px;
-        border-left: 0px;
-        border-right: 0px;
-        padding-left: 0px;
-        padding-right: 0px;
-        display: block;
+        height: 100vh;
+        padding: 10px;
         background-color: black;
         color: white;
         font-family: "Lucida Console", Monaco, monospace;
@@ -29,32 +23,29 @@
     </style>
   </head>
   <body>
-    <textarea id="output" rows="18"></textarea>
+    <textarea id="output"></textarea>
 
-    <script type="text/javascript">
+    <script>
       var Module = {
-        preRun: [],
-        postRun: [],
-        print: (function () {
-          var element = document.getElementById("output");
-          if (element) element.value = ""; // clear browser cache
-          return function (text) {
-            if (arguments.length > 1)
-              text = Array.prototype.slice.call(arguments).join(" ");
-            // These replacements are necessary if you render to raw HTML
-            text = text.replace(/&/g, "&amp;");
-            text = text.replace(/</g, "&lt;");
-            text = text.replace(/>/g, "&gt;");
-            text = text.replace("\n", "<br>", "g");
-            console.log(text);
-            if (element) {
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
-          };
-        })(),
+        print: (text) => {
+          const el = document.getElementById("output");
+          if (el) {
+            el.value += text + "\n";
+            el.scrollTop = el.scrollHeight;
+          }
+          console.log(text);
+        },
+        printErr: (text) => {
+          const el = document.getElementById("output");
+          if (el) {
+            el.value += text + "\n";
+            el.scrollTop = el.scrollHeight;
+          }
+          console.error(text);
+        },
       };
     </script>
-    <script async type="text/javascript" src="build/shell.js"></script>
+
+    <script async src="./build/shell.js"></script>
   </body>
 </html>
