@@ -24,7 +24,7 @@
     </style>
   </head>
   <body>
-    <canvas id="screen" width="800" height="400"></canvas>
+    <canvas id="screen" width="1800" height="880"></canvas>
     <script>
       window.kernel = {
         wasm: null,
@@ -38,7 +38,9 @@
 
         const imports = {
           env: {
-            __hal_write_char,
+            __hal_put_pixel,
+            __hal_clear,
+            __hal_present,
           },
         };
 
