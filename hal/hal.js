@@ -26,26 +26,7 @@ canvas.addEventListener("mousedown", () => {
   input.focus();
 });
 
-input.addEventListener("input", (e) => {
-  const value = input.value;
-
-  for (let i = 0; i < value.length; i++) {
-    const ch = value.charCodeAt(i);
-    __hal_keyboard_irq(ch);
-  }
-
-  input.value = "";
-});
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Backspace") {
-    __hal_keyboard_irq(8);
-  } else if (e.key === "Enter") {
-    __hal_keyboard_irq(13);
-  }
-});
-
-window.addEventListener("keydown", (e) => {
+function keyboardListener(e) {
   if (!window.kernel.wasm) return;
 
   let code = 0;
@@ -62,7 +43,10 @@ window.addEventListener("keydown", (e) => {
 
   console.log(window.kernel.wasm.exports);
   window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(code));
-});
+}
+
+input.addEventListener("keydown", keyboardListener);
+window.addEventListener("keydown", keyboardListener);
 
 // ===============================
 // HAL exports (WASM imports)
