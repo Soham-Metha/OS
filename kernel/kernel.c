@@ -1,22 +1,28 @@
 #define IMPL_ERRORS_1
 
+#define IMPL_WM_1
+#define IMPL_KMALLOC_1
 #include "kernel.h"
 #include <common/errors.h>
+#include <common/heap.h>
 #include <common/types.h>
 #include <drivers/tty.h>
+#include <drivers/wm.h>
+
+Kernel k = { 0 };
 
 private
 int _k_read(file_discriptor fd)
 {
     (void)fd;
-    return tty_read_char(active_tty);
+    return tty_read_char(k.active_tty);
 }
 
 private
 int _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
-    tty_write_char(active_tty, c);
+    tty_write_char(k.active_tty, c);
     return ERR_OK;
 }
 
