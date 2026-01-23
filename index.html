@@ -59,9 +59,11 @@
         const { instance } = await WebAssembly.instantiate(bytes, imports);
         window.kernel.wasm = instance;
 
-        // Call user-space main()
         if (instance.exports.main) {
           instance.exports.main();
+          setInterval(() => {
+            instance.exports.kernel_tick();
+          }, 16);
         } else {
           console.error("main() not found in WASM");
         }

@@ -4,7 +4,7 @@ CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
 LIBS   := -I .
 LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry \
-  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
+  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 EXEC_FILE := $(BUILDS)/shell.wasm
 
