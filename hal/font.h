@@ -4,9 +4,15 @@
 #define FONT_1
 
 #include <common/types.h>
+#include <drivers/compositor.h>
 #define GLYPH_W 8
 #define GLYPH_H 16
 
+void surface_draw_char(Surface* s, char c, int x, int y, uint32 fg, uint32 bg);
+
+#endif
+#ifdef IMPL_FONT_1
+#undef IMPL_FONT_1
 // Credits: https://github.com/hubenchang0515/font8x16/
 const uint8 font8x16[][16] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //  0x00,
@@ -139,14 +145,7 @@ const uint8 font8x16[][16] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //  0x7F, delete
 };
 
-void draw_char(char c, int x, int y, uint32 fg, uint32 bg);
-
-#endif
-#ifdef IMPL_FONT_1
-
-#include "hal.h"
-
-void draw_char(char c, int x, int y, uint32 fg, uint32 bg)
+void surface_draw_char(Surface* s, char c, int x, int y, uint32 fg, uint32 bg)
 {
     const uint8* glyph = font8x16[(uint8)c];
 
@@ -156,7 +155,7 @@ void draw_char(char c, int x, int y, uint32 fg, uint32 bg)
         for (int col = 0; col < GLYPH_W; col++) {
             uint32 color = (bits & (1 << (7 - col))) ? fg : bg;
 
-            hal_put_pixel(x + col, y + row, color);
+            surface_put_pixel(s, x + col, y + row, color);
         }
     }
 }
