@@ -45,7 +45,7 @@ $(_OSAPI): osapi/osapi.c osapi/osapi.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_SHELL):  shell/shell.c shell/shell.h | $(BUILDS)
+$(_SHELL):  userspace/shell.c userspace/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
