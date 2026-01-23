@@ -1,8 +1,9 @@
-#include "kernel.h"
-#include <hal/hal.h>
-#include <hal/interrupt.h>
+#define IMPL_ERRORS_1
 
-Error errno;
+#include "kernel.h"
+#include <common/errors.h>
+#include <common/types.h>
+#include <drivers/tty.h>
 
 private
 int _k_read(file_discriptor fd)

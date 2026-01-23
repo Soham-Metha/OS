@@ -24,7 +24,6 @@ clean: | $(BUILDS)
 
 
 _HAL   := $(BUILDS)/hal_browser.o
-_TTY   := $(BUILDS)/tty.o 
 _ITR   := $(BUILDS)/interrupt.o
 _KERN  := $(BUILDS)/kernel.o
 _OSAPI := $(BUILDS)/osapi.o
@@ -34,35 +33,22 @@ $(_HAL): hal/hal_browser.c hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_TTY): hal/tty.c hal/interrupt.h hal/hal.h | $(BUILDS)
+$(_ITR): kernel/interrupt.c kernel/interrupt.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_ITR): hal/interrupt.c hal/interrupt.h | $(BUILDS)
+$(_KERN): kernel/kernel.c kernel/kernel.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-kernel.o:  kernel/kernel.c kernel/kernel.h | $(BUILDS)
-	@$(CC) $(CFLAGS) $(LIBS) $< -c
-
-osapi.o:  osapi/osapi.c osapi/osapi.h | $(BUILDS)
-	@$(CC) $(CFLAGS) $(LIBS) $< -c
-
-shell.o: shell/shell.c shell/shell.h | $(BUILDS)
-	@$(CC) $(CFLAGS) $(LIBS) $< -c
-
-$(_KERN): kernel.o
-	@mv ./kernel.o $(BUILDS)
+$(_OSAPI): osapi/osapi.c osapi/osapi.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_OSAPI): osapi.o
-	@mv ./osapi.o $(BUILDS)
+$(_SHELL):  shell/shell.c shell/shell.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_SHELL): shell.o
-	@mv ./shell.o $(BUILDS)
-	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
-
-$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_TTY) $(_ITR)
+$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR)
 	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
