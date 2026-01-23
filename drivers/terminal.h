@@ -1,63 +1,48 @@
-#include "hal.h"
-#include "interrupt.h"
+/* terminal.h */
 
-tty* active_tty = (void*)0;
+#ifndef TERMINAL_1
+#define TERMINAL_1
 
-void draw_cursor(Terminal* t)
+#include <common/types.h>
+
+struct cell {
+    char ch;
+    uint32 fg;
+    uint32 bg;
+};
+
+typedef struct Terminal {
+    struct cell buffer[65535];
+    int cols;
+    int rows;
+    int cursor_x;
+    int cursor_y;
+    uint32 fg;
+    uint32 bg;
+} Terminal;
+
+#define IDX(t, x, y) (y * t->cols + x)
+
+void terminal_draw_cursor(Terminal* t);
+void terminal_clear(Terminal* t);
+void terminal_put_char(Terminal* t, char c);
+void terminal_render(Terminal* t);
+void terminal_init(Terminal* t, int row, int col, uint32 fg, uint32 bg);
+
+#endif
+#ifdef IMPL_TERMINAL_1
+
+#define IMPL_FONT_1
+#include <hal/font.h>
+#include <hal/hal.h>
+
+void terminal_draw_cursor(Terminal* t)
 {
     int px = t->cursor_x * 8;
     int py = t->cursor_y * 16 + 15;
 
     for (int i = 0; i < 8; i++)
         hal_put_pixel(px + i, py, t->fg);
-}
-
-void tty_init(struct tty* t, int width, int height, uint32 fg, uint32 bg)
-{
-    if (!t)
-        return;
-
-    terminal_init(&t->term, height, width, fg, bg);
-
-    t->head    = 0;
-    t->tail    = 0;
-    t->echo    = true;
-
-    active_tty = t;
-    draw_cursor(&t->term);
-    hal_present();
-}
-
-void tty_push_key(tty* t, uint8 c)
-{
-    t->buf[t->head] = c;
-    t->head         = (t->head + 1) % TTY_BUF_SIZE;
-
-    if (t->echo) {
-        tty_write_char(t, c);
-        tty_flush(t);
-    }
-}
-
-uint8 tty_read_char(tty* t)
-{
-    if (t->head == t->tail)
-        return -1;
-    char c  = t->buf[t->tail];
-    t->tail = (t->tail + 1) % TTY_BUF_SIZE;
-    return c;
-}
-
-void tty_write_char(tty* t, char c)
-{
-    terminal_put_char(&t->term, c);
-    if (c == '\n')
-        tty_flush(t);
-}
-
-void tty_flush(tty* t)
-{
-    terminal_render(&t->term);
 }
 
 void terminal_clear(Terminal* t)
@@ -122,7 +107,7 @@ void terminal_render(Terminal* t)
         }
     }
 
-    draw_cursor(t);
+    terminal_draw_cursor(t);
     hal_present();
 }
 
@@ -138,3 +123,5 @@ void terminal_init(Terminal* t, int row, int col, uint32 fg, uint32 bg)
 
     terminal_clear(t);
 }
+
+#endif
