@@ -1,4 +1,5 @@
 #include "interrupt.h"
+#include <drivers/tty.h>
 
 void kernel_irq(Interrupt i, uint64 data)
 {
