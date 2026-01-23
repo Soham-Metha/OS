@@ -6,9 +6,9 @@ const input = document.getElementById("kbd");
 
 const ctx = canvas.getContext("2d");
 
-if (window.innerWidth <= 1000) {
-  canvas.width = 800;
-  canvas.height = 400;
+if (window.innerWidth <= 800) {
+  canvas.width = 500;
+  canvas.height = 250;
 }
 
 const WIDTH = canvas.width;
