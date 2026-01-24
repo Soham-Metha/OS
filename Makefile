@@ -6,6 +6,7 @@ LIBS   := -I .
 LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry \
   -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
+SHELL     := /bin/bash
 EXEC_FILE := $(BUILDS)/shell.wasm
 
 .PHONY: clean
@@ -50,5 +51,6 @@ $(_SHELL):  userspace/shell.c userspace/shell.h | $(BUILDS)
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR)
+	@EMSDK_QUIET=1; source ./tools/emsdk/emsdk_env.sh
 	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
