@@ -30,8 +30,13 @@ _ITR   := $(BUILDS)/interrupt.o
 _KERN  := $(BUILDS)/kernel.o
 _OSAPI := $(BUILDS)/osapi.o
 _SHELL := $(BUILDS)/shell.o
+_EVENT := $(BUILDS)/event.o
 
 $(_HAL): hal/hal_browser.c hal/hal.h | $(BUILDS)
+	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+$(_EVENT): kernel/event.c kernel/event.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -51,7 +56,7 @@ $(_SHELL):  userspace/shell.c userspace/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR)
+$(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
 	@source ./tools/emsdk/emsdk_env.sh
 	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
