@@ -44,9 +44,9 @@ void wm_render(WindowManager* wm);
 
 #define IMPL_COMPOSITOR_1
 #include "compositor.h"
+#include "font.h"
 #include "tty.h"
 #include <common/heap.h>
-#include <hal/font.h>
 
 void wm_init(WindowManager* wm, Compositor* c)
 {

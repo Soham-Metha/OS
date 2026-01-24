@@ -26,8 +26,8 @@ void terminal_init(Terminal* t, Surface* s, int row_count, int col_count, uint32
 #undef IMPL_TERMINAL_1
 
 #define IMPL_FONT_1
+#include "font.h"
 #include <common/heap.h>
-#include <hal/font.h>
 
 void terminal_draw_cursor(Terminal* t)
 {
