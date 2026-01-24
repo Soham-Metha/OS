@@ -6,6 +6,7 @@
 #include <common/errors.h>
 #include <common/heap.h>
 #include <common/types.h>
+// TODO: fix boundary violation
 #include <userspace/services/tty.h>
 #include <userspace/services/wm.h>
 
@@ -14,6 +15,7 @@ Kernel k = { 0 };
 private
 int _k_read(file_discriptor fd)
 {
+    // TODO: implement the fs
     (void)fd;
     return tty_read_char(k.active_tty);
 }

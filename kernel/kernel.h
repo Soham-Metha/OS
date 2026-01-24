@@ -3,6 +3,7 @@
 #define KERNEL_1
 
 #include <common/types.h>
+// TODO: fix boundary violation
 #include <userspace/services/wm.h>
 
 typedef enum Syscall {

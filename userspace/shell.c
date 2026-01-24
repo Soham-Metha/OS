@@ -1,8 +1,9 @@
 #define IMPL_TTY_1
 #include "shell.h"
-#include <userspace/services/tty.h>
 #include <hal/hal.h>
 #include <kernel/kernel.h>
+// TODO: fix boundary violation
+#include <userspace/services/tty.h>
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 

@@ -1,6 +1,7 @@
 #include "interrupt.h"
-#include <userspace/services/wm.h>
 #include <kernel/kernel.h>
+// TODO: fix boundary violation
+#include <userspace/services/wm.h>
 
 void kernel_irq(Interrupt i, uint64 data)
 {
