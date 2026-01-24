@@ -2,11 +2,11 @@
 #define IMPL_TTY_1
 #define IMPL_WM_1
 #include "shell.h"
+#include <drivers/tty.h>
 #include <hal/hal.h>
 #include <kernel/event.h>
 #include <kernel/kernel.h>
 // TODO: fix boundary violation
-#include <userspace/services/tty.h>
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
