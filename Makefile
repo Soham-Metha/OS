@@ -1,12 +1,18 @@
 .ONESHELL:
 BUILDS := ./build
 
-CC	   := clang-15
+CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-CFLAGS += -ffreestanding  -fno-builtin --target=wasm32-unknown-unknown -I .
+CFLAGS += -ffreestanding  -fno-builtin -I .
 LIBS   := 
 
+# Use with emcc
+LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1
+LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
+
+# Use with clang-15
 LD      := wasm-ld
+TARGET := --target=wasm32-unknown-unknown
 LDFLAG := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
 LDFLAG += --export=main  --export=kernel_irq  --export=kernel_tick --export-table
 
@@ -59,5 +65,6 @@ $(_SHELL): userspace/shell.c userspace/shell.h | $(BUILDS)
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@$(LD) $(LDFLAG) $^ -o $@
+	@source ./tools/emsdk/emsdk_env.sh
+	@$(CC) $(CFLAGS) $(LIBS) $(LFLAGS) $^ -o $@
 	@printf "\e[32m		[ LINK  COMPLETED ]\t: [ $@ ] \e[0m\n\n"
