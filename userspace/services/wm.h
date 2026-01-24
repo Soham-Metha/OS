@@ -102,8 +102,8 @@ void wm_focus_window(WindowManager* wm, Window* win)
 void wm_handle_key(WindowManager* wm, uint8 key)
 {
     if (wm->focused >= 0) {
-        /* TODO: route to app */
-        tty_push_key(wm->fallback_tty, key);
+        terminal_put_char(&wm->windows[wm->focused].term, key);
+        terminal_draw_cursor(&wm->windows[wm->focused].term);
     } else {
         tty_push_key(wm->fallback_tty, key);
     }
