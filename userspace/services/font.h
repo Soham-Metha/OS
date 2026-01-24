@@ -3,9 +3,8 @@
 #ifndef FONT_1
 #define FONT_1
 
+#include "compositor.h"
 #include <common/types.h>
-// TODO: fix boundary violation
-#include <userspace/services/compositor.h>
 #define GLYPH_W 8
 #define GLYPH_H 16
 
