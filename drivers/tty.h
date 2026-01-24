@@ -22,7 +22,7 @@ void tty_write_char(tty* t, char c);
 uint64 tty_read_out(tty* t, uint8* buf, uint64 n);
 
 #endif
-#ifndef IMPL_TTY_1
+#ifdef IMPL_TTY_1
 #undef IMPL_TTY_1
 
 #include <kernel/kernel.h>
