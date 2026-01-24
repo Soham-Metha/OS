@@ -2,19 +2,19 @@
 #define IMPL_TTY_1
 #define IMPL_WM_1
 #include "shell.h"
+#include <userspace/services/wm.h>
+// TODO: fix boundary violation
 #include <drivers/tty.h>
-#include <hal/hal.h>
 #include <kernel/event.h>
 #include <kernel/kernel.h>
-// TODO: fix boundary violation
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
-Compositor comp = { 0 };
-tty io_buffer   = { 0 };
-int screen_w    = { 0 };
-int screen_h    = { 0 };
-Window* win_3   = { 0 };
+WindowManager wm = { 0 };
+Compositor comp  = { 0 };
+tty io_buffer    = { 0 };
+int screen_w     = { 0 };
+int screen_h     = { 0 };
 
 void kernel_tick(void)
 {
@@ -26,11 +26,10 @@ void kernel_tick(void)
     uint8 buf[256];
     int char_read = tty_read_out(&io_buffer, buf, 256);     // TODO: replace with read syscall
     for (int i = 0; i < char_read; i++) {
-        terminal_put_char(&win_3->term, (char)buf[i]);
+        wm_handle_key(&wm, buf[i]);
     }
-    terminal_draw_cursor(&win_3->term);
 
-    wm_render(&k.wm);
+    wm_render(&wm);
 }
 
 void kernel_init(void)
@@ -39,21 +38,21 @@ void kernel_init(void)
     screen_h = hal_get_height();
 
     compositor_init(&comp, screen_w, screen_h);
-    wm_init(&k.wm, &comp);
+    wm_init(&wm, &comp);
     tty_init(&io_buffer);
-    k.wm.fallback_tty = &io_buffer;
+    wm.fallback_tty = &io_buffer;
 }
 
 int main(void)
 {
     kernel_init();
-    (void)wm_create_window(&k.wm, 0, 0, screen_w, screen_h,
+    (void)wm_create_window(&wm, 0, 0, screen_w, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
 
-    (void)wm_create_window(&k.wm, 10, 10, 200, 200,
+    (void)wm_create_window(&wm, 10, 10, 200, 200,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
 
-    win_3 = wm_create_window(&k.wm, 410, 10, 380, 380,
+    Window* win_3 = wm_create_window(&wm, 410, 10, 380, 380,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0xFF, 0, 0, 0xFF));
 
     tty_write_char(&io_buffer, 'H');

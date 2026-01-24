@@ -5,8 +5,6 @@
 #include <common/heap.h>
 #include <common/types.h>
 #include <drivers/tty.h>
-// TODO: fix boundary violation
-#include <userspace/services/wm.h>
 
 Kernel k = { 0 };
 

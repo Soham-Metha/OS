@@ -1,7 +1,6 @@
 #include "event.h"
 #include "kernel.h"
-// TODO: fix boundary violation
-#include <userspace/services/wm.h>
+#include <drivers/tty.h>
 
 Event event_queue[256];
 uint8 head = 0;
@@ -32,7 +31,7 @@ void kernel_event_handler(Event e)
 {
     switch (e.type) {
     case EVENT_KEYBOARD:
-        wm_handle_key(&k.wm, e.as.key_event.keycode);
+        tty_push_key(k.active_tty, e.as.key_event.keycode);
         break;
 
     case EVENT_COUNT:

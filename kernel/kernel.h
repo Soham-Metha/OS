@@ -3,8 +3,7 @@
 #define KERNEL_1
 
 #include <common/types.h>
-// TODO: fix boundary violation
-#include <userspace/services/wm.h>
+#include <drivers/tty.h>
 
 typedef enum Syscall {
     SYS_READ,
@@ -13,7 +12,6 @@ typedef enum Syscall {
 } Syscall;
 
 typedef struct Kernel {
-    WindowManager wm;
     tty* active_tty;
 } Kernel;
 
