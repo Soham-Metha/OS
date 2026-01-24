@@ -4,7 +4,7 @@
 #define FONT_1
 
 #include <common/types.h>
-#include <drivers/compositor.h>
+#include <userspace/services/compositor.h>
 #define GLYPH_W 8
 #define GLYPH_H 16
 

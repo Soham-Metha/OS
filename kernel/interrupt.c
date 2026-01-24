@@ -1,5 +1,5 @@
 #include "interrupt.h"
-#include <drivers/wm.h>
+#include <userspace/services/wm.h>
 #include <kernel/kernel.h>
 
 void kernel_irq(Interrupt i, uint64 data)

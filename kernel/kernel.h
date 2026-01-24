@@ -3,7 +3,7 @@
 #define KERNEL_1
 
 #include <common/types.h>
-#include <drivers/wm.h>
+#include <userspace/services/wm.h>
 
 typedef enum Syscall {
     SYS_READ,

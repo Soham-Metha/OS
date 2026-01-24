@@ -1,6 +1,6 @@
 #define IMPL_TTY_1
 #include "shell.h"
-#include <drivers/tty.h>
+#include <userspace/services/tty.h>
 #include <hal/hal.h>
 #include <kernel/kernel.h>
 
