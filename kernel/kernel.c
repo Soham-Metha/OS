@@ -1,6 +1,4 @@
 #define IMPL_ERRORS_1
-
-#define IMPL_WM_1
 #define IMPL_KMALLOC_1
 #include "kernel.h"
 #include <common/errors.h>

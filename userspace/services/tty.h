@@ -3,40 +3,39 @@
 #ifndef TTY_1
 #define TTY_1
 
-#include "terminal.h"
 #define TTY_BUF_SIZE 128
 
 typedef struct tty {
-    Terminal *term;
-    uint8 buf[TTY_BUF_SIZE];
-    uint8 head;
-    uint8 tail;
+    uint8 in_buf[TTY_BUF_SIZE];
+    uint8 in_head;
+    uint8 in_tail;
+    uint8 out_buf[TTY_BUF_SIZE];
+    uint8 out_head;
+    uint8 out_tail;
     bool echo;
 } tty;
 
-void tty_init(struct tty* t, Terminal* term);
+void tty_init(struct tty* t);
 void tty_push_key(tty* t, uint8 c);
 uint8 tty_read_char(tty* t);
 void tty_write_char(tty* t, char c);
-void tty_flush(tty* t);
+uint64 tty_read_out(tty* t, uint8* buf, uint64 n);
 
 #endif
-#ifdef IMPL_TTY_1
+#ifndef IMPL_TTY_1
 #undef IMPL_TTY_1
-
-#define IMPL_TERMINAL_1
-#include "terminal.h"
 
 #include <kernel/kernel.h>
 
-void tty_init(struct tty* t, Terminal* term)
+void tty_init(struct tty* t)
 {
-    if (!t || !term)
+    if (!t)
         return;
 
-    t->term      = term;
-    t->head      = 0;
-    t->tail      = 0;
+    t->in_head   = 0;
+    t->in_tail   = 0;
+    t->out_head  = 0;
+    t->out_tail  = 0;
     t->echo      = true;
 
     k.active_tty = t;
@@ -44,34 +43,37 @@ void tty_init(struct tty* t, Terminal* term)
 
 void tty_push_key(tty* t, uint8 c)
 {
-    t->buf[t->head] = c;
-    t->head         = (t->head + 1) % TTY_BUF_SIZE;
+    t->in_buf[t->in_head] = c;
+    t->in_head            = (t->in_head + 1) % TTY_BUF_SIZE;
 
     if (t->echo) {
         tty_write_char(t, c);
-        tty_flush(t);
     }
 }
 
 uint8 tty_read_char(tty* t)
 {
-    if (t->head == t->tail)
+    if (t->in_head == t->in_tail)
         return -1;
-    char c  = t->buf[t->tail];
-    t->tail = (t->tail + 1) % TTY_BUF_SIZE;
+    char c     = t->in_buf[t->in_tail];
+    t->in_tail = (t->in_tail + 1) % TTY_BUF_SIZE;
     return c;
 }
 
 void tty_write_char(tty* t, char c)
 {
-    terminal_put_char(t->term, c);
-    if (c == '\n')
-        tty_flush(t);
+    t->out_buf[t->out_head] = c;
+    t->out_head             = (t->out_head + 1) % TTY_BUF_SIZE;
 }
 
-void tty_flush(tty* t)
+uint64 tty_read_out(tty* t, uint8* buf, uint64 n)
 {
-    terminal_render(t->term);
+    uint64 i = 0;
+    while (i < n && t->out_tail != t->out_head) {
+        buf[i++]    = t->out_buf[t->out_tail];
+        t->out_tail = (t->out_tail + 1) % TTY_BUF_SIZE;
+    }
+    return i;
 }
 
 #endif
