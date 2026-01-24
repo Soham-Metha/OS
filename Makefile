@@ -1,16 +1,19 @@
 .ONESHELL:
 BUILDS := ./build
 
-CC	   := emcc
+CC	   := clang-15
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-LIBS   := -I .
-LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB \
-  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick'] --js-library ./extras/js_exports.js
+CFLAGS += -ffreestanding  -fno-builtin --target=wasm32-unknown-unknown -I .
+LIBS   := 
+
+LD      := wasm-ld
+LDFLAG := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
+LDFLAG += --export=main  --export=kernel_irq  --export=kernel_tick --export-table
 
 SHELL     := /bin/bash
 EXEC_FILE := $(BUILDS)/shell.wasm
 
-.PHONY: clean
+.PHONY: clean all run_all
 
 all: clean $(EXEC_FILE)
 
@@ -23,7 +26,6 @@ $(BUILDS):
 clean: | $(BUILDS)
 	@rm -f $(BUILDS)/*
 	@printf  "\n\e[36m  CLEANED ALL OBJECT FILES AND EXECUTABLES	\e[0m\n\n"
-
 
 _HAL   := $(BUILDS)/hal_browser.o
 _ITR   := $(BUILDS)/interrupt.o
@@ -52,11 +54,10 @@ $(_OSAPI): osapi/osapi.c osapi/osapi.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_SHELL):  userspace/shell.c userspace/shell.h | $(BUILDS)
+$(_SHELL): userspace/shell.c userspace/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@source ./tools/emsdk/emsdk_env.sh
-	@$(CC) $(CFLAGS) $(LIBS) $(LDFLAG) $^ -o $@
-	@printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+	@$(LD) $(LDFLAG) $^ -o $@
+	@printf "\e[32m		[ LINK  COMPLETED ]\t: [ $@ ] \e[0m\n\n"
