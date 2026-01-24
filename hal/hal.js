@@ -1,3 +1,7 @@
+window.kernel = {
+  wasm: null,
+};
+
 // ===============================
 // Terminal configuration
 // ===============================
@@ -94,4 +98,26 @@ function __hal_get_width() {
 
 function __hal_get_height() {
   return HEIGHT;
+}
+
+// ===============================
+// fetch wasm instance
+// ===============================
+
+async function boot() {
+  const response = await fetch("./build/shell.wasm");
+  const bytes = await response.arrayBuffer();
+
+  const imports = {
+    env: {
+      __hal_put_pixel,
+      __hal_clear,
+      __hal_present,
+      __hal_get_width,
+      __hal_get_height,
+    },
+  };
+
+  const { instance } = await WebAssembly.instantiate(bytes, imports);
+  window.kernel.wasm = instance;
 }

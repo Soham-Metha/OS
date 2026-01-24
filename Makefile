@@ -4,7 +4,7 @@ CC	   := emcc
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
 LIBS   := -I .
 LDFLAG := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB \
-  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick']  -s ERROR_ON_UNDEFINED_SYMBOLS=0
+  -s STANDALONE_WASM=1 -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick'] --js-library ./extras/js_exports.js
 
 SHELL     := /bin/bash
 EXEC_FILE := $(BUILDS)/shell.wasm
