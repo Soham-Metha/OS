@@ -1,6 +1,7 @@
 #define IMPL_TTY_1
 #include "shell.h"
 #include <hal/hal.h>
+#include <kernel/event.h>
 #include <kernel/kernel.h>
 // TODO: fix boundary violation
 #include <userspace/services/tty.h>
@@ -9,20 +10,30 @@
 
 void kernel_tick(void)
 {
+    if (kernel_event_occurred()) {
+        Event e = kernel_event_deque();
+        kernel_event_handler(e);
+    }
     wm_render(&k.wm);
 }
 
 Compositor compositor = { 0 };
 tty input_buffer      = { 0 };
+int screen_w          = { 0 };
+int screen_h          = { 0 };
 
-int main(void)
+void kernel_init(void)
 {
-    int screen_w = hal_get_width();
-    int screen_h = hal_get_height();
+    screen_w = hal_get_width();
+    screen_h = hal_get_height();
 
     compositor_init(&compositor, screen_w, screen_h);
     wm_init(&k.wm, &compositor);
+}
 
+int main(void)
+{
+    kernel_init();
     Window* bg_win = wm_create_window(
         &k.wm, 0, 0,
         screen_w, screen_h,
