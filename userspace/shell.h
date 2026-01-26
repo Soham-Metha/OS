@@ -2,5 +2,5 @@
 
 #include <osapi/osapi.h>
 
-int main(void);
-void kernel_tick(void);
+extern int main(void);
+extern void kernel_tick(void);

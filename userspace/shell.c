@@ -16,7 +16,7 @@ tty io_buffer    = { 0 };
 int screen_w     = { 0 };
 int screen_h     = { 0 };
 
-void kernel_tick(void)
+extern void kernel_tick(void)
 {
     if (kernel_event_occurred()) {
         Event e = kernel_event_deque();
@@ -43,7 +43,7 @@ void kernel_init(void)
     wm.fallback_tty = &io_buffer;
 }
 
-int main(void)
+extern int main(void)
 {
     kernel_init();
     (void)wm_create_window(&wm, 0, 0, screen_w, screen_h,
