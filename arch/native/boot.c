@@ -148,6 +148,12 @@ extern void kernelMain(uint32 magic, struct multiboot_info* mbi)
     height = mbi->framebuffer_height;
 
     (void)main();
+
+    uint16 divisor = PIT_FREQ / HZ;
+
+    outb(0x43, 0x36);               // Control: channel 0, lobyte/hibyte, mode 3
+    outb(0x40, divisor & 0xFF);     // Data:    lo byte
+    outb(0x40, divisor >> 8);       // Data     hi byte
 }
 
 void hal_put_pixel(int x, int y, uint32 rgba)
