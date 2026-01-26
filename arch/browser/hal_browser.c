@@ -1,4 +1,4 @@
-#include "hal.h"
+#include "../hal.h"
 
 /*
  * This function is implemented in JavaScript
