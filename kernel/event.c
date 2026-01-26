@@ -1,5 +1,6 @@
 #include "event.h"
 #include "kernel.h"
+#include <drivers/keyboard.h>
 #include <drivers/tty.h>
 
 Event event_queue[256];
@@ -31,7 +32,8 @@ void kernel_event_handler(Event e)
 {
     switch (e.type) {
     case EVENT_KEYBOARD:
-        tty_push_key(k.active_tty, e.as.key_event.keycode);
+        if (e.as.key_event.keycode < 128 && scan_code_ascii[e.as.key_event.keycode] >= COUNT)
+            tty_push_key(k.active_tty, scan_code_ascii[e.as.key_event.keycode]);
         break;
 
     case EVENT_COUNT:

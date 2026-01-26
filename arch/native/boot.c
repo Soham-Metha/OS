@@ -69,8 +69,7 @@ void irq0_handler_c(void)
 void irq1_handler_c(void)
 {
     uint8 scan_code = inb(0x60);
-    if (scan_code < 128)
-        kernel_irq(IRQ_KEYBOARD, scan_code_ascii[scan_code]);
+    kernel_irq(IRQ_KEYBOARD, scan_code);
     pic_send_eoi(1);
 }
 
