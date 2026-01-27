@@ -1,13 +1,14 @@
 #define IMPL_SCHEDULER_1
 #define IMPL_TERMINAL_1
 #define IMPL_TTY_1
+#define IMPL_USPACE_IO_1
 #define IMPL_WM_1
 #include "shell.h"
+#include <userspace/libs/io.h>
 #include <userspace/services/wm.h>
 // TODO: fix boundary violation
 #include <drivers/tty.h>
 #include <kernel/event.h>
-#include <kernel/kernel.h>
 #include <kernel/scheduler.h>
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
@@ -57,13 +58,20 @@ void kernel_init(void)
     Window* win_3 = wm_create_window(&wm, 410, 10, 380, 380,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0xFF, 0, 0, 0xFF));
 
-    tty_write_char(&io_buffer, 'H');
-    tty_write_char(&io_buffer, 'i');
-    tty_write_char(&io_buffer, '!');
-    tty_write_char(&io_buffer, '\n');
-
+    print_str("Shell v0.1\n");
     for (uint8 i = 0; i < win_3->term.cols; i++)
-        tty_write_char(&io_buffer, '=');
+        putch('-');
+    print_str("> ");
+}
+
+void shell(void)
+{
+    const char* user_str = getline();
+    if (user_str[0] != '\0') {
+        print_str(user_str);
+        print_str("> ");
+    }
+    p_yield(); // TODO: improve context switching logic to allow pre-emption
 }
 
 extern int main(void)
@@ -71,5 +79,6 @@ extern int main(void)
     scheduler_init(kernel_init);
     create_task(event_handler);
     create_task(renderer);
+    create_task(shell);
     return 0;
 }
