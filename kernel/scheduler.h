@@ -9,6 +9,7 @@ typedef enum Task_State {
     TASK_READY,
     TASK_RUNNING,
     TASK_BLOCKED,
+    TASK_WAITING,
     TASK_EXITED,
 } Task_State;
 
@@ -22,6 +23,7 @@ typedef struct Task {
 void scheduler_init(func init_main);
 void reschedule(Task_State t);
 void create_task(func f);
+void resume(Task_State ts);
 
 #endif
 #ifdef IMPL_SCHEDULER_1
@@ -37,6 +39,11 @@ uint64 next_pid = 0;
 private
 Task* pick_next_runnable()
 {
+    for (Task* t = current; t; t = t->next) {
+        if (t->t_state == TASK_READY) {
+            return t;
+        }
+    }
     for (Task* t = run_queue; t; t = t->next) {
         if (t->t_state == TASK_READY) {
             return t;
@@ -56,7 +63,8 @@ void schedule()
         current          = next;
         current->t_state = TASK_RUNNING;
         current->entry();
-        current->t_state = TASK_EXITED;
+        if (current->t_state != TASK_WAITING)
+            current->t_state = TASK_EXITED;
     }
 }
 
@@ -95,6 +103,15 @@ void reschedule(Task_State t)
 {
     current->t_state = t;
     schedule();
+}
+
+void resume(Task_State ts)
+{
+    for (Task* t = run_queue; t; t = t->next) {
+        if (t->t_state == ts) {
+            t->t_state = TASK_READY;
+        }
+    }
 }
 
 #endif
