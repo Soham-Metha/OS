@@ -16,9 +16,9 @@ tty io_buffer    = { 0 };
 int screen_w     = { 0 };
 int screen_h     = { 0 };
 
-extern void kernel_tick(void)
+void kernel_tick(void)
 {
-    if (kernel_event_occurred()) {
+    if (kernel_event_occurred()) { // TODO: shouldn't directly access the kernel space, supposed to be a "userspace tick"
         Event e = kernel_event_deque();
         kernel_event_handler(e);
     }

@@ -13,11 +13,10 @@
 #define HZ 60
 
 extern void* isr_stub_table[];
-extern void gdtFlush(uint32);
-extern int main(void);
-extern void kernel_tick(void);
 extern void isr_stub_32(void);
 extern void isr_stub_33(void);
+extern void gdtFlush(uint32);
+extern int main(void);
 
 typedef struct descriptor {
     uint16 limit_00_15;

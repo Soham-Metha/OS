@@ -6,6 +6,7 @@
 #include <common/types.h>
 
 typedef enum Interrupt {
+    IRQ_TIMER    = 0,
     IRQ_KEYBOARD = 1,
     IRQ_COUNT,
 } Interrupt;

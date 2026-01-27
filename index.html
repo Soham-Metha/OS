@@ -21,7 +21,12 @@
       (async function () {
         await boot();
         window.kernel.wasm.exports.main();
-        setInterval(() => { window.kernel.wasm.exports.kernel_tick(); }, 16);
+        setInterval(() => {
+          window.kernel.wasm.exports.kernel_irq(
+            IRQ_TIMER,
+            BigInt(Math.floor(1000 / 16))
+          );
+        }, 16);
       })();
     </script>
   </body>

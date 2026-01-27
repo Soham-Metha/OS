@@ -61,7 +61,7 @@ void pic_send_eoi(uint8 irq)
 // timer
 void irq0_handler_c(void)
 {
-    kernel_tick();
+    kernel_irq(IRQ_TIMER, HZ);
     pic_send_eoi(0);
 }
 

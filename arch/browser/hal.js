@@ -2,9 +2,13 @@ window.kernel = {
   wasm: null,
 };
 
+const IRQ_TIMER = 0;
+const IRQ_KEYBOARD = 1;
+
 // ===============================
 // Terminal configuration
 // ===============================
+
 const canvas = document.getElementById("screen");
 const input = document.getElementById("kbd");
 
@@ -25,7 +29,6 @@ const fb = imageData.data;
 // keyboard
 // ===============================
 
-const IRQ_KEYBOARD = 1;
 const SCAN_CODE_SET1 = {
   Digit1: 0x02, Digit2: 0x03, Digit3: 0x04, Digit4: 0x05, Digit5: 0x06, Digit6: 0x07, Digit7: 0x08, Digit8: 0x09, Digit9: 0x0a, Digit0: 0x0b, Minus: 0x0c, Equal: 0x0d, Backspace: 0x0e,
   Tab: 0x0f, KeyQ: 0x10, KeyW: 0x11, KeyE: 0x12, KeyR: 0x13, KeyT: 0x14, KeyY: 0x15, KeyU: 0x16, KeyI: 0x17, KeyO: 0x18, KeyP: 0x19, BracketLeft: 0x1a, BracketRight: 0x1b, Enter: 0x1c,

@@ -31,7 +31,7 @@ $(BUILDS):
 	@mkdir -p $@/OS/boot/grub
 
 clean: | $(BUILDS)
-	@rm -f $(BUILDS)/*.o && \
+	@rm -f $(BUILDS)/*.o $(_NATIVE_KERNEL) && \
 	printf  "\n\e[36m  CLEANED ALL OBJECT FILES AND EXECUTABLES	\e[0m\n\n"
 
 ifeq ($(TARGET),native)
@@ -52,13 +52,13 @@ ifeq ($(COMPILER),clang)
 LD     := wasm-ld
 CFLAGS += --target=wasm32-unknown-unknown
 LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
-LFLAGS += --export=main  --export=kernel_irq  --export=kernel_tick --export-table
+LFLAGS += --export=main --export=kernel_irq --export-table
 
 else
 CC     := emcc
 LD     := emcc
 LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1
-LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq',' _kernel_tick'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
+LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 endif
 
