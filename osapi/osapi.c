@@ -12,3 +12,15 @@ uint8 load(file_discriptor fd)
 {
     return (uint8)__syscall_dispatch(SYS_READ, fd, 0, 0);
 }
+
+public
+void p_yield()
+{
+    __syscall_dispatch(SYS_YIELD, 0, 0, 0);
+}
+
+public
+void p_exit()
+{
+    __syscall_dispatch(SYS_EXIT, 0, 0, 0);
+}

@@ -8,6 +8,8 @@
 typedef enum Syscall {
     SYS_READ,
     SYS_WRITE,
+    SYS_YIELD,
+    SYS_EXIT,
     SYS_COUNT,
 } Syscall;
 
