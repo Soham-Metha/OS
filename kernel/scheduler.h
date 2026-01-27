@@ -20,6 +20,7 @@ typedef struct Task {
     struct Task* next;
 } Task;
 
+void schedule();
 void scheduler_init(func init_main);
 void reschedule(Task_State t);
 void create_task(func f);
@@ -39,7 +40,7 @@ uint64 next_pid = 0;
 private
 Task* pick_next_runnable()
 {
-    for (Task* t = current; t; t = t->next) {
+    for (Task* t = current->next; t; t = t->next) {
         if (t->t_state == TASK_READY) {
             return t;
         }
@@ -52,7 +53,6 @@ Task* pick_next_runnable()
     return (Task*)0;
 }
 
-private
 void schedule()
 {
     Task* next = pick_next_runnable();
