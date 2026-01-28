@@ -183,3 +183,8 @@ uint32 hal_get_height()
 {
     return height;
 }
+
+void switch_to(void (*func)(void))
+{
+    func();
+}

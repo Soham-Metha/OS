@@ -31,6 +31,7 @@ void resume(Task_State ts);
 #ifdef IMPL_SCHEDULER_1
 #undef IMPL_SCHEDULER_1
 
+#include <arch/hal.h>
 #include <common/heap.h>
 
 Task* current   = (Task*)0;
@@ -63,7 +64,7 @@ void schedule()
     if (next != current) {
         current          = next;
         current->t_state = TASK_RUNNING;
-        current->entry();
+        switch_to(current->entry);
         if (current->t_state != TASK_WAITING)
             current->t_state = TASK_EXITED;
     }

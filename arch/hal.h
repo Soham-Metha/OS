@@ -7,3 +7,4 @@ void hal_clear(uint32 rgba);
 void hal_present(void);
 uint32 hal_get_width();
 uint32 hal_get_height();
+void switch_to(void (*func)(void));

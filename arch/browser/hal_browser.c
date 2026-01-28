@@ -1,4 +1,5 @@
 #include "../hal.h"
+// #include <emscripten/wasm_worker.h>
 
 /*
  * This function is implemented in JavaScript
@@ -34,4 +35,11 @@ uint32 hal_get_width()
 uint32 hal_get_height()
 {
     return __hal_get_height();
+}
+
+void switch_to(void (*func)(void))
+{
+    // emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(512);
+    // emscripten_wasm_worker_post_function_v(worker, func);
+    func();
 }
