@@ -2,7 +2,7 @@
 
 ## Changelogs
 
-- [26.01.27]() add keyboard and timer interrupt support to native arch
+- [26.01.27](https://github.com/Soham-Metha/OS/tree/268dda240b9d32f83cf06f1d142313b4526dc5b8) add keyboard and timer interrupt support to native arch, initial implementation of a non-preemptive scheduler, simple shell app that echoes input.
 - [26.01.26](https://github.com/Soham-Metha/OS/tree/c7c386c6697781bc3a38c6529d54c256df8c5185): add native arch support
 - [26.01.25](https://github.com/Soham-Metha/OS/tree/b15f1f034a9d9c451c437d2e280ef9091d63d98b): add event handling, continue fixing boundary violations
 - [26.01.24](https://github.com/Soham-Metha/OS/tree/a07f27ea88a680184bbc3a081f5337c17dda49cf): create simple malloc, window manager, compositor, surfaces, start kernel render loop, start fixing boundary violations
