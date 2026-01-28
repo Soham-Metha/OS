@@ -6,6 +6,7 @@
 typedef void (*func)(void);
 
 typedef enum Task_State {
+    TASK_NONE,
     TASK_READY,
     TASK_RUNNING,
     TASK_BLOCKED,
