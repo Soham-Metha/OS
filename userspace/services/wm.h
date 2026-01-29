@@ -6,6 +6,7 @@
 #include "compositor.h"
 #include "terminal.h"
 #include <common/types.h>
+#include <kernel/event.h> // TODO: fix boundary violation
 
 #define WINDOW_MAX_W 800
 #define WINDOW_MAX_H 600
@@ -22,6 +23,8 @@ typedef struct Window {
 
 typedef struct WindowManager {
     Window windows[WM_MAX_WINDOWS];
+    int mx;
+    int my;
     int count;
     int focused;
     Compositor* compositor;
@@ -35,6 +38,7 @@ void wm_destroy_window(WindowManager* wm, Window* win);
 void wm_focus_window(WindowManager* wm, Window* win);
 
 void wm_handle_key(WindowManager* wm, uint8 key);
+void wm_handle_mouse(WindowManager* wm, MouseEvent me);
 
 void wm_render(WindowManager* wm);
 
@@ -52,6 +56,8 @@ void wm_init(WindowManager* wm, Compositor* c)
 {
     wm->count        = 0;
     wm->focused      = -1;
+    wm->mx           = 0;
+    wm->my           = 0;
     wm->compositor   = c;
     wm->fallback_tty = (void*)0;
 
@@ -109,9 +115,43 @@ void wm_handle_key(WindowManager* wm, uint8 key)
     }
 }
 
+void wm_handle_mouse(WindowManager* wm, MouseEvent me)
+{
+    if (!wm || !wm->count || !wm->windows[0].surface.pixels)
+        return;
+
+    int newx = wm->mx + me.dx;
+    int newy = wm->my + me.dy;
+
+    if (newx < 0)
+        newx = 0;
+    if (newx >= wm->windows[0].surface.width)
+        newx = wm->windows[0].surface.width - 1;
+    if (newy < 0)
+        newy = 0;
+    if (newy >= wm->windows[0].surface.height)
+        newy = wm->windows[0].surface.height - 1;
+
+    if (wm->mx != newx || wm->my != newy) {
+        wm->mx = newx;
+        wm->my = newy;
+        /* Horizontal line */
+        for (int i = -4; i <= 4; i++) {
+            surface_put_pixel(&wm->windows[0].surface, wm->mx + i, wm->my, 0x000000FF);
+        }
+
+        /* Vertical line */
+        for (int i = -4; i <= 4; i++) {
+            surface_put_pixel(&wm->windows[0].surface, wm->mx, wm->my + i, 0x000000FF);
+        }
+    }
+}
+
 void wm_render(WindowManager* wm)
 {
     compositor_render(wm->compositor);
 }
 
+#else
+extern WindowManager wm;
 #endif
