@@ -15,10 +15,8 @@ const input = document.getElementById("kbd");
 
 const ctx = canvas.getContext("2d");
 
-if (window.innerWidth <= 800) {
-  canvas.width = 500;
-  canvas.height = 250;
-}
+if (canvas.width < 1800) canvas.width = window.innerWidth;
+if (canvas.height < 900) canvas.height = window.innerHeight;
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
