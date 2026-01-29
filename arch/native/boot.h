@@ -7,6 +7,9 @@
 #define PIC2_COMMAND PIC2
 #define PIC2_DATA (PIC2 + 1)
 
+#define PS2_DATA 0x60
+#define PS2_CMD  0x64
+
 #define PIC_EOI 0x20
 
 #define PIT_FREQ 1193182
@@ -15,6 +18,7 @@
 extern void* isr_stub_table[];
 extern void isr_stub_32(void);
 extern void isr_stub_33(void);
+extern void isr_stub_44(void);
 extern void gdtFlush(uint32);
 extern int main(void);
 

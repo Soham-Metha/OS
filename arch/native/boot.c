@@ -50,6 +50,22 @@ void pic_remap(uint8 offset1, uint8 offset2)
     outb(PIC2_DATA, 0);
 }
 
+static inline void pic_unmask(uint8 irq)
+{
+    uint16 port;
+    uint8 value;
+
+    if (irq < 8) {
+        port = PIC1_DATA;
+    } else {
+        port = PIC2_DATA;
+        irq -= 8;
+    }
+
+    value = inb(port) & ~(1 << irq);
+    outb(port, value);
+}
+
 void pic_send_eoi(uint8 irq)
 {
     if (irq >= 8)
@@ -58,10 +74,35 @@ void pic_send_eoi(uint8 irq)
     outb(PIC1_COMMAND, PIC_EOI);
 }
 
+void ps2_write(uint8 val)
+{
+    while (inb(PS2_CMD) & 0x02);
+    outb(PS2_DATA, val);
+}
+
+void ps2_cmd(uint8 val)
+{
+    while (inb(PS2_CMD) & 0x02);
+    outb(PS2_CMD, val);
+}
+
+uint8 mouse_read()
+{
+    while (!(inb(PS2_CMD) & 0x01));
+    return inb(PS2_DATA);
+}
+
+void mouse_write_ack(uint8 val)
+{
+    ps2_cmd(0xD4);
+    ps2_write(val);
+    (void)mouse_read();     // ACK
+}
+
 // timer
 void irq0_handler_c(void)
 {
-    kernel_irq(IRQ_TIMER, HZ);
+    kernel_irq(IRQ_TIMER, (IRQ_Data) { .timer_freq = HZ });
     pic_send_eoi(0);
 }
 
@@ -69,8 +110,52 @@ void irq0_handler_c(void)
 void irq1_handler_c(void)
 {
     uint8 scan_code = inb(0x60);
-    kernel_irq(IRQ_KEYBOARD, scan_code);
+    kernel_irq(IRQ_KEYBOARD, (IRQ_Data) { .keycode = scan_code });
     pic_send_eoi(1);
+}
+
+// https://wiki.osdev.org/Mouse_Input
+void irq12_handler_c(void)
+{
+    static int mouse_cycle = 0;
+    static uint8 mouse_packet[3];
+    uint8 data = inb(0x60);
+
+    // Sync: bit 3 must be set on first byte
+    if (mouse_cycle == 0 && !(data & 0x08)) {
+        pic_send_eoi(12);
+        return;
+    }
+
+    mouse_packet[mouse_cycle++] = data;
+
+    if (mouse_cycle == 3) {
+        mouse_cycle = 0;
+
+        // Discard overflow packets
+        if (mouse_packet[0] & 0xC0) {
+            pic_send_eoi(12);
+            return;
+        }
+
+        Mouse_Movement mm;
+        mm.left   = mouse_packet[0] & 0x01;
+        mm.right  = mouse_packet[0] & 0x02;
+        mm.middle = mouse_packet[0] & 0x04;
+
+        mm.dx     = mouse_packet[1];
+        mm.dy     = mouse_packet[2];
+
+        if (mouse_packet[0] & 0x10)
+            mm.dx |= 0xFFFFFF00;
+        if (mouse_packet[0] & 0x20)
+            mm.dy |= 0xFFFFFF00;
+        mm.dy = -mm.dy;     // PS/2 Y axis inversion
+
+        kernel_irq(IRQ_MOUSE, (IRQ_Data) { .mouse_movement = mm });
+    }
+
+    pic_send_eoi(12);
 }
 
 void exception_handler(uint32 vector, uint32 error_code)
@@ -100,6 +185,7 @@ void setIdtEntry(uint8 vector, void* isr, uint8 flags)
     idt[vector].attributes = flags;
     idt[vector].isr_high   = (uint32)isr >> 16;
     idt[vector].reserved   = 0;
+    vectors[vector]        = true;
 }
 
 extern void kernelMain(uint32 magic, struct multiboot_info* mbi)
@@ -121,22 +207,32 @@ extern void kernelMain(uint32 magic, struct multiboot_info* mbi)
 
     for (uint8 i = 0; i < 32; i++) {
         setIdtEntry(i, isr_stub_table[i], 0x8E);
-        vectors[i] = true;
     }
+
+    setIdtEntry(32, (void*)(uint32)isr_stub_32, 0x8E);
+    setIdtEntry(33, (void*)(uint32)isr_stub_33, 0x8E);
+    setIdtEntry(44, (void*)(uint32)isr_stub_44, 0x8E);
 
     pic_remap(0x20, 0x28);
 
     /* mask everything */
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC2_DATA, 0xFF);
 
-    /* unmask (IRQ0, IRQ1) */
-    outb(0x21, 0xFc);
+    ps2_cmd(0xA8); /* Enable PS/2 mouse (aux device) */
+    ps2_cmd(0x20); /* Read PS/2 controller config byte */
+    uint8 config = mouse_read();
 
-    setIdtEntry(32, (void*)(uint32)isr_stub_32, 0x8E);
-    setIdtEntry(33, (void*)(uint32)isr_stub_33, 0x8E);
-    vectors[32] = true;
-    vectors[33] = true;
+    ps2_cmd(0x60);         /* Write config byte back */
+    ps2_write(config | 2); /* Enable mouse IRQ (IRQ12) */
+
+    mouse_write_ack(0xF6); /* Set mouse defaults */
+    mouse_write_ack(0xF4); /* Enable mouse data reporting */
+
+    pic_unmask(0);      // timer
+    pic_unmask(1);      // keyboard
+    pic_unmask(2);      // cascade
+    pic_unmask(12);     // mouse
 
     __asm__ volatile("lidt %0" : : "m"(idtr));
     __asm__ volatile("sti");

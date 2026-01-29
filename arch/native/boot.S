@@ -26,6 +26,7 @@ isr_stub_\num:
 .extern exception_handler
 .extern irq0_handler_c
 .extern irq1_handler_c
+.extern irq12_handler_c
 
 isr_no_err_stub 0, exception_handler
 isr_no_err_stub 1, exception_handler
@@ -61,6 +62,7 @@ isr_err_stub    30
 isr_no_err_stub 31, exception_handler
 isr_no_err_stub 32, irq0_handler_c
 isr_no_err_stub 33, irq1_handler_c
+isr_no_err_stub 44, irq12_handler_c
 
 .section .rodata
     .globl isr_stub_table
