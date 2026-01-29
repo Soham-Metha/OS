@@ -3,7 +3,7 @@
 #ifndef TTY_1
 #define TTY_1
 
-#define TTY_BUF_SIZE 128
+#define TTY_BUF_SIZE 1024
 
 typedef struct tty {
     uint8 in_buf[TTY_BUF_SIZE];
