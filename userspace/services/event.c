@@ -5,28 +5,28 @@ Event event_queue[256];
 uint8 head = 0;
 uint8 tail = 0;
 
-void kernel_event_enque(Event e)
+void event_enque(Event e)
 {
     event_queue[head] = e;
     head              = (head + 1) % 256;
 }
 
-Event kernel_event_deque()
+Event event_deque()
 {
     Event out = (Event) { .type = EVENT_COUNT };
-    if (kernel_event_occurred()) {
+    if (event_occurred()) {
         out  = event_queue[tail];
         tail = (tail + 1) % 256;
     }
     return out;
 }
 
-bool kernel_event_occurred()
+bool event_occurred()
 {
     return head != tail;
 }
 
-void kernel_event_handler(Event e)
+void event_handler(Event e)
 {
     switch (e.type) {
     case EVENT_MOUSE:

@@ -30,7 +30,8 @@ typedef struct Event {
     EventData as;
 } Event;
 
-void kernel_event_enque(Event e);
-Event kernel_event_deque();
-bool kernel_event_occurred();
-void kernel_event_handler(Event e);
+/* MUST BE DEFINED IN USERSPACE */
+void event_enque(Event e);
+Event event_deque();
+bool event_occurred();
+void event_handler(Event e);

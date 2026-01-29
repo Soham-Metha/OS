@@ -19,16 +19,16 @@ tty io_buffer    = { 0 };
 int screen_w     = { 0 };
 int screen_h     = { 0 };
 
-void event_handler(void)
+void event_handle_loop(void)
 {
-    if (kernel_event_occurred()) {     // TODO: shouldn't directly access the kernel space, supposed to be a "userspace tick"
-        Event e = kernel_event_deque();
-        kernel_event_handler(e);
+    if (event_occurred()) {
+        Event e = event_deque();
+        event_handler(e);
     }
     p_yield();
 }
 
-void renderer(void)
+void render_loop(void)
 {
     uint8 buf[256];
     int char_read = tty_read_out(&io_buffer, buf, 256);     // TODO: replace with read syscall
@@ -64,7 +64,7 @@ void kernel_init(void)
     print_str("> ");
 }
 
-void shell(void)
+void shell_loop(void)
 {
     const char* user_str = getline();
     if (user_str[0] != '\0') {
@@ -77,8 +77,8 @@ void shell(void)
 extern int main(void)
 {
     scheduler_init(kernel_init);
-    create_task(event_handler);
-    create_task(renderer);
-    create_task(shell);
+    create_task(event_handle_loop);
+    create_task(render_loop);
+    create_task(shell_loop);
     return 0;
 }

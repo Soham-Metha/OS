@@ -28,7 +28,7 @@ void kernel_irq(Interrupt i, IRQ_Data data)
             e.as.mouse_event.right  = data.mouse_movement.right;
             e.as.mouse_event.middle = data.mouse_movement.middle;
             e.as.mouse_event.dirty  = (data.mouse_movement.dx != 0) || (data.mouse_movement.dy != 0);
-            kernel_event_enque(e);
+            event_enque(e);
         }
     case IRQ_COUNT:
     default:
