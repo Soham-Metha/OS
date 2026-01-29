@@ -8,9 +8,7 @@
 #include <common/event.h>
 #include <common/types.h>
 
-#define WINDOW_MAX_W 800
-#define WINDOW_MAX_H 600
-#define WM_MAX_WINDOWS 3
+#define WM_MAX_WINDOWS 4
 
 typedef struct tty tty;
 
@@ -117,6 +115,7 @@ void wm_handle_key(WindowManager* wm, uint8 key)
 
 void wm_handle_mouse(WindowManager* wm, MouseEvent me)
 {
+    static int cursor_win = -1;
     if (!wm || !wm->count || !wm->windows[0].surface.pixels)
         return;
 
@@ -125,24 +124,44 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
 
     if (newx < 0)
         newx = 0;
-    if (newx >= wm->windows[0].surface.width)
-        newx = wm->windows[0].surface.width - 1;
+    if (newx >= wm->compositor->width)
+        newx = wm->compositor->width - 1;
     if (newy < 0)
         newy = 0;
-    if (newy >= wm->windows[0].surface.height)
-        newy = wm->windows[0].surface.height - 1;
+    if (newy >= wm->compositor->height)
+        newy = wm->compositor->height - 1;
 
-    if (wm->mx != newx || wm->my != newy) {
-        wm->mx = newx;
-        wm->my = newy;
-        /* Horizontal line */
-        for (int i = -4; i <= 4; i++) {
-            surface_put_pixel(&wm->windows[0].surface, wm->mx + i, wm->my, 0x000000FF);
-        }
+    if (wm->mx == newx && wm->my == newy && !me.left) {
+        return;
+    }
 
-        /* Vertical line */
-        for (int i = -4; i <= 4; i++) {
-            surface_put_pixel(&wm->windows[0].surface, wm->mx, wm->my + i, 0x000000FF);
+    if (cursor_win >= 0) {
+        surface_draw_char(&wm->windows[cursor_win].surface, ' ',
+            wm->mx - wm->windows[cursor_win].surface.x,
+            wm->my - wm->windows[cursor_win].surface.y,
+            wm->windows[cursor_win].term.fg,
+            wm->windows[cursor_win].term.bg);
+    }
+
+    wm->mx = newx;
+    wm->my = newy;
+
+    // TODO: optimization(z buffering?)
+    for (int i = wm->count - 1; i >= 0; i--) {
+        if ((newx - wm->windows[i].surface.x) >= 0 && (newx - wm->windows[i].surface.x) < wm->windows[i].surface.width
+            && (newy - wm->windows[i].surface.y) >= 0 && (newy - wm->windows[i].surface.y) < wm->windows[i].surface.height) {
+            surface_draw_char(&wm->windows[i].surface, ' ',
+                newx - wm->windows[i].surface.x,
+                newy - wm->windows[i].surface.y,
+                wm->windows[i].term.fg,
+                0xFFFFFFFF);
+            if (me.left) {
+                wm->windows[wm->focused].focused = false;
+                wm->focused                      = i;
+                wm->windows[wm->focused].focused = true;
+            }
+            cursor_win = i;
+            return;
         }
     }
 }

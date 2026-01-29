@@ -49,17 +49,21 @@ void kernel_init(void)
     wm_init(&wm, &comp);
     tty_init(&io_buffer);
     wm.fallback_tty = &io_buffer;
-    (void)wm_create_window(&wm, 0, 0, screen_w, screen_h,
+
+    (void)wm_create_window(&wm, 0, 0, screen_w / 2, screen_h / 2,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
 
-    (void)wm_create_window(&wm, 10, 10, 200, 200,
+    (void)wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h / 2,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
 
-    Window* win_3 = wm_create_window(&wm, 410, 10, 380, 380,
+    (void)wm_create_window(&wm, 0, screen_h / 2, screen_w / 2, screen_h / 2,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0xFF, 0, 0, 0xFF));
 
+    Window* win_4 = wm_create_window(&wm, screen_w / 2, screen_h / 2, screen_w / 2, screen_h / 2,
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+
     print_str("Shell v0.1\n");
-    for (uint8 i = 0; i < win_3->term.cols; i++)
+    for (uint8 i = 0; i < win_4->term.cols; i++)
         putch('-');
     print_str("> ");
 }

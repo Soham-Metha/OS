@@ -1,5 +1,5 @@
 #include <common/event.h>
-#include <userspace/services/wm.h>
+#include "wm.h"
 
 Event event_queue[256];
 uint8 head = 0;

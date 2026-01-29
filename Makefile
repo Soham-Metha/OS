@@ -40,7 +40,7 @@ CC     := $(NAT_CC)
 all: clean $(_ISO)
 
 run_all: all
-	@qemu-system-i386 	-drive format=raw,file="$(_ISO)"  -vga std
+	@qemu-system-i386	-drive format=raw,file="$(_ISO)" -vga std
 
 $(_HAL): arch/native/boot.c arch/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
@@ -73,7 +73,7 @@ $(_HAL): arch/browser/hal_browser.c arch/hal.h | $(BUILDS)
 
 endif
 
-$(_EVENT): kernel/event.c kernel/event.h | $(BUILDS)
+$(_EVENT): userspace/services/event.c common/event.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 

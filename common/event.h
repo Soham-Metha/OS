@@ -17,7 +17,6 @@ typedef struct MouseEvent {
     bool left;
     bool right;
     bool middle;
-    bool dirty;
 } MouseEvent;
 
 typedef union EventData {
