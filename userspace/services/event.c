@@ -1,4 +1,4 @@
-#include "event.h"
+#include <common/event.h>
 #include <userspace/services/wm.h>
 
 Event event_queue[256];

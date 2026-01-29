@@ -5,8 +5,8 @@
 
 #include "compositor.h"
 #include "terminal.h"
+#include <common/event.h>
 #include <common/types.h>
-#include <kernel/event.h> // TODO: fix boundary violation
 
 #define WINDOW_MAX_W 800
 #define WINDOW_MAX_H 600

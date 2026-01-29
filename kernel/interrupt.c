@@ -1,7 +1,7 @@
 #include "interrupt.h"
-#include "event.h"
 #include "kernel.h"
 #include "scheduler.h"
+#include <common/event.h>
 #include <drivers/keyboard.h>
 
 void kernel_irq(Interrupt i, IRQ_Data data)

@@ -4,11 +4,11 @@
 #define IMPL_USPACE_IO_1
 #define IMPL_WM_1
 #include "shell.h"
-#include <userspace/libs/io.h>
-#include <userspace/services/wm.h>
+#include "libs/io.h"
+#include "services/wm.h"
+#include <common/event.h>
 // TODO: fix boundary violation
 #include <drivers/tty.h>
-#include <kernel/event.h>
 #include <kernel/scheduler.h>
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
@@ -71,7 +71,7 @@ void shell(void)
         print_str(user_str);
         print_str("> ");
     }
-    p_yield(); // TODO: improve context switching logic to allow pre-emption
+    p_yield();     // TODO: improve context switching logic to allow pre-emption
 }
 
 extern int main(void)
