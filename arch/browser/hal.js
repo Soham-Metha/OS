@@ -4,6 +4,7 @@ window.kernel = {
 
 const IRQ_TIMER = 0;
 const IRQ_KEYBOARD = 1;
+const IRQ_MOUSE = 12;
 
 // ===============================
 // Terminal configuration
@@ -57,7 +58,7 @@ window.addEventListener("keydown", (e) => {
   if (scancode === undefined) return;
 
   console.log(e.code, scancode);
-  window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(scancode));
+  window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, scancode, 0, 0);
 });
 
 window.addEventListener("keyup", (e) => {
@@ -68,7 +69,7 @@ window.addEventListener("keyup", (e) => {
 
   const breakcode = scancode | 0x80;
 
-  window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(breakcode));
+  window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, breakcode, 0, 0);
 });
 
 input.addEventListener("input", (e) => {
@@ -76,10 +77,45 @@ input.addEventListener("input", (e) => {
 
   for (let i = 0; i < value.length; i++) {
     const ch = value.charCodeAt(i);
-    window.kernel.wasm.exports.kernel_irq(IRQ_KEYBOARD, BigInt(ch));
+    window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, ch, 0, 0);
   }
 
   input.value = "";
+});
+
+function mouseButtonsMask(buttons) {
+  let m = 0;
+  if (buttons & 1) m |= 1; // left
+  if (buttons & 2) m |= 2; // right
+  if (buttons & 4) m |= 4; // middle
+  return m;
+}
+
+canvas.addEventListener("mousemove", (e) => {
+  window.kernel.wasm.exports.kernel_irq_wrapper(
+    IRQ_MOUSE,
+    e.movementX,
+    e.movementY,
+    e.buttons
+  );
+});
+
+canvas.addEventListener("mousedown", (e) => {
+  window.kernel.wasm.exports.kernel_irq_wrapper(
+    IRQ_MOUSE,
+    0,
+    0,
+    e.buttons
+  );
+});
+
+canvas.addEventListener("mouseup", (e) => {
+  window.kernel.wasm.exports.kernel_irq_wrapper(
+    IRQ_MOUSE,
+    0,
+    0,
+    e.buttons
+  );
 });
 
 // ===============================

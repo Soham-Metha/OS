@@ -1,4 +1,5 @@
 #include "../hal.h"
+#include <kernel/interrupt.h>
 // #include <emscripten/wasm_worker.h>
 
 /*
@@ -42,4 +43,16 @@ void switch_to(void (*func)(void))
     // emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(512);
     // emscripten_wasm_worker_post_function_v(worker, func);
     func();
+}
+
+void kernel_irq_wrapper(Interrupt i, int a, int b, int c)
+{
+    if (i == IRQ_TIMER)
+        kernel_irq(i, (IRQ_Data) { .timer_freq = a });
+    else if (i == IRQ_KEYBOARD)
+        kernel_irq(i, (IRQ_Data) { .keycode = a });
+    else if (i == IRQ_MOUSE)
+        kernel_irq(i, (IRQ_Data) {
+                          .mouse_movement = { .dx = a, .dy = b, .left = c & 1, .right = (c >> 1) & 1, .middle = (c >> 2) & 1 }
+        });
 }

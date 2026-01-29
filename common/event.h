@@ -1,6 +1,8 @@
 /* event.h */
 #include <common/types.h>
 
+#ifndef EVENT_1
+#define EVENT_1
 typedef enum EventType {
     EVENT_MOUSE,
     EVENT_KEYBOARD,
@@ -34,3 +36,5 @@ void event_enque(Event e);
 Event event_deque();
 bool event_occurred();
 void event_handler(Event e);
+
+#endif

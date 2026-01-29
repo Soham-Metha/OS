@@ -52,13 +52,13 @@ ifeq ($(COMPILER),clang)
 LD     := wasm-ld
 CFLAGS += --target=wasm32-unknown-unknown
 LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
-LFLAGS += --export=main --export=kernel_irq --export-table
+LFLAGS += --export=main --export=kernel_irq_wrapper --export-table
 
 else
 CC     := emcc
 LD     := emcc
 LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1
-LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
+LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 endif
 

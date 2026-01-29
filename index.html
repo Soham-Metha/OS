@@ -22,9 +22,11 @@
         await boot();
         window.kernel.wasm.exports.main();
         setInterval(() => {
-          window.kernel.wasm.exports.kernel_irq(
+          window.kernel.wasm.exports.kernel_irq_wrapper(
             IRQ_TIMER,
-            BigInt(Math.floor(1000 / 16))
+            Math.floor(1000 / 16),
+            0,
+            0
           );
         }, 16);
       })();
