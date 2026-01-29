@@ -1,7 +1,5 @@
 #include "event.h"
-#include "kernel.h"
-#include <drivers/keyboard.h>
-#include <drivers/tty.h>
+#include <userspace/services/wm.h>
 
 Event event_queue[256];
 uint8 head = 0;
@@ -31,11 +29,10 @@ bool kernel_event_occurred()
 void kernel_event_handler(Event e)
 {
     switch (e.type) {
+    case EVENT_MOUSE:
+        wm_handle_mouse(&wm, e.as.mouse_event);
+        return;
     case EVENT_KEYBOARD:
-        if (e.as.key_event.keycode < 128 && scan_code_ascii[e.as.key_event.keycode] >= COUNT)
-            tty_push_key(k.active_tty, scan_code_ascii[e.as.key_event.keycode]);
-        break;
-
     case EVENT_COUNT:
     default:
         break;
