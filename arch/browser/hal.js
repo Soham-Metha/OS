@@ -11,8 +11,6 @@ const IRQ_MOUSE = 12;
 // ===============================
 
 const canvas = document.getElementById("screen");
-const input = document.getElementById("kbd");
-
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
@@ -41,14 +39,6 @@ const SCAN_CODE_SET1 = {
   Numpad0: 0x52, NumpadDecimal: 0x53,
 };
 
-canvas.addEventListener("touchstart", () => {
-  input.focus({ preventScroll: true });
-});
-
-canvas.addEventListener("mousedown", () => {
-  input.focus();
-});
-
 window.addEventListener("keydown", (e) => {
   if (!window.kernel.wasm) return;
 
@@ -69,25 +59,6 @@ window.addEventListener("keyup", (e) => {
 
   window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, breakcode, 0, 0);
 });
-
-input.addEventListener("input", (e) => {
-  const value = input.value;
-
-  for (let i = 0; i < value.length; i++) {
-    const ch = value.charCodeAt(i);
-    window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, ch, 0, 0);
-  }
-
-  input.value = "";
-});
-
-function mouseButtonsMask(buttons) {
-  let m = 0;
-  if (buttons & 1) m |= 1; // left
-  if (buttons & 2) m |= 2; // right
-  if (buttons & 4) m |= 4; // middle
-  return m;
-}
 
 canvas.addEventListener("mousemove", (e) => {
   window.kernel.wasm.exports.kernel_irq_wrapper(
