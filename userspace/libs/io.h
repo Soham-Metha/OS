@@ -24,7 +24,7 @@ void putch(char c)
 void print_str(const char* str)
 {
     for (int i = 0; str[i] != '\0'; i++) {
-        store(1, str[i]);
+        putch(str[i]);
     }
 }
 
