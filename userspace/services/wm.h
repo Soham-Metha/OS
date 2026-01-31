@@ -6,6 +6,7 @@
 #include "compositor.h"
 #include "terminal.h"
 #include <common/event.h>
+#include <common/memmanager.h>
 #include <common/types.h>
 
 #define WM_MAX_WINDOWS 4
@@ -13,6 +14,7 @@
 typedef struct tty tty;
 
 typedef struct Window {
+    Arena arena;
     Surface surface;
     Terminal term;
     bool focused;
@@ -47,8 +49,7 @@ void wm_render(WindowManager* wm);
 #define IMPL_COMPOSITOR_1
 #include "compositor.h"
 #include "font.h"
-#include <common/heap.h>
-#include <drivers/tty.h>
+#include <drivers/tty.h> // TODO: fix boundary violation
 
 void wm_init(WindowManager* wm, Compositor* c)
 {
@@ -75,7 +76,7 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     win->surface.y       = y;
     win->surface.width   = w;
     win->surface.height  = h;
-    win->surface.pixels  = kmalloc(w * h * sizeof(uint32));
+    win->surface.pixels  = region_alloc(&win->arena, w * h * sizeof(uint32));
     win->surface.visible = true;
     win->surface.dirty   = true;
     win->visible         = true;
@@ -113,6 +114,17 @@ void wm_handle_key(WindowManager* wm, uint8 key)
     }
 }
 
+void surface_swap_colors_at(Surface* s, int x, int y, uint32 fg, uint32 bg)
+{
+    for (int row = 0; row < GLYPH_H; row++) {
+        for (int col = 0; col < GLYPH_W; col++) {
+            uint32 color = (s->pixels[SURF_IDX(s, x + col, y + row)] == bg) ? fg : bg;
+
+            surface_put_pixel(s, x + col, y + row, color);
+        }
+    }
+}
+
 void wm_handle_mouse(WindowManager* wm, MouseEvent me)
 {
     static int cursor_win = -1;
@@ -136,7 +148,7 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
     }
 
     if (cursor_win >= 0) {
-        surface_draw_char(&wm->windows[cursor_win].surface, ' ',
+        surface_swap_colors_at(&wm->windows[cursor_win].surface,
             wm->mx - wm->windows[cursor_win].surface.x,
             wm->my - wm->windows[cursor_win].surface.y,
             wm->windows[cursor_win].term.fg,
@@ -150,11 +162,11 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
     for (int i = wm->count - 1; i >= 0; i--) {
         if ((newx - wm->windows[i].surface.x) >= 0 && (newx - wm->windows[i].surface.x) < wm->windows[i].surface.width
             && (newy - wm->windows[i].surface.y) >= 0 && (newy - wm->windows[i].surface.y) < wm->windows[i].surface.height) {
-            surface_draw_char(&wm->windows[i].surface, ' ',
+            surface_swap_colors_at(&wm->windows[i].surface,
                 newx - wm->windows[i].surface.x,
                 newy - wm->windows[i].surface.y,
                 wm->windows[i].term.fg,
-                0xFFFFFFFF);
+                wm->windows[i].term.bg);
             if (me.left) {
                 wm->windows[wm->focused].focused = false;
                 wm->focused                      = i;

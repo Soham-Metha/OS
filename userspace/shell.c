@@ -3,10 +3,12 @@
 #define IMPL_TTY_1
 #define IMPL_USPACE_IO_1
 #define IMPL_WM_1
+#define MEM_MANAGER_IMPL
 #include "shell.h"
 #include "libs/io.h"
 #include "services/wm.h"
 #include <common/event.h>
+#include <common/memmanager.h>
 // TODO: fix boundary violation
 #include <drivers/tty.h>
 #include <kernel/scheduler.h>
