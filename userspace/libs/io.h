@@ -1,6 +1,7 @@
 /* io.h */
 #ifndef USPACE_IO_1
 #define USPACE_IO_1
+#include <common/errors.h>
 #include <common/result.h>
 
 void putch(char c);
@@ -93,14 +94,14 @@ ResultPtr getline()
         buf[size++] = (char)RESULT_VAL(r);
 
         if ((char)RESULT_VAL(r) != '\n') {
-            return ErrPtr(1);
+            return ErrPtr(ERR_NO_INPUT_AVAILABLE);
         }
 
         buf[size - 1] = '\0';     // replace '\n' with '\0'
         size          = 0;
         return OkPtr((uintPtr)buf);
     }
-    return ErrPtr(0);
+    return ErrPtr(ERR_NO_INPUT_AVAILABLE);
 }
 
 #endif

@@ -55,7 +55,7 @@ void tty_push_key(tty* t, uint8 c)
 Result8 tty_read_char(tty* t)
 {
     if (t->in_head == t->in_tail)
-        return Err8(-1);
+        return Err8(ERR_NO_INPUT_AVAILABLE);
     char c     = t->in_buf[t->in_tail];
     t->in_tail = (t->in_tail + 1) % TTY_BUF_SIZE;
     return Ok8(c);
