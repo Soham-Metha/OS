@@ -4,6 +4,8 @@
 
 void putch(char c);
 void print_str(const char* str);
+void print_int(int i);
+void printf(const char* fmt, ...);
 
 char getch();
 const char* getline();
@@ -24,6 +26,56 @@ void print_str(const char* str)
     for (int i = 0; str[i] != '\0'; i++) {
         store(1, str[i]);
     }
+}
+
+void print_int(int i)
+{
+    unsigned magnitude = i;
+    if (i < 0) {
+        putch('-');
+        magnitude = -magnitude;
+    }
+
+    unsigned divisor = 1;
+    while (magnitude / divisor > 9)
+        divisor *= 10;
+
+    while (divisor > 0) {
+        putch('0' + magnitude / divisor);
+        magnitude %= divisor;
+        divisor /= 10;
+    }
+}
+
+void printf(const char* fmt, ...)
+{
+    va_list vargs;
+    va_start(vargs, fmt);
+    while (*fmt) {
+        if (*fmt == '%') {
+            fmt += 1;
+            switch (*fmt) {
+            case '\0':
+                putch('%');
+                goto end;
+            case '%':
+                putch('%');
+                break;
+            case 's':
+                print_str(va_arg(vargs, const char*));
+                break;
+            case 'd':
+                print_int(va_arg(vargs, int));
+                break;
+            }
+        } else {
+            putch(*fmt);
+        }
+        fmt += 1;
+    }
+
+end:
+    va_end(vargs);
 }
 
 char getch()
