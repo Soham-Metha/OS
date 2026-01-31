@@ -2,14 +2,16 @@
 #ifndef OSAPI_1
 #define OSAPI_1
 
+#include <common/result.h>
 #include <common/types.h>
+
 /* write 1 char */
 public
 void store(file_discriptor fd, uint8 c);
 
 /* read 1 char */
 public
-uint8 load(file_discriptor fd);
+Result8 load(file_discriptor fd);
 
 /* restart current process later */
 public

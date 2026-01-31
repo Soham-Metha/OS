@@ -8,9 +8,9 @@ void store(file_discriptor fd, uint8 c)
 }
 
 public
-uint8 load(file_discriptor fd)
+Result8 load(file_discriptor fd)
 {
-    return (uint8)__syscall_dispatch(SYS_READ, fd, 0, 0);
+    return __syscall_dispatch(SYS_READ, fd, 0, 0);
 }
 
 public

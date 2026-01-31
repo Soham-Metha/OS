@@ -70,10 +70,13 @@ void kernel_init(void)
 
 void shell_loop(void)
 {
-    const char* user_str = getline();
-    if (user_str[0] != '\0') {
-        print_str(user_str);
-        print_str("> ");
+    ResultPtr r = getline();
+    if RESULT_OK (r) {
+        const char* user_str = (const char*)RESULT_VAL(r);
+        if (user_str[0] != '\0') {
+            print_str(user_str);
+            print_str("> ");
+        }
     }
     p_yield();     // TODO: improve context switching logic to allow pre-emption
 }

@@ -4,6 +4,7 @@
 #define TTY_1
 
 #define TTY_BUF_SIZE 1024
+#include <common/result.h>
 
 typedef struct tty {
     uint8 in_buf[TTY_BUF_SIZE];
@@ -17,7 +18,7 @@ typedef struct tty {
 
 void tty_init(struct tty* t);
 void tty_push_key(tty* t, uint8 c);
-uint8 tty_read_char(tty* t);
+Result8 tty_read_char(tty* t);
 void tty_write_char(tty* t, char c);
 uint64 tty_read_out(tty* t, uint8* buf, uint64 n);
 
@@ -51,13 +52,13 @@ void tty_push_key(tty* t, uint8 c)
     }
 }
 
-uint8 tty_read_char(tty* t)
+Result8 tty_read_char(tty* t)
 {
     if (t->in_head == t->in_tail)
-        return -1;
+        return Err8(-1);
     char c     = t->in_buf[t->in_tail];
     t->in_tail = (t->in_tail + 1) % TTY_BUF_SIZE;
-    return c;
+    return Ok8(c);
 }
 
 void tty_write_char(tty* t, char c)

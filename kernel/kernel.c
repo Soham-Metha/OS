@@ -10,28 +10,27 @@
 Kernel k = { 0 };
 
 private
-int _k_read(file_discriptor fd)
+Result8 _k_read(file_discriptor fd)
 {
     // TODO: implement the fs
     // TODO: ownership of resources
     (void)fd;
-    char c = tty_read_char(k.active_tty);
-    if (c == -1) {
+    Result8 c = tty_read_char(k.active_tty);
+    if RESULT_ERR (c) {
         reschedule(TASK_BLOCKED);
-        return -1;
     }
     return c;
 }
 
 private
-int _k_write(file_discriptor fd, uint8 c)
+Result8 _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
     tty_write_char(k.active_tty, c);
-    return ERR_OK;
+    return Ok8(0);
 }
 
-int __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c)
+Result8 __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c)
 {
     switch (s) {
     case SYS_READ:
@@ -46,15 +45,15 @@ int __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c)
         (void)b;
         (void)c;
         reschedule(TASK_WAITING);
-        return 0;
+        return Ok8(0);
     case SYS_EXIT:
         (void)a;
         (void)b;
         (void)c;
         reschedule(TASK_EXITED);
-        return 0;
+        return Ok8(0);
     case SYS_COUNT:
     default:
-        return ERR_INVALID_SYSCALL;
+        return Err8(ERR_INVALID_SYSCALL);
     }
 }

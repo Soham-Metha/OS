@@ -1,14 +1,14 @@
 /* io.h */
 #ifndef USPACE_IO_1
 #define USPACE_IO_1
+#include <common/result.h>
 
 void putch(char c);
 void print_str(const char* str);
 void print_int(int i);
 void printf(const char* fmt, ...);
-
-char getch();
-const char* getline();
+Result8 getch();
+ResultPtr getline();
 
 #endif
 #ifdef IMPL_USPACE_IO_1
@@ -78,34 +78,29 @@ end:
     va_end(vargs);
 }
 
-char getch()
+Result8 getch()
 {
-    char c = (signed char)load(1);
-    if (c == -1) {
-        p_yield();
-        return -1;
-    }
-    return c;
+    return load(1);
 }
 
-const char* getline()
+ResultPtr getline()
 {
     static char buf[255];
     static int size = 0;
 
-    char c          = getch();
-    if (c == -1) {
-        return "";
-    }
-    buf[size++] = c;
+    Result8 r       = getch();
+    if RESULT_OK (r) {
+        buf[size++] = (char)RESULT_VAL(r);
 
-    if (c != '\n') {
-        return "";
-    }
+        if ((char)RESULT_VAL(r) != '\n') {
+            return ErrPtr(1);
+        }
 
-    buf[size] = '\0';
-    size      = 0;
-    return buf;
+        buf[size] = '\0';
+        size      = 0;
+        return OkPtr((uintPtr)buf);
+    }
+    return ErrPtr(0);
 }
 
 #endif

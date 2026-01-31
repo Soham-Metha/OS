@@ -2,6 +2,7 @@
 #ifndef KERNEL_1
 #define KERNEL_1
 
+#include <common/result.h>
 #include <common/types.h>
 #include <drivers/tty.h>
 
@@ -19,6 +20,6 @@ typedef struct Kernel {
 
 extern Kernel k;
 
-int __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c);
+Result8 __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c);
 
 #endif

@@ -8,6 +8,7 @@ typedef unsigned short int uint16;
 typedef unsigned int uint32;
 typedef unsigned long long int uint64;
 typedef uint16 file_discriptor;
+typedef uint32 uintPtr;
 
 #if defined(__clang__)
 #pragma clang diagnostic push
