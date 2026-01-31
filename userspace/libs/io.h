@@ -96,8 +96,8 @@ ResultPtr getline()
             return ErrPtr(1);
         }
 
-        buf[size] = '\0';
-        size      = 0;
+        buf[size - 1] = '\0';     // replace '\n' with '\0'
+        size          = 0;
         return OkPtr((uintPtr)buf);
     }
     return ErrPtr(0);

@@ -72,11 +72,7 @@ void shell_loop(void)
 {
     ResultPtr r = getline();
     if RESULT_OK (r) {
-        const char* user_str = (const char*)RESULT_VAL(r);
-        if (user_str[0] != '\0') {
-            print_str(user_str);
-            print_str("> ");
-        }
+        printf("%s\n> ", (const char*)RESULT_VAL(r));
     }
     p_yield();     // TODO: improve context switching logic to allow pre-emption
 }
