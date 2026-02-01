@@ -1,3 +1,4 @@
+#define IMPL_FS_1
 #define IMPL_SCHEDULER_1
 #define IMPL_TERMINAL_1
 #define IMPL_TTY_1
@@ -11,6 +12,7 @@
 #include <common/memmanager.h>
 // TODO: fix boundary violation
 #include <drivers/tty.h>
+#include <kernel/fs.h>
 #include <kernel/scheduler.h>
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
@@ -67,7 +69,15 @@ void kernel_init(void)
     print_str("Shell v0.1\n");
     for (uint8 i = 0; i < win_4->term.cols; i++)
         putch('-');
-    print_str("> ");
+
+    uint8* disk_data = (uint8*)kmalloc(64 * BLOCK_SIZE);
+    BlockDevice rd   = disk_init(DISK_RAMDISK, disk_data, 64);
+    ResultPtr r      = fsformat(&rd, 0);
+
+    if RESULT_OK (r)  printf("\nformatted");
+    else              printf("\nformat err: %d", r.error);
+
+    print_str("\n> ");
 }
 
 void shell_loop(void)
