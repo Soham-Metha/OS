@@ -3,16 +3,16 @@
 #ifndef TTY_1
 #define TTY_1
 
-#define TTY_BUF_SIZE 1024
+#define TTY_BUF_SIZE 2048
 #include <common/result.h>
 
 typedef struct tty {
-    uint8 in_buf[TTY_BUF_SIZE];
-    uint8 in_head;
-    uint8 in_tail;
-    uint8 out_buf[TTY_BUF_SIZE];
-    uint8 out_head;
-    uint8 out_tail;
+    uint16 in_buf[TTY_BUF_SIZE];
+    uint16 in_head;
+    uint16 in_tail;
+    uint16 out_buf[TTY_BUF_SIZE];
+    uint16 out_head;
+    uint16 out_tail;
     bool echo;
 } tty;
 
