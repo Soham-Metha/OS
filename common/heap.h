@@ -5,6 +5,8 @@
 #define KHEAP_SIZE (8 * 1024 * 1024)
 
 void* kmalloc(uint64 size);
+void* memset(void* buf, char c, uint64 n);
+void* memcpy(void* dst, const void* src, uint64 n);
 
 #endif
 #ifdef IMPL_KMALLOC_1
@@ -26,6 +28,23 @@ void* kmalloc(uint64 size)
     void* ptr = &kheap[heap_offset];
     heap_offset += size;
     return ptr;
+}
+
+void* memset(void* buf, char c, uint64 n)
+{
+    uint8* p = (uint8*)buf;
+    while (n--)
+        *p++ = c;
+    return buf;
+}
+
+void* memcpy(void* dst, const void* src, uint64 n)
+{
+    uint8* d       = (uint8*)dst;
+    const uint8* s = (const uint8*)src;
+    while (n--)
+        *d++ = *s++;
+    return dst;
 }
 
 #endif
