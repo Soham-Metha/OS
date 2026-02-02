@@ -19,7 +19,7 @@ ResultPtr getline();
 
 void putch(char c)
 {
-    store(1, c);
+    store(stdout, c);
 }
 
 void print_str(const char* str)
@@ -81,7 +81,7 @@ end:
 
 Result8 getch()
 {
-    return load(1);
+    return load(stdin);
 }
 
 ResultPtr getline()
