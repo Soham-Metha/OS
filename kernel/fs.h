@@ -177,6 +177,7 @@ void fs_show(filesystem* fs, bool showbm)
 
     printf("\n  %d total blocks, 1 superblock and %d inode blocks containing %d inodes",
         fs->meta.blk_cnt, fs->meta.iblk_cnt, fs->meta.i_cnt);
+    printf("\n\nInodes:");
 
     for (uintPtr inodeno = 0; inodeno < fs->meta.i_cnt; inodeno++) {
         ResultPtr rino = inode_lookup(fs, inodeno);
@@ -189,30 +190,30 @@ void fs_show(filesystem* fs, bool showbm)
         if (!(ino->valid & VALID))
             continue;
 
-        printf("\nValid Inode: %d [ size:%d bytes, type:%s, ", inodeno, ino->size, get_inode_type_name(ino->valid));
+        printf("\n %d | %d bytes | %s | ", inodeno, ino->size, get_inode_type_name(ino->valid));
         if (inodeno == 0)
-            printf("name: / ]");
+            printf("/");
         else if (ino->valid == DIR)
-            printf("name: %s ]", ino->name.name);
+            printf("%s", ino->name.name);
         else
-            printf("name: %s.%s ]", ino->name.name, ino->name.ext);
+            printf("%s.%s", ino->name.name, ino->name.ext);
     }
-    printf("\n");
-
     if (!showbm)
         return;
 
-    printf("Bitmap:");
+    printf("\n\nBitmap:");
 
     for (uintPtr n = 0; n < fs->bd->blk_cnt; n++) {
-        if (!(n % 8))
-            printf("\n %d | ", n);
+        if (!(n % 8)) {
+            if (n < 10) printf("\n  %d | ", n);
+            else        printf("\n %d | ", n);
+        }
         if (getbit(fs->blkmap, n))
             printf("1 ");
         else
             printf("0 ");
     }
-    printf("\n\n");
+    printf("\n");
 }
 
 ResultPtr fs_format(BlockDevice* bd, bootsector* mbr)
