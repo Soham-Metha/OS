@@ -22,6 +22,8 @@ typedef uint32 uintPtr;
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
 #define va_arg __builtin_va_arg
+#define stdin 0
+#define stdout 1
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
