@@ -11,8 +11,6 @@
 
 #define WM_MAX_WINDOWS 4
 
-typedef struct tty tty;
-
 typedef struct Window {
     Arena arena;
     Surface surface;
@@ -28,7 +26,6 @@ typedef struct WindowManager {
     int count;
     int focused;
     Compositor* compositor;
-    tty* fallback_tty;
 } WindowManager;
 
 void wm_init(WindowManager* wm, Compositor* c);
@@ -49,7 +46,6 @@ void wm_render(WindowManager* wm);
 #define IMPL_COMPOSITOR_1
 #include "compositor.h"
 #include "font.h"
-#include <drivers/tty.h> // TODO: fix boundary violation
 
 void wm_init(WindowManager* wm, Compositor* c)
 {
@@ -58,7 +54,6 @@ void wm_init(WindowManager* wm, Compositor* c)
     wm->mx           = 0;
     wm->my           = 0;
     wm->compositor   = c;
-    wm->fallback_tty = (void*)0;
 
     for (int i = 0; i < WM_MAX_WINDOWS; i++) {
         wm->windows[i].visible = false;
@@ -109,8 +104,6 @@ void wm_handle_key(WindowManager* wm, uint8 key)
     if (wm->focused >= 0) {
         terminal_put_char(&wm->windows[wm->focused].term, key);
         terminal_draw_cursor(&wm->windows[wm->focused].term);
-    } else {
-        tty_push_key(wm->fallback_tty, key);
     }
 }
 
