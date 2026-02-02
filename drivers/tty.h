@@ -5,6 +5,7 @@
 
 #define TTY_BUF_SIZE 2048
 #include <common/result.h>
+#include <common/errors.h>
 
 typedef struct tty {
     uint16 in_buf[TTY_BUF_SIZE];
@@ -20,13 +21,11 @@ void tty_init(struct tty* t);
 void tty_push_key(tty* t, uint8 c);
 Result8 tty_read_char(tty* t);
 void tty_write_char(tty* t, char c);
-uint64 tty_read_out(tty* t, uint8* buf, uint64 n);
+Result8 tty_pop_char(tty* t);
 
 #endif
 #ifdef IMPL_TTY_1
 #undef IMPL_TTY_1
-
-#include <kernel/kernel.h>
 
 void tty_init(struct tty* t)
 {
@@ -38,8 +37,6 @@ void tty_init(struct tty* t)
     t->out_head  = 0;
     t->out_tail  = 0;
     t->echo      = true;
-
-    k.active_tty = t;
 }
 
 void tty_push_key(tty* t, uint8 c)
@@ -67,14 +64,13 @@ void tty_write_char(tty* t, char c)
     t->out_head             = (t->out_head + 1) % TTY_BUF_SIZE;
 }
 
-uint64 tty_read_out(tty* t, uint8* buf, uint64 n)
+Result8 tty_pop_char(tty* t)
 {
-    uint64 i = 0;
-    while (i < n && t->out_tail != t->out_head) {
-        buf[i++]    = t->out_buf[t->out_tail];
-        t->out_tail = (t->out_tail + 1) % TTY_BUF_SIZE;
-    }
-    return i;
+    if (t->out_head == t->out_tail)
+        return Err8(ERR_NO_INPUT_AVAILABLE);
+    char c      = t->out_buf[t->out_tail];
+    t->out_tail = (t->out_tail + 1) % TTY_BUF_SIZE;
+    return Ok8(c);
 }
 
 #endif
