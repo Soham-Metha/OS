@@ -1,7 +1,6 @@
 #define IMPL_FS_1
 #define IMPL_SCHEDULER_1
 #define IMPL_TERMINAL_1
-#define IMPL_TTY_1
 #define IMPL_USPACE_IO_1
 #define IMPL_WM_1
 #define MEM_MANAGER_IMPL
@@ -11,7 +10,6 @@
 #include <common/event.h>
 #include <common/memmanager.h>
 // TODO: fix boundary violation
-#include <drivers/tty.h>
 #include <kernel/fs.h>
 #include <kernel/scheduler.h>
 
@@ -19,7 +17,6 @@
 
 WindowManager wm = { 0 };
 Compositor comp  = { 0 };
-tty io_buffer    = { 0 };
 int screen_w     = { 0 };
 int screen_h     = { 0 };
 
@@ -34,11 +31,13 @@ void event_handle_loop(void)
 
 void render_loop(void)
 {
-    uint8 buf[256];
-    int char_read = tty_read_out(&io_buffer, buf, 256);     // TODO: replace with read syscall
-    for (int i = 0; i < char_read; i++) {
-        wm_handle_key(&wm, buf[i]);
-    }
+    Result8 c = load(stdout);
+    while
+        RESULT_OK(c)
+        {
+            wm_handle_key(&wm, RESULT_VAL(c));
+            c = load(stdout);
+        }
 
     wm_render(&wm);
     p_yield();
@@ -51,8 +50,6 @@ void kernel_init(void)
 
     compositor_init(&comp, screen_w, screen_h);
     wm_init(&wm, &comp);
-    tty_init(&io_buffer);
-    wm.fallback_tty = &io_buffer;
 
     (void)wm_create_window(&wm, 0, 0, screen_w / 2, screen_h / 2,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
@@ -70,12 +67,23 @@ void kernel_init(void)
     for (uint8 i = 0; i < win_4->term.cols; i++)
         putch('-');
 
+    filename dir_nm  = (filename) { .name = "test" };
+    filename fl_nm   = (filename) { .name = "myfile", .ext = "txt" };
+
     uint8* disk_data = (uint8*)kmalloc(64 * BLOCK_SIZE);
     BlockDevice rd   = disk_init(DISK_RAMDISK, disk_data, 64);
-    ResultPtr r      = fsformat(&rd, 0);
 
-    if RESULT_OK (r)  printf("\nformatted");
-    else              printf("\nformat err: %d", r.error);
+    ResultPtr r      = fs_format(&rd, 0);
+    filesystem* fs   = (filesystem*)RESULT_VAL(r);
+
+    ResultPtr d = inode_create(fs, &dir_nm, DIR);
+    ResultPtr f = inode_create(fs, &fl_nm, FILE);
+
+    if RESULT_ERR (r) printf("\nError when formatting disk : %d", r.error);
+    if RESULT_ERR (d) printf("\nError when creating dir    : %d", d.error);
+    if RESULT_ERR (f) printf("\nError when creating file   : %d", f.error);
+
+    fs_show(fs, true);
 
     print_str("\n> ");
 }
