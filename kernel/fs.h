@@ -16,12 +16,12 @@ typedef uint8 bootsector[BLOCK_SIZE - 12];     // size of super block = 12
 typedef uint8 bitmap;
 typedef struct BlockDevice BlockDevice;
 
-typedef enum valids {
+typedef enum Inode_types {
     NOT_VALID = (0 << 0),
     VALID     = (1 << 0),
     FILE      = (0 << 1 | VALID),
     DIR       = (1 << 1 | VALID),
-} Inode_valids;
+} Inode_types;
 
 // 1 superblock | >=1 inode blocks | data block |
 // superblock: metadata of file structure itself
@@ -38,10 +38,15 @@ typedef struct Super_Block {
     uint32 magic;        // magic: DE AD AA 55
 } __attribute__((packed)) Super_Block;
 
+typedef struct filename {
+    char name[8];
+    char ext[5];
+} filename;
+
 typedef struct Inode {
     uint8 valid;     // valid, file/dir
     uint16 size;     // 0 for a dir, else file size
-    char filename[11];
+    filename name;
     uint16 indirect;     // ID of block, where block pointed itself contains ptr.s to other blocks
     uint16 direct[PTRS_PER_INODE];
 } __attribute__((packed)) Inode;
@@ -62,7 +67,11 @@ typedef struct filesystem {
     Super_Block meta;
 } filesystem;
 
-ResultPtr fsformat(BlockDevice* bd, bootsector* mbr);
+ResultPtr inode_lookup(filesystem* fs, uintPtr idx);
+ResultPtr inode_create(filesystem* fs, filename* nm, Inode_types filetype);
+
+ResultPtr fs_format(BlockDevice* bd, bootsector* mbr);
+void fs_show(filesystem* fs, bool showbm);
 
 #endif
 #ifdef IMPL_FS_1
@@ -95,7 +104,7 @@ bool getbit(uint8* bm, uint16 idx)
     return (bm[byte] >> bit) & 1;
 }
 
-bitmap* mkbitmap(filesystem* fs, bool scan)
+bitmap* bitmap_create(filesystem* fs, bool scan)
 {
     if (!fs)
         return 0;
@@ -146,16 +155,27 @@ ResultPtr inode_lookup(filesystem* fs, uintPtr idx)
     if (!blk_read(fs->bd, disk_block, &bl.data))
         return ErrPtr(ERR_BAD_IO);
 
-    printf("\ninode %d found at %d:%d\n", idx, disk_block, inode_idx);
-    return OkPtr((uintPtr)&bl.inodes[inode_idx]);
+    Inode* ino = (Inode*)kmalloc(sizeof(Inode));
+    memcpy(ino, &bl.inodes[inode_idx], sizeof(Inode));
+    return OkPtr((uintPtr)ino);
 }
 
-void fsshow(filesystem* fs, bool showbm)
+const char* get_inode_type_name(Inode_types i)
+{
+    switch (i) {
+    case NOT_VALID: return "INVALID INODE!";
+    case FILE:      return "FILE";
+    case DIR:       return "DIR ";
+    default:        return "??? ";
+    }
+}
+
+void fs_show(filesystem* fs, bool showbm)
 {
     if (!fs)
         return;
 
-    printf("  %d total blocks, 1 superblock and %d inode blocks containing %d inodes\n\n",
+    printf("\n  %d total blocks, 1 superblock and %d inode blocks containing %d inodes",
         fs->meta.blk_cnt, fs->meta.iblk_cnt, fs->meta.i_cnt);
 
     for (uintPtr inodeno = 0; inodeno < fs->meta.i_cnt; inodeno++) {
@@ -169,13 +189,13 @@ void fsshow(filesystem* fs, bool showbm)
         if (!(ino->valid & VALID))
             continue;
 
-        printf("Inode %d is valid (type=%s)\n"
-               "  name is %s\n"
-               "  %d size in bytes\n",
-            inodeno,
-            (ino->valid == FILE) ? "file" : (ino->valid == DIR) ? "dir"
-                                                                : "unknown",
-            (inodeno == 0) ? "/" : ino->filename, ino->size);
+        printf("\nValid Inode: %d [ size:%d bytes, type:%s, ", inodeno, ino->size, get_inode_type_name(ino->valid));
+        if (inodeno == 0)
+            printf("name: / ]");
+        else if (ino->valid == DIR)
+            printf("name: %s ]", ino->name.name);
+        else
+            printf("name: %s.%s ]", ino->name.name, ino->name.ext);
     }
     printf("\n");
 
@@ -195,7 +215,7 @@ void fsshow(filesystem* fs, bool showbm)
     printf("\n\n");
 }
 
-ResultPtr fsformat(BlockDevice* bd, bootsector* mbr)
+ResultPtr fs_format(BlockDevice* bd, bootsector* mbr)
 {
     if (!bd)
         return ErrPtr(ERR_BAD_IO);
@@ -244,7 +264,7 @@ ResultPtr fsformat(BlockDevice* bd, bootsector* mbr)
     fs->bd = bd;
     memcpy(&fs->meta, &super, BLOCK_SIZE);
 
-    bitmap* bm = mkbitmap(fs, false);
+    bitmap* bm = bitmap_create(fs, false);
     size       = 1 + fs->meta.iblk_cnt;     // superblock
 
     for (uint16 n = 0; n < size; n++)
@@ -252,9 +272,109 @@ ResultPtr fsformat(BlockDevice* bd, bootsector* mbr)
 
     fs->blkmap = bm;
 
-    fsshow(fs, true);
-
     return OkPtr((uintPtr)fs);
+}
+
+bool char_is_valid(char c)
+{
+    if ('a' <= c && c <= 'z')
+        return true;
+    if ('A' <= c && c <= 'Z')
+        return true;
+    if ('0' <= c && c <= '9')
+        return true;
+    if (c == '-' || c == '_')
+        return true;
+
+    return false;
+}
+
+bool filename_is_valid(filename* name, Inode_types filetype)
+{
+    if (!name || !filetype)
+        return false;
+    else if ((filetype == DIR) && (name->ext[0]))
+        return false;
+
+    for (char* p = name->name; *p != '\0'; p++)
+        if (!char_is_valid(*p))
+            return false;
+
+    if (filetype == FILE)
+        for (char* p = name->ext; *p != '\0'; p++)
+            if (!char_is_valid(*p))
+                return false;
+
+    return true;
+}
+
+uintPtr inode_alloc(filesystem* fs)
+{
+    if (!fs)
+        return 0;
+
+    uintPtr idx  = fs->meta.i_cnt;
+    ResultPtr rp = inode_lookup(fs, idx);
+    if RESULT_ERR (rp)
+        return 0;
+
+    Inode* p = (Inode*)RESULT_VAL(rp);
+    if ((p->valid & VALID)) {
+        return 0;
+    }
+
+    fs->meta.i_cnt += 1;
+
+    if (!blk_write(fs->bd, 0, &fs->meta))
+        return 0;
+
+    return idx;
+}
+
+uintPtr fs_save_inode(filesystem* fs, Inode* ino, uintPtr idx)
+{
+    if (!fs || !ino)
+        return 0;
+
+    uintPtr block_idx  = idx / INODES_PER_BLOCK;
+    uintPtr inode_idx  = idx % INODES_PER_BLOCK;
+    uintPtr disk_block = 1 + block_idx;     // superblock
+    fsblock bl         = { 0 };
+
+    if (!blk_read(fs->bd, disk_block, &bl.data))
+        return 0;
+
+    memcpy(&bl.inodes[inode_idx], ino, sizeof(Inode));
+
+    if (!blk_write(fs->bd, disk_block, &bl.data))
+        return 0;
+
+    return disk_block;
+}
+
+ResultPtr inode_create(filesystem* fs, filename* nm, Inode_types filetype)
+{
+    if (!fs || !nm || !filetype)
+        return ErrPtr(1);     // TODO: create better error codes
+
+    if (!filename_is_valid(nm, filetype))
+        return ErrPtr(2);
+
+    uintPtr idx = inode_alloc(fs);
+    if (!idx)
+        return ErrPtr(3);
+
+    Inode inode = {
+        .valid = filetype,
+        .size  = 0,
+    };
+
+    memcpy(&inode.name, nm, sizeof(filename));
+    if (!fs_save_inode(fs, &inode, idx)) {
+        return ErrPtr(4);
+    }
+
+    return OkPtr(idx);
 }
 
 #endif
