@@ -13,8 +13,12 @@ void kernel_irq(Interrupt i, IRQ_Data data)
         break;
     case IRQ_KEYBOARD:
         {
-            if (data.keycode < 128 && scan_code_ascii[data.keycode] >= COUNT)
-                tty_push_key(k.active_tty, scan_code_ascii[data.keycode]);
+            if (data.keycode >= 128 || scan_code_ascii[data.keycode] < 1)
+                return;
+            Event e;
+            e.type                 = EVENT_KEYBOARD;
+            e.as.key_event.keycode = scan_code_ascii[data.keycode];
+            event_enque(e);
             resume(TASK_BLOCKED);
         }
         break;

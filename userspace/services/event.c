@@ -1,4 +1,5 @@
 #include <common/event.h>
+#include <osapi/osapi.h>
 #include "wm.h"
 
 Event event_queue[256];
@@ -33,6 +34,8 @@ void event_handler(Event e)
         wm_handle_mouse(&wm, e.as.mouse_event);
         return;
     case EVENT_KEYBOARD:
+        store(stdin, e.as.key_event.keycode);
+        return;
     case EVENT_COUNT:
     default:
         break;
