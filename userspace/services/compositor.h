@@ -46,7 +46,7 @@ void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w,
 #include <arch/hal.h> // TODO: fix boundary violation
 
 private
-void blit_surface(Surface* s)
+void blit_surface(Surface* s, int width, int height)
 {
     if (!s || !s->visible || !s->pixels)
         return;
@@ -56,10 +56,10 @@ void blit_surface(Surface* s)
     int x1 = s->x + s->width;
     int y1 = s->y + s->height;
 
-    if (x1 > (int)hal_get_width())
-        x1 = (int)hal_get_width();
-    if (y1 > (int)hal_get_height())
-        y1 = (int)hal_get_height();
+    if (x1 > width)
+        x1 = width;
+    if (y1 > height)
+        y1 = height;
 
     for (int y = y0; y < y1; y++) {
         for (int x = x0; x < x1; x++) {
@@ -171,7 +171,7 @@ void compositor_render(Compositor* c)
     for (int i = 0; i < c->count; i++) {
         Surface* s = c->surfaces[i];
         if (s && s->visible && s->dirty) {
-            blit_surface(s);
+            blit_surface(s, c->width, c->height);
             s->dirty  = false;
             any_dirty = true;
         }
