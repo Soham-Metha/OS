@@ -1,5 +1,6 @@
 #define IMPL_ERRORS_1
 #define IMPL_KMALLOC_1
+#define IMPL_TTY_1
 #include "kernel.h"
 #include "scheduler.h"
 #include <common/errors.h>
@@ -7,7 +8,7 @@
 #include <common/types.h>
 #include <drivers/tty.h>
 
-Kernel k = { 0 };
+tty io_buffer = { .echo = true };
 
 private
 Result8 _k_read(file_discriptor fd)
@@ -15,19 +16,32 @@ Result8 _k_read(file_discriptor fd)
     // TODO: implement the fs
     // TODO: ownership of resources
     (void)fd;
-    Result8 c = tty_read_char(k.active_tty);
-    if RESULT_ERR (c) {
-        reschedule(TASK_BLOCKED);
+    if (fd == stdout) {
+        return tty_pop_char(&io_buffer);
+    } else if (fd == stdin) {
+        Result8 c = tty_read_char(&io_buffer);
+        if RESULT_ERR (c) {
+            reschedule(TASK_BLOCKED);
+        }
+        return c;
+    } else {
+        return Err8(ERR_INVALID_SYSCALL);
     }
-    return c;
 }
 
 private
 Result8 _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
-    tty_write_char(k.active_tty, c);
-    return Ok8(0);
+    if (fd == stdin) {
+        tty_push_key(&io_buffer, c);
+        return Ok8(0);
+    } else if (fd == stdout) {
+        tty_write_char(&io_buffer, c);
+        return Ok8(0);
+    } else {
+        return Err8(ERR_INVALID_SYSCALL);
+    }
 }
 
 Result8 __syscall_dispatch(Syscall s, uint64 a, uint64 b, uint64 c)
