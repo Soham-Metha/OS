@@ -1,19 +1,20 @@
+#define IMPL_SASM_1
 #include "sasm_assembler.h"
 #include "univ_fileops.h"
 #include "univ_malloc.h"
 #include "univ_strings.h"
 
 #pragma GCC diagnostic ignored "-Wunused-result"
-const char* inputFile = NULL;
+const char* inputFile  = NULL;
 const char* outputFile = NULL;
-bool disassemblyMode = false;
+bool disassemblyMode   = false;
 
 void processFlag(Sasm* sasm, const char* program, const char* flag, int* argc, char*** argv);
 
 int main(int argc, char** argv)
 {
     freopen("logs.txt", "a", stderr);
-    static Sasm sasm = { 0 };
+    static Sasm sasm    = { 0 };
     const char* program = getNextCmdLineArg(&argc, &argv);
 
     while (argc > 0) {
@@ -40,26 +41,26 @@ int main(int argc, char** argv)
     loadSmExecutableIntoSasm(&sasm, inputFile);
     for (InstAddr i = 0; i < sasm.prog.instruction_count; ++i) {
         OpcodeDetails details = getOpcodeDetails(sasm.prog.instructions[i].type);
-        if (details.type!=INST_RET) {
+        if (details.type != INST_RET) {
             fprintf(f, "\t");
         }
         fprintf(f, "%s\t", details.name);
         if (details.has_operand) {
-            fprintf(f, "\t%"    PRIu64, sasm.prog.instructions[i].operand.u64);
+            fprintf(f, "\t%" PRIu64, sasm.prog.instructions[i].operand.u64);
         }
         if (details.has_operand2) {
-            fprintf(f, "\t%"    PRIu64, sasm.prog.instructions[i].operand2.u64);
+            fprintf(f, "\t%" PRIu64, sasm.prog.instructions[i].operand2.u64);
         }
-        if(sasm.prog.instructions[i].operand.i64!=0)
-        fprintf(f, "\t;; 1 i64 %" PRIi64, sasm.prog.instructions[i].operand.i64);
-        if(sasm.prog.instructions[i].operand.f64!=0)
-        fprintf(f, "\t;; 1 f64 %lf"     , sasm.prog.instructions[i].operand.f64);
-    
-        if(sasm.prog.instructions[i].operand2.i64!=0)
-        fprintf(f, "\t;; 2 i64 %" PRIi64, sasm.prog.instructions[i].operand2.i64);
-        if(sasm.prog.instructions[i].operand2.f64!=0)
-        fprintf(f, "\t;; 2 f64 %lf"     , sasm.prog.instructions[i].operand2.f64);
-    
+        if (sasm.prog.instructions[i].operand.i64 != 0)
+            fprintf(f, "\t;; 1 i64 %" PRIi64, sasm.prog.instructions[i].operand.i64);
+        if (sasm.prog.instructions[i].operand.f64 != 0)
+            fprintf(f, "\t;; 1 f64 %lf", sasm.prog.instructions[i].operand.f64);
+
+        if (sasm.prog.instructions[i].operand2.i64 != 0)
+            fprintf(f, "\t;; 2 i64 %" PRIi64, sasm.prog.instructions[i].operand2.i64);
+        if (sasm.prog.instructions[i].operand2.f64 != 0)
+            fprintf(f, "\t;; 2 f64 %lf", sasm.prog.instructions[i].operand2.f64);
+
         fprintf(f, "\n");
     }
 

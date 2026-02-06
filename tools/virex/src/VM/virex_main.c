@@ -1,35 +1,33 @@
-#include "virex_assembler.h"
-#include "virex_ui.h"
+#define IMPL_VIREX_1
+#include "virex.h"
 
-void processFlag(const char *program, const char *flag, int *argc, char ***argv);
-void inputHandler(Vm *vm, int *highlight);
-void __exec_sm(Vm *vm);
+void processFlag(const char* program, const char* flag, int* argc, char*** argv);
+void inputHandler(Vm* vm, int* highlight);
+void __exec_sm(Vm* vm);
 void __assemble_sasm();
 void __disassemble_sm();
 
-const char *inputFile = NULL;
-const char *outputFile = NULL;
+const char* inputFile  = NULL;
+const char* outputFile = NULL;
 char buffer[256];
 int limit = -1;
 int debug = 0;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-    static Vm vm = {0};
+    static Vm vm = { 0 };
     loadStandardCallsIntoVm(&vm);
     beforeVirexStart();
 
-    const char *program = getNextCmdLineArg(&argc, &argv);
+    const char* program = getNextCmdLineArg(&argc, &argv);
 
-    while (argc > 0)
-    {
-        const char *flag = getNextCmdLineArg(&argc, &argv);
+    while (argc > 0) {
+        const char* flag = getNextCmdLineArg(&argc, &argv);
         processFlag(program, flag, &argc, &argv);
     }
 
     int highlight = 0;
-    do
-    {
+    do {
         highlight = getUserInput();
 
         inputHandler(&vm, &highlight);
@@ -42,11 +40,10 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void processFlag(const char *program, const char *flag, int *argc, char ***argv)
+void processFlag(const char* program, const char* flag, int* argc, char*** argv)
 {
 
-    switch (flag[1])
-    {
+    switch (flag[1]) {
     case 'l':
         limit = atoi(getNextCmdLineArg(argc, argv));
         return;
@@ -56,13 +53,12 @@ void processFlag(const char *program, const char *flag, int *argc, char ***argv)
     }
 }
 
-void inputHandler(Vm *vm, int *highlight)
+void inputHandler(Vm* vm, int* highlight)
 {
     clearWindow(INPUT);
     refreshAllWindows();
     moveCursorWithinWindow(INPUT, 2, 4);
-    switch (*highlight)
-    {
+    switch (*highlight) {
     case EXEC_SM:
         readFilePath(INPUT, "Enter the name of the SM file : ", &inputFile);
         __exec_sm(vm);
@@ -77,20 +73,15 @@ void inputHandler(Vm *vm, int *highlight)
                         "\n         Your choice? : ");
         refreshAllWindows();
         char ch = getChar(INPUT);
-        if (ch == 'o' || ch == 'O' || ch == 'c' || ch == 'C')
-        {
+        if (ch == 'o' || ch == 'O' || ch == 'c' || ch == 'C') {
             // snprintf(buffer, sizeof(buffer), "orin %s", outputFile);
-        }
-        else
-        {
+        } else {
             snprintf(buffer, sizeof(buffer), "sasm %s", outputFile);
         }
-        if (system(buffer) != 0)
-        {
+        if (system(buffer) != 0) {
             displayMsgWithExit("Assembly Failed");
         }
-        if (ch != 'o' && ch != 'O' && ch != 'c' && ch != 'C' && ch != 'S' && ch != 'C')
-        {
+        if (ch != 'o' && ch != 'O' && ch != 'c' && ch != 'C' && ch != 'S' && ch != 'C') {
             clearWindow(INPUT);
             refreshAllWindows();
             moveCursorWithinWindow(INPUT, 2, 4);
@@ -122,7 +113,7 @@ void inputHandler(Vm *vm, int *highlight)
     }
 }
 
-void __exec_sm(Vm *vm)
+void __exec_sm(Vm* vm)
 {
     loadProgramIntoVm(vm, inputFile);
 
@@ -147,8 +138,7 @@ void __assemble_sasm()
 
     snprintf(buffer, sizeof(buffer), "sasm -i %s -o %s", inputFile, outputFile);
 
-    if (system(buffer) != 0)
-    {
+    if (system(buffer) != 0) {
         displayMsgWithExit("Assembly Failed");
     }
 }
@@ -161,8 +151,7 @@ void __disassemble_sm()
 
     snprintf(buffer, sizeof(buffer), "sasm -i %s -o %s -d", inputFile, outputFile);
 
-    if (system(buffer) != 0)
-    {
+    if (system(buffer) != 0) {
         displayMsgWithExit("Disassembly Failed");
     }
 }
