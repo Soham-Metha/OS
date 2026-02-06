@@ -51,20 +51,16 @@ void kernel_init(void)
     compositor_init(&comp, screen_w, screen_h);
     wm_init(&wm, &comp);
 
-    (void)wm_create_window(&wm, 0, 0, screen_w / 2, screen_h / 2,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0xFF, 0xFF));
-
-    (void)wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h / 2,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
-
-    (void)wm_create_window(&wm, 0, screen_h / 2, screen_w / 2, screen_h / 2,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0xFF, 0, 0, 0xFF));
-
-    Window* win_4 = wm_create_window(&wm, screen_w / 2, screen_h / 2, screen_w / 2, screen_h / 2,
+    (void)wm_create_window(&wm, 0, 0, screen_w, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+}
 
-    print_str("Shell v0.1\n");
-    for (uint8 i = 0; i < win_4->term.cols; i++)
+void fs_init(void)
+{
+    for (uint16 i = 0; i < screen_w / GLYPH_W; i++)
+        putch('-');
+    print_str("File System v0.1\n");
+    for (uint16 i = 0; i < screen_w / GLYPH_W; i++)
         putch('-');
 
     filename dir_nm  = (filename) { .name = "test" };
@@ -76,14 +72,23 @@ void kernel_init(void)
     ResultPtr r      = fs_format(&rd, 0);
     filesystem* fs   = (filesystem*)RESULT_VAL(r);
 
-    ResultPtr d = inode_create(fs, &dir_nm, DIR);
-    ResultPtr f = inode_create(fs, &fl_nm, FILE);
+    ResultPtr d      = inode_create(fs, &dir_nm, DIR);
+    ResultPtr f      = inode_create(fs, &fl_nm, FILE);
 
     if RESULT_ERR (r) printf("\nError when formatting disk : %d", r.error);
     if RESULT_ERR (d) printf("\nError when creating dir    : %d", d.error);
     if RESULT_ERR (f) printf("\nError when creating file   : %d", f.error);
 
     fs_show(fs, true);
+}
+
+void shell_win_init(void)
+{
+    for (uint16 i = 0; i < screen_w / GLYPH_W; i++)
+        putch('-');
+    print_str("Shell v0.1\n");
+    for (uint16 i = 0; i < screen_w / GLYPH_W; i++)
+        putch('-');
 
     print_str("\n> ");
 }
@@ -100,6 +105,8 @@ void shell_loop(void)
 extern int main(void)
 {
     scheduler_init(kernel_init);
+    create_task(fs_init);
+    create_task(shell_win_init);
     create_task(event_handle_loop);
     create_task(render_loop);
     create_task(shell_loop);
