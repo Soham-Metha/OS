@@ -33,8 +33,17 @@ void arena_free(Arena* arena);
 #ifdef MEM_MANAGER_IMPL
 #undef MEM_MANAGER_IMPL
 
+Region* unused = (Region*)0;
+
 Region* region_create(uint64 capacity)
 {
+    if (unused != (Region*)0 && unused->capacity >= capacity) {
+        Region* ret = unused;
+        unused      = unused->next;
+        ret->next   = (Region*)0;
+        return ret;
+    }
+
     const uint64 partSize = sizeof(Region) + capacity;
     Region* part          = (Region*)kmalloc(partSize);
     // memset(part, 0, partSize);
@@ -120,13 +129,13 @@ void arena_clear(Arena* arena)
     arena->last = arena->first;
 }
 
-// TODO
-// void arena_free(Arena* arena)
-// {
-//     for (Region *part = arena->first, *next = (Region*)NULL; part != NULL; part = next) {
-//         next = part->next;
-//         free(part);
-//     }
-// }
+void arena_free(Arena* arena)
+{
+    for (Region *part = arena->first, *next = (Region*)0; part != (Region*)0; part = next) {
+        next       = part->next;
+        part->next = unused;
+        unused     = part;
+    }
+}
 
 #endif
