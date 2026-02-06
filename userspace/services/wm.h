@@ -160,11 +160,7 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
                 newy - wm->windows[i].surface.y,
                 wm->windows[i].term.fg,
                 wm->windows[i].term.bg);
-            if (me.left) {
-                wm->windows[wm->focused].focused = false;
-                wm->focused                      = i;
-                wm->windows[wm->focused].focused = true;
-            }
+            wm_focus_window(wm,&wm->windows[i]);
             cursor_win = i;
             return;
         }
