@@ -28,8 +28,7 @@
 #define PREP_SYMBOL '%'
 
 #include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include "../../../../common/types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,16 +39,16 @@
 #define PRId64 "ld"
 #define PRIX64 "lX"
 
-typedef uint8_t Byte;
-typedef uint16_t Word;
-typedef uint32_t DoubleWord;
+typedef uint8 Byte;
+typedef uint16 Word;
+typedef uint32 DoubleWord;
 
-typedef uint64_t DataEntry;
-typedef uint64_t InstAddr;
-typedef uint64_t MemoryAddr;
-typedef uint64_t StackAddr;
-typedef uint64_t u64;
-typedef int64_t i64;
+typedef uint64 DataEntry;
+typedef uint64 InstAddr;
+typedef uint64 MemoryAddr;
+typedef uint64 StackAddr;
+typedef uint64 u64;
+typedef int64 i64;
 typedef double f64;
 
 typedef union {
