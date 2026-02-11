@@ -21,7 +21,7 @@
  * @param data A pointer to the character data of the string.
  */
 struct String {
-    size_t length;
+    uint64 length;
     const char* data;
 };
 
