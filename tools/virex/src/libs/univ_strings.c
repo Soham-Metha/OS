@@ -15,7 +15,7 @@ static bool is_space(char x)
 
 String ltrim(String s)
 {
-    size_t i = 0;
+    uint64 i = 0;
     while (i < s.length && is_space(s.data[i])) {
         i++;
     }
@@ -27,7 +27,7 @@ String ltrim(String s)
 
 String rtrim(String s)
 {
-    size_t i = s.length;
+    uint64 i = s.length;
     while (i > 0 && is_space(s.data[i - 1])) {
         i--;
     }
@@ -44,7 +44,7 @@ String trim(String s)
 
 String splitStrByChar(String* s, char c)
 {
-    size_t i = 0;
+    uint64 i = 0;
     while (i < s->length && s->data[i] != c) {
         i++;
     }
@@ -70,10 +70,10 @@ static bool is_digit(char x)
     return (x >= '0' && x <= '9');
 }
 
-uint64_t convertStrToInt(String s)
+uint64 convertStrToInt(String s)
 {
-    uint64_t val = 0;
-    size_t i = 0;
+    uint64 val = 0;
+    uint64 i = 0;
 
     while (i < s.length && is_digit(s.data[i])) {
         val = val * 10 + s.data[i] - '0';
@@ -96,9 +96,9 @@ bool compareStr(String a, String b)
     }
 }
 
-bool getIndexOf(String str, char c, size_t* index)
+bool getIndexOf(String str, char c, uint64* index)
 {
-    size_t i = 0;
+    uint64 i = 0;
     while (i < str.length && str.data[i] != c) {
         i += 1;
     }
@@ -113,7 +113,7 @@ bool getIndexOf(String str, char c, size_t* index)
 bool startsWith(String str, String prefix)
 {
     if (prefix.length <= str.length) {
-        for (size_t i = 0; i < prefix.length; ++i) {
+        for (uint64 i = 0; i < prefix.length; ++i) {
             if (prefix.data[i] != str.data[i]) {
                 return false;
             }
@@ -123,7 +123,7 @@ bool startsWith(String str, String prefix)
     return false;
 }
 
-String splitStrByLen(String* str, size_t n)
+String splitStrByLen(String* str, uint64 n)
 {
     if (n > str->length) {
         n = str->length;
@@ -142,14 +142,14 @@ String splitStrByLen(String* str, size_t n)
 
 String splitStrByCondition(String* str, bool (*predicate)(char x))
 {
-    size_t i = 0;
+    uint64 i = 0;
     while (i < str->length && predicate(str->data[i])) {
         i += 1;
     }
     return splitStrByLen(str, i);
 }
 
-String splitStrByLenReversed(String* str, size_t n)
+String splitStrByLenReversed(String* str, uint64 n)
 {
     if (n > str->length) {
         n = str->length;
