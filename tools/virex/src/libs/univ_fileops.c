@@ -74,8 +74,8 @@ int loadFileIntoRegionStr(Arena* arena, String_View filePath, String_View* conte
     closeFile(f, filePath.data);
 
     if (content) {
-        content->len = n;
-        content->data   = buffer;
+        content->len  = n;
+        content->data = buffer;
     }
 
     return 0;

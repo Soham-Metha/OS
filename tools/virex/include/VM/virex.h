@@ -229,7 +229,7 @@ void loadStandardCallsIntoVm(Vm* vm)
 Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count  = cpu->registers.QT.u64;
+    uint64 count    = cpu->registers.QT.u64;
 
     if (addr >= MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -302,7 +302,7 @@ Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
 Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count  = cpu->registers.QT.u64;
+    uint64 count    = cpu->registers.QT.u64;
 
     if (addr >= MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -326,7 +326,7 @@ Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count  = cpu->registers.QT.u64;
+    uint64 count    = cpu->registers.QT.u64;
 
     char* buffer    = cpu->registers.RF.ptr;
 
