@@ -66,8 +66,7 @@ void fs_init(void)
     filename dir_nm  = (filename) { .name = "test" };
     filename fl_nm   = (filename) { .name = "myfile", .ext = "txt" };
 
-    uint8* disk_data = (uint8*)kmalloc(64 * BLOCK_SIZE);
-    BlockDevice rd   = disk_init(DISK_RAMDISK, disk_data, 64);
+    BlockDevice rd   = disk_init(DISK_RAMDISK, 64);
 
     ResultPtr r      = fs_format(&rd, 0);
     filesystem* fs   = (filesystem*)RESULT_VAL(r);
