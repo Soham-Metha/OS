@@ -7,10 +7,10 @@
 
 #pragma once
 
+#include "../../../../common/memmanager.h"
 #include "univ_defs.h"
 #include "univ_errors.h"
 #include "univ_fileops.h"
-#include "../../../../common/memmanager.h"
 #include "univ_strings.h"
 
 #define $instructionCount ->prog.instruction_count
@@ -452,7 +452,7 @@ struct Scope {
     Scope* previous;
 
     Binding bindings[BINDINGS_CAPACITY];
-    size_t bindingsCnt;
+    uint64 bindingsCnt;
 };
 
 struct UnresolvedOperand {
@@ -471,10 +471,10 @@ struct DeferredEntry {
 struct Sasm {
     Scope* scope;
     Binding bindings[BINDINGS_CAPACITY];
-    size_t bindingCount;
+    uint64 bindingCount;
 
     UnresolvedOperand symbols[LABELS_CAPACITY];
-    size_t symbolsCount;
+    uint64 symbolsCount;
 
     DeferredEntry deferredEntry;
 
@@ -485,19 +485,19 @@ struct Sasm {
     FileLocation entryLocation;
 
     StringLength stringLens[STRING_LENGTHS_CAPACITY];
-    size_t strLensCnt;
+    uint64 strLensCnt;
 
     Byte memory[MEMORY_CAPACITY];
-    size_t memorySize;
-    size_t memoryCapacity;
+    uint64 memorySize;
+    uint64 memoryCapacity;
 
-    Arena region;
+    Arena arena;
 
-    size_t includeLevel;
+    uint64 includeLevel;
     FileLocation includeLocation;
 
     String includePaths[INCLUDE_PATHS_CAPACITY];
-    size_t includePathsCnt;
+    uint64 includePathsCnt;
 };
 
 struct Metadata {
@@ -522,12 +522,12 @@ void bindExprLocalScope(Scope* scope, String name, Expr expr, FileLocation locat
 Binding* resolveBinding(Sasm* sasm, String name);
 EvalResult evaluateBinding(Sasm* sasm, Binding* binding);
 
-bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Region* arena, String filePath);
+bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Arena* arena, String filePath);
 bool fetchCachedLineFromSasmLexer(SasmLexer* lineInterpreter, Line* output);
 bool moveSasmLexerToNextLine(SasmLexer* lineInterpreter, Line* output);
 
-Expr parsePrimaryOfSasmTokens(Region* arena, Tokenizer* tokenizer, FileLocation location);
-CodeBlock getCodeBlockFromLines(Region* arena, SasmLexer* lineInterpreter);
+Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation location);
+CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter);
 
 bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, FileLocation location);
 bool moveSasmTokenizerToNextToken(Tokenizer* tokenizer, Token* token, FileLocation location);
@@ -539,7 +539,7 @@ const char* getTokenName(TokenType type);
 EvalResult resultOK(QuadWord value, BindingType type);
 EvalResult resultUnresolved(Binding* unresolvedBinding);
 
-FuncallArg* parseFuncallArgs(Region* region, Tokenizer* tokenizer, FileLocation location);
+FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
 EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location);
 
 int dumpExprAsAST(FILE* stream, Expr expr, int* counter);
@@ -708,7 +708,7 @@ void pushScope(Sasm* sasm, Scope* scope)
 
 void createAndPushScope(Sasm* sasm)
 {
-    Scope* scope = allocateRegion(&sasm->region, sizeof(*sasm->scope));
+    Scope* scope = region_alloc(&sasm->arena, sizeof(*sasm->scope));
     pushScope(sasm, scope);
 }
 
@@ -720,15 +720,13 @@ void popScope(Sasm* sasm)
 
 bool resolveIncludeFilePath(Sasm* sasm, String filePath, String* resolvedPath)
 {
-    for (size_t i = 0; i < sasm->includePathsCnt; ++i) {
-        String path = appendToPath(&sasm->region, sasm->includePaths[i],
+    for (uint64 i = 0; i < sasm->includePathsCnt; ++i) {
+        String path = appendToPath(&sasm->arena, sasm->includePaths[i],
             filePath);
-        if (doesFileExist(convertRegionStrtoCStr(&sasm->region, path))) {
-            if (resolvedPath) {
-                *resolvedPath = path;
-            }
-            return true;
+        if (resolvedPath) {
+            *resolvedPath = path;
         }
+        return true;
     }
 
     return false;
@@ -876,7 +874,7 @@ void resolveAllUnresolvedOperands(Sasm* sasm)
     // Check the concept of Backpatching in single pass assemblers to understand!
     Scope* savedScope = sasm->scope;
 
-    for (size_t i = 0; i < sasm->symbolsCount; ++i) {
+    for (uint64 i = 0; i < sasm->symbolsCount; ++i) {
         assert(sasm->symbols[i].scope);
         sasm->scope           = sasm->symbols[i].scope;
 
@@ -1012,7 +1010,7 @@ void translateSasmFile(Sasm* sasm, String inputFilePath)
 
     SasmLexer SasmLexer = { 0 };
 
-    if (!loadSasmFileIntoSasmLexer(&SasmLexer, &sasm->region, inputFilePath)) {
+    if (!loadSasmFileIntoSasmLexer(&SasmLexer, &sasm->arena, inputFilePath)) {
 
         if (sasm->includeLevel > 0) {
             fprintf(stderr, FLFmt, FLArg(sasm->includeLocation));
@@ -1023,7 +1021,7 @@ void translateSasmFile(Sasm* sasm, String inputFilePath)
      * Convert the code written in the "string" format, to the format
      * expected by our assembler (i.e. in the form of struct 'CodeBlock')
      */
-    CodeBlock inputFileBlock = getCodeBlockFromLines(&sasm->region, &SasmLexer);
+    CodeBlock inputFileBlock = getCodeBlockFromLines(&sasm->arena, &SasmLexer);
     /*
      * Perform actual processing of the directives, labels and scopes
      * and add instructions to the instructions array (which is the
@@ -1042,7 +1040,7 @@ void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath)
 
     Metadata meta = { 0 };
 
-    size_t n      = fread(&meta, sizeof(meta), 1, f);
+    uint64 n      = fread(&meta, sizeof(meta), 1, f);
 
     /*
      * ensure that the sm file is readable, of the correct format,
@@ -1104,7 +1102,7 @@ void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath)
     n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.memorySize, f);
 
     if (n != meta.memorySize) {
-        fprintf(stderr, "ERROR: %s: read %zd bytes of memory section, but expected %" PRIu64 " bytes.\n",
+        fprintf(stderr, "ERROR: %s: read %" PRIu64 " bytes of memory section, but expected %" PRIu64 " bytes.\n",
             filePath, n, meta.memorySize);
         exit(1);
     }
@@ -1409,7 +1407,7 @@ void generateASTPng(String inputFilePath, StmtNode* start)
 }
 Binding* resolveBindingLocalScope(Scope* scope, String name)
 {
-    for (size_t i = 0; i < scope->bindingsCnt; ++i) {
+    for (uint64 i = 0; i < scope->bindingsCnt; ++i) {
         if (compareStr(scope->bindings[i].name, name)) {
             return &scope->bindings[i];
         }
@@ -1563,7 +1561,7 @@ QuadWord pushStringToMemory(Sasm* sasm, String str)
 
 bool getStrLenByAddr(Sasm* sasm, InstAddr addr, QuadWord* length)
 {
-    for (size_t i = 0; i < sasm->strLensCnt; ++i) {
+    for (uint64 i = 0; i < sasm->strLensCnt; ++i) {
         if (sasm->stringLens[i].addr == addr) {
             if (length) {
                 *length = quadwordFromU64(sasm->stringLens[i].length);
@@ -1575,7 +1573,7 @@ bool getStrLenByAddr(Sasm* sasm, InstAddr addr, QuadWord* length)
     return false;
 }
 
-FuncallArg* parseFuncallArgs(Region* region, Tokenizer* tokenizer, FileLocation location)
+FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location)
 {
     // split arguments from single comma seperated string to linked list of strings.
     Token token = { 0 };
@@ -1596,8 +1594,8 @@ FuncallArg* parseFuncallArgs(Region* region, Tokenizer* tokenizer, FileLocation 
     FuncallArg* last  = NULL;
 
     do {
-        FuncallArg* arg = allocateRegion(region, sizeof(FuncallArg));
-        arg->value      = parsePrimaryOfSasmTokens(region, tokenizer, location);
+        FuncallArg* arg = region_alloc(arena, sizeof(FuncallArg));
+        arg->value      = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         if (first == NULL) {
             first = arg;
@@ -1626,9 +1624,9 @@ FuncallArg* parseFuncallArgs(Region* region, Tokenizer* tokenizer, FileLocation 
     return first;
 }
 
-size_t getFunCallArgCnt(FuncallArg* args)
+uint64 getFunCallArgCnt(FuncallArg* args)
 {
-    size_t result = 0;
+    uint64 result = 0;
     while (args != NULL) {
         result += 1;
         args = args->next;
@@ -1636,12 +1634,12 @@ size_t getFunCallArgCnt(FuncallArg* args)
     return result;
 }
 
-void checkFuncArgs(Funcall* funcall, size_t expected_arity, FileLocation location)
+void checkFuncArgs(Funcall* funcall, uint64 expected_arity, FileLocation location)
 {
     // ensure arg count matches the expected count!
-    const size_t actual_arity = getFunCallArgCnt(funcall->args);
+    const uint64 actual_arity = getFunCallArgCnt(funcall->args);
     if (actual_arity != expected_arity) {
-        fprintf(stderr, FLFmt ": ERROR: " strFmt "() expects %zu but got %zu",
+        fprintf(stderr, FLFmt ": ERROR: " strFmt "() expects %" PRIu64 " but got %" PRIu64,
             FLArg(location),
             strArg(funcall->name),
             expected_arity,
@@ -1721,7 +1719,7 @@ EvalResult resolveFuncall(Sasm* sasm, Expr expr, FileLocation location)
         if (result.status == EVAL_STATUS_DEFERRED) {
             return result;
         }
-        uint64_t val = result.value.u64 + REG_COUNT;
+        uint64 val = result.value.u64 + REG_COUNT;
         return resultOK(
             quadwordFromU64(val), BIND_TYPE_UINT);
     }
@@ -1832,10 +1830,10 @@ void BeforeExpressionParse();
 
 void AfterExpressionParse();
 
-bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Region* region, String filePath)
+bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Arena* arena, String filePath)
 {
     assert(lineInterpreter);
-    if (loadFileIntoRegionStr(region, filePath, &lineInterpreter->source) < 0) {
+    if (loadFileIntoRegionStr(arena, filePath, &lineInterpreter->source) < 0) {
         return false;
     }
 
@@ -1969,7 +1967,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
         {
             splitStrByLen(&tokenizer->source, 1);
 
-            size_t index = 0;
+            uint64 index = 0;
 
             if (getIndexOf(tokenizer->source, '"', &index)) {
                 String text = splitStrByLen(&tokenizer->source, index);
@@ -1988,7 +1986,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
         {
             splitStrByLen(&tokenizer->source, 1);
 
-            size_t index = 0;
+            uint64 index = 0;
 
             if (getIndexOf(tokenizer->source, '\'', &index)) {
                 String text = splitStrByLen(&tokenizer->source, index);
@@ -2017,7 +2015,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                         FLArg(location), *tokenizer->source.data);
                 }
                 splitStrByLen(&tokenizer->source, 1);
-                size_t index = 0;
+                uint64 index = 0;
                 if (getIndexOf(tokenizer->source, ']', &index)) {
                     token.type = TOKEN_TYPE_REGISTER;
                     token.text = splitStrByLen(&tokenizer->source, index);
@@ -2099,10 +2097,10 @@ void confirmNoMoreTokensRemain(Tokenizer* tokenizer, FileLocation location)
     }
 }
 
-void pushStatementIntoBlock(Region* region, CodeBlock* list, Stmt statement)
+void pushStatementIntoBlock(Arena* arena, CodeBlock* list, Stmt statement)
 {
     assert(list);
-    StmtNode* stmtNode  = allocateRegion(region, sizeof(StmtNode));
+    StmtNode* stmtNode  = region_alloc(arena, sizeof(StmtNode));
     stmtNode->statement = statement;
 
     if (list->end == NULL) {
@@ -2118,15 +2116,15 @@ void pushStatementIntoBlock(Region* region, CodeBlock* list, Stmt statement)
     // printString(list->end->statement.value.as_bind_label.name);
 }
 
-Expr parseExprFromStr(Region* region, String source, FileLocation location)
+Expr parseExprFromStr(Arena* arena, String source, FileLocation location)
 {
     Tokenizer tokenizer = loadStringIntoTokenizer(source);
-    Expr result         = parsePrimaryOfSasmTokens(region, &tokenizer, location);
+    Expr result         = parsePrimaryOfSasmTokens(arena, &tokenizer, location);
 
     return result;
 }
 
-static Expr parseNumFromSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation location)
+static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation location)
 {
     Token token = { 0 };
 
@@ -2141,12 +2139,12 @@ static Expr parseNumFromSasmTokens(Region* region, Tokenizer* tokenizer, FileLoc
     if (token.type == TOKEN_TYPE_NUMBER) {
         String text      = token.text;
 
-        const char* cstr = convertRegionStrtoCStr(region, text);
+        const char* cstr = convertStrToArenaCstr(arena, text);
         char* endptr     = 0;
 
         if (startsWith(text, convertCstrToStr("0x"))) {
             result.value.lit_int = strtoull(cstr, &endptr, 16);
-            if ((size_t)(endptr - cstr) != text.length) {
+            if ((uint64)(endptr - cstr) != text.length) {
                 fprintf(stderr, FLFmt ": ERROR: `" strFmt "` is not a hex literal\n",
                     FLArg(location), strArg(text));
                 exit(1);
@@ -2155,9 +2153,9 @@ static Expr parseNumFromSasmTokens(Region* region, Tokenizer* tokenizer, FileLoc
             result.type = EXPR_LIT_INT;
         } else {
             result.value.lit_int = strtoull(cstr, &endptr, 10);
-            if ((size_t)(endptr - cstr) != text.length) {
+            if ((uint64)(endptr - cstr) != text.length) {
                 result.value.lit_float = strtod(cstr, &endptr);
-                if ((size_t)(endptr - cstr) != text.length) {
+                if ((uint64)(endptr - cstr) != text.length) {
                     fprintf(stderr, FLFmt ": ERROR: `" strFmt "` is not a number literal\n",
                         FLArg(location), strArg(text));
                 } else {
@@ -2178,7 +2176,7 @@ static Expr parseNumFromSasmTokens(Region* region, Tokenizer* tokenizer, FileLoc
     return result;
 }
 
-void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, CodeBlock* output)
+void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBlock* output)
 {
     Line line = { 0 };
 
@@ -2197,7 +2195,7 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
         Stmt statement     = { 0 };
         statement.location = location;
         statement.kind     = STMT_INCLUDE;
-        Expr path          = parseExprFromStr(region, body, line.location);
+        Expr path          = parseExprFromStr(arena, body, line.location);
 
         if (path.type != EXPR_LIT_STR) {
             fprintf(stderr, FLFmt "ERROR: expected string literal as path for %%include directive\n",
@@ -2207,14 +2205,14 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
 
         statement.value.include.path = path.value.lit_str;
 
-        pushStatementIntoBlock(region, output, statement);
+        pushStatementIntoBlock(arena, output, statement);
     } else if (compareStr(name, convertCstrToStr("bind"))) {
         Stmt statement      = { 0 };
         statement.location  = location;
         statement.kind      = STMT_CONST;
 
         Tokenizer tokenizer = loadStringIntoTokenizer(body);
-        Expr bindingName    = parsePrimaryOfSasmTokens(region, &tokenizer, location);
+        Expr bindingName    = parsePrimaryOfSasmTokens(arena, &tokenizer, location);
         if (bindingName.type != EXPR_BINDING) {
             fprintf(stderr, FLFmt ": ERROR: expected binding name for %%bind binding\n",
                 FLArg(location));
@@ -2222,10 +2220,10 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
         }
         statement.value.constant.name  = bindingName.value.binding;
 
-        statement.value.constant.value = parsePrimaryOfSasmTokens(region, &tokenizer, location);
+        statement.value.constant.value = parsePrimaryOfSasmTokens(arena, &tokenizer, location);
         confirmNoMoreTokensRemain(&tokenizer, location);
 
-        pushStatementIntoBlock(region, output, statement);
+        pushStatementIntoBlock(arena, output, statement);
     } else if (compareStr(name, convertCstrToStr("entry"))) {
         body              = trim(body);
         bool inline_entry = false;
@@ -2235,13 +2233,13 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
             inline_entry = true;
         }
 
-        Expr expr                   = parseExprFromStr(region, body, line.location);
+        Expr expr                   = parseExprFromStr(arena, body, line.location);
 
         Stmt statement              = { 0 };
         statement.location          = location;
         statement.kind              = STMT_ENTRY;
         statement.value.entry.value = expr;
-        pushStatementIntoBlock(region, output, statement);
+        pushStatementIntoBlock(arena, output, statement);
 
         if (inline_entry) {
             Stmt statement     = { 0 };
@@ -2256,13 +2254,13 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
 
             statement.value.label.name = expr.value.binding;
             // printf("%d", statement.kind);
-            pushStatementIntoBlock(region, output, statement);
+            pushStatementIntoBlock(arena, output, statement);
         }
     } else if (compareStr(name, convertCstrToStr("scope"))) {
         Stmt statement        = { 0 };
         statement.location    = location;
         statement.kind        = STMT_SCOPE;
-        statement.value.scope = getCodeBlockFromLines(region, lineInterpreter).begin;
+        statement.value.scope = getCodeBlockFromLines(arena, lineInterpreter).begin;
 
         if (!moveSasmLexerToNextLine(lineInterpreter, &line) || line.kind != LINE_DIRECTIVE || !compareStr(line.value.directive.name, convertCstrToStr("end"))) {
             fprintf(stderr, FLFmt ": ERROR: expected `%%end` directive at the end of the `%%scope` block\n",
@@ -2271,7 +2269,7 @@ void parseSasmDirectiveFromLine(Region* region, SasmLexer* lineInterpreter, Code
                 FLArg(statement.location));
             exit(1);
         }
-        pushStatementIntoBlock(region, output, statement);
+        pushStatementIntoBlock(arena, output, statement);
     } else {
         fprintf(stderr, FLFmt ": ERROR: unknown directive `" strFmt "`\n",
             FLArg(line.location), strArg(name));
@@ -2291,7 +2289,7 @@ String ParseStrFromSasmTokens(Tokenizer* tokenizer, FileLocation location)
     return token.text;
 }
 
-Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation location)
+Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation location)
 {
     Token token = { 0 };
 
@@ -2328,9 +2326,9 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
         Token next = { 0 };
         if (fetchCachedSasmTokenFromSasmTokenizer(tokenizer, &next, location) && next.type == TOKEN_TYPE_OPEN_PAREN) {
             result.type                = EXPR_FUNCALL;
-            result.value.funcall       = allocateRegion(region, sizeof(Funcall));
+            result.value.funcall       = region_alloc(arena, sizeof(Funcall));
             result.value.funcall->name = token.text;
-            result.value.funcall->args = parseFuncallArgs(region, tokenizer, location);
+            result.value.funcall->args = parseFuncallArgs(arena, tokenizer, location);
         } else {
             result.value.binding = token.text;
             result.type          = EXPR_BINDING;
@@ -2338,11 +2336,11 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
         break;
 
     case TOKEN_TYPE_NUMBER:
-        return parseNumFromSasmTokens(region, tokenizer, location);
+        return parseNumFromSasmTokens(arena, tokenizer, location);
 
     case TOKEN_TYPE_OPEN_PAREN:
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
-        Expr expr = parsePrimaryOfSasmTokens(region, tokenizer, location);
+        Expr expr = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         if (!moveSasmTokenizerToNextToken(tokenizer, &token, location) || token.type != TOKEN_TYPE_CLOSING_PAREN) {
             fprintf(stderr, FLFmt ": ERROR: expected `%s`\n",
@@ -2362,7 +2360,7 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
                     FLArg(location), str.data);
                 exit(1);
             }
-            result.value.reg_id = (uint64_t)(REG_H0 + str.data[1] - '0');
+            result.value.reg_id = (uint64)(REG_H0 + str.data[1] - '0');
             break;
         case 'I':
             if (str.data[1] > '1') {
@@ -2370,7 +2368,7 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
                     FLArg(location), str.data);
                 exit(1);
             }
-            result.value.reg_id = (uint64_t)(REG_I0 + str.data[1] - '0');
+            result.value.reg_id = (uint64)(REG_I0 + str.data[1] - '0');
             break;
         case 'L':
             if (str.data[1] > '3') {
@@ -2378,7 +2376,7 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
                     FLArg(location), str.data);
                 exit(1);
             }
-            result.value.reg_id = (uint64_t)(REG_L0 + str.data[1] - '0');
+            result.value.reg_id = (uint64)(REG_L0 + str.data[1] - '0');
             break;
         case 'P':
             if (str.data[1] > '3') {
@@ -2386,22 +2384,22 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
                     FLArg(location), str.data);
                 exit(1);
             }
-            result.value.reg_id = (uint64_t)(REG_P0 + str.data[1] - '0');
+            result.value.reg_id = (uint64)(REG_P0 + str.data[1] - '0');
             break;
         case 'J':
-            result.value.reg_id = (uint64_t)REG_JS;
+            result.value.reg_id = (uint64)REG_JS;
             break;
         case 'K':
-            result.value.reg_id = (uint64_t)REG_KC;
+            result.value.reg_id = (uint64)REG_KC;
             break;
         case 'O':
-            result.value.reg_id = (uint64_t)REG_OP;
+            result.value.reg_id = (uint64)REG_OP;
             break;
         case 'Q':
-            result.value.reg_id = (uint64_t)REG_QT;
+            result.value.reg_id = (uint64)REG_QT;
             break;
         case 'R':
-            result.value.reg_id = (uint64_t)REG_RF;
+            result.value.reg_id = (uint64)REG_RF;
             break;
 
         default:
@@ -2428,7 +2426,7 @@ Expr parsePrimaryOfSasmTokens(Region* region, Tokenizer* tokenizer, FileLocation
     return result;
 }
 
-CodeBlock getCodeBlockFromLines(Region* region, SasmLexer* lineInterpreter)
+CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter)
 {
     CodeBlock result = { 0 };
 
@@ -2454,23 +2452,23 @@ CodeBlock getCodeBlockFromLines(Region* region, SasmLexer* lineInterpreter)
             if (details.has_operand) {
                 String opr1                  = trim(splitStrByChar(&operandList, ' '));
                 // printString(opr1);
-                Expr operand                 = parseExprFromStr(region, opr1, location);
+                Expr operand                 = parseExprFromStr(arena, opr1, location);
                 statement.value.inst.operand = operand;
             }
 
             if (details.has_operand2) {
                 String opr2                   = trim(operandList);
                 // printString(opr2);
-                Expr operand                  = parseExprFromStr(region, opr2, location);
+                Expr operand                  = parseExprFromStr(arena, opr2, location);
                 statement.value.inst.operand2 = operand;
             }
-            pushStatementIntoBlock(region, &result, statement);
+            pushStatementIntoBlock(arena, &result, statement);
             moveSasmLexerToNextLine(lineInterpreter, NULL);
             // AfterStatementParse();
             break;
 
         case LINE_LABEL:
-            Expr label = parseExprFromStr(region, line.value.label.name, location);
+            Expr label = parseExprFromStr(arena, line.value.label.name, location);
 
             if (label.type != EXPR_BINDING) {
                 displayErrorLocationWithExit(location, "expected binding name for a label");
@@ -2478,7 +2476,7 @@ CodeBlock getCodeBlockFromLines(Region* region, SasmLexer* lineInterpreter)
 
             statement.kind             = STMT_LABEL;
             statement.value.label.name = label.value.binding;
-            pushStatementIntoBlock(region, &result, statement);
+            pushStatementIntoBlock(arena, &result, statement);
             moveSasmLexerToNextLine(lineInterpreter, NULL);
             // AfterStatementParse();
             break;
@@ -2489,7 +2487,7 @@ CodeBlock getCodeBlockFromLines(Region* region, SasmLexer* lineInterpreter)
                 return result;
             }
 
-            parseSasmDirectiveFromLine(region, lineInterpreter, &result);
+            parseSasmDirectiveFromLine(arena, lineInterpreter, &result);
             // AfterStatementParse();
             continue;
         }

@@ -1,7 +1,9 @@
 #define IMPL_SASM_1
+#define IMPL_KMALLOC_1
+#define MEM_MANAGER_IMPL
+#include "../../../../common/memmanager.h"
 #include "sasm_assembler.h"
 #include "univ_fileops.h"
-#include "univ_malloc.h"
 #include "univ_strings.h"
 
 #pragma GCC diagnostic ignored "-Wunused-result"

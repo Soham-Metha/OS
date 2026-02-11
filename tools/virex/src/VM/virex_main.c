@@ -1,4 +1,7 @@
 #define IMPL_VIREX_1
+#define IMPL_KMALLOC_1
+#define MEM_MANAGER_IMPL
+#include "../../../../common/memmanager.h"
 #include "virex.h"
 
 void processFlag(const char* program, const char* flag, int* argc, char*** argv);

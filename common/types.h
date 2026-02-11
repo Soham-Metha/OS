@@ -7,6 +7,10 @@ typedef unsigned char uint8;
 typedef unsigned short int uint16;
 typedef unsigned int uint32;
 typedef unsigned long long int uint64;
+typedef signed char int8;
+typedef signed short int int16;
+typedef signed int int32;
+typedef signed long long int int64;
 typedef uint16 file_discriptor;
 typedef uint32 uintPtr;
 
@@ -22,8 +26,6 @@ typedef uint32 uintPtr;
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
 #define va_arg __builtin_va_arg
-#define stdin 0
-#define stdout 1
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

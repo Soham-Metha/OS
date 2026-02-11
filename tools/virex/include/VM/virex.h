@@ -11,14 +11,14 @@
 #pragma once
 
 #define IMPL_SASM_1
+#include "../../../../common/memmanager.h"
 #include "sasm_assembler.h"
 #include "univ_defs.h"
 #include "univ_errors.h"
-#include "univ_malloc.h"
 
 #define CALL_NAME_CAPACITY 256
 
-typedef Error (*InternalVmCall)(CPU* cpu, Memory* mem, Region* region);
+typedef Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
 
 typedef struct
 {
@@ -44,7 +44,7 @@ typedef struct {
     Program prog; /**< The program component of the virtual machine. */
     CPU cpu;      /**< The CPU component of the virtual machine. */
     VmCalls vmCalls;
-    Region region;
+    Arena arena;
 } Vm;
 
 #define $memory ->mem.memory
@@ -87,14 +87,14 @@ void loadStandardCallsIntoVm(Vm* Vm);
  */
 void loadProgramIntoVm(Vm* vm, const char* inputFile);
 
-Error vmcall_write(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_alloc(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_free(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_print_f64(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_print_i64(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_print_u64(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_print_ptr(CPU* cpu, Memory* mem, Region* region);
-Error vmcall_dump_memory(CPU* cpu, Memory* mem, Region* region);
+Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena);
+Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena);
 
 #define LERP(START, END, T) (START * T + END * (1 - T))
 
@@ -226,10 +226,10 @@ void loadStandardCallsIntoVm(Vm* vm)
 }
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-Error vmcall_write(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64_t count  = cpu->registers.QT.u64;
+    uint64 count  = cpu->registers.QT.u64;
 
     if (addr >= MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -239,7 +239,7 @@ Error vmcall_write(CPU* cpu, Memory* mem, Region* region)
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    for (uint64_t i = 0; i < count; i += 1) {
+    for (uint64 i = 0; i < count; i += 1) {
         if (mem->memory[addr + i] == '\\') {
             i += 1;
             if (i >= count)
@@ -260,49 +260,49 @@ Error vmcall_write(CPU* cpu, Memory* mem, Region* region)
     return ERR_OK;
 }
 
-Error vmcall_alloc(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
 {
 
-    cpu->registers.RF.ptr = allocateRegion(region, cpu->registers.QT.u64);
+    cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u64);
 
     return ERR_OK;
 }
 
-Error vmcall_free(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
 {
-    clearGarbage(region);
+    // clearGarbage(region);
 
     return ERR_OK;
 }
 
-Error vmcall_print_f64(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %lf\n", cpu->registers.L1.f64);
     return ERR_OK;
 }
 
-Error vmcall_print_i64(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %" PRId64 "", cpu->registers.L2.i64);
     return ERR_OK;
 }
 
-Error vmcall_print_u64(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %" PRIu64 "", cpu->registers.L3.u64);
     return ERR_OK;
 }
 
-Error vmcall_print_ptr(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %p\n", cpu->registers.RF.ptr);
     return ERR_OK;
 }
 
-Error vmcall_dump_memory(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64_t count  = cpu->registers.QT.u64;
+    uint64 count  = cpu->registers.QT.u64;
 
     if (addr >= MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -312,7 +312,7 @@ Error vmcall_dump_memory(CPU* cpu, Memory* mem, Region* region)
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    for (uint64_t i = 0; i < count; ++i) {
+    for (uint64 i = 0; i < count; ++i) {
         printf(" %02X ", mem->memory[addr + i]);
         if (i % 16 == 15) {
             printf("\n ");
@@ -323,10 +323,10 @@ Error vmcall_dump_memory(CPU* cpu, Memory* mem, Region* region)
     return ERR_OK;
 }
 
-Error vmcall_writeROM(CPU* cpu, Memory* mem, Region* region)
+Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
-    uint64_t count  = cpu->registers.QT.u64;
+    uint64 count  = cpu->registers.QT.u64;
 
     char* buffer    = cpu->registers.RF.ptr;
 
@@ -466,7 +466,7 @@ Error executeInst(Vm* vm)
         if (!vm $vm_call[inst.operand.u64])
             return ERR_NULL_CALL;
 
-        const Error err = vm $vm_call[inst.operand.u64](&vm->cpu, &vm->mem, &vm->region);
+        const Error err = vm $vm_call[inst.operand.u64](&vm->cpu, &vm->mem, &vm->arena);
         if (err != ERR_OK)
             return err;
 
@@ -817,19 +817,19 @@ Error executeInst(Vm* vm)
         break;
 
     case INST_READ1I:
-        READ_OP(int8_t, I64);
+        READ_OP(int8, I64);
         break;
 
     case INST_READ2I:
-        READ_OP(int16_t, I64);
+        READ_OP(int16, I64);
         break;
 
     case INST_READ4I:
-        READ_OP(int32_t, I64);
+        READ_OP(int32, I64);
         break;
 
     case INST_READ8I:
-        READ_OP(int64_t, I64);
+        READ_OP(int64, I64);
         break;
 
     case INST_WRITE1:

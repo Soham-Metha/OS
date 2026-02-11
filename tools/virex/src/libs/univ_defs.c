@@ -20,12 +20,12 @@ bool doesFileExist(const char* filePath)
     return stat(filePath, &statbuf) == 0 && S_ISREG(statbuf.st_mode);
 }
 
-String appendToPath(Region* region, String base, String filePath)
+String appendToPath(Arena* arena, String base, String filePath)
 {
     const String sep = convertCstrToStr("/");
 
     const uint64 resultSize = base.length + sep.length + filePath.length;
-    char* result = allocateRegion(region, resultSize);
+    char* result = region_alloc(arena, resultSize);
     assert(result);
 
     char* append = result;

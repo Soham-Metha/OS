@@ -25,17 +25,18 @@
 #define COMMENT_SYMBOL ';'
 #define PREP_SYMBOL '%'
 
-#include <assert.h>
 #include "../../../../common/types.h"
+#include "../../../../common/memmanager.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
-#define PRIu64 "lu"
-#define PRIi64 "li"
-#define PRId64 "ld"
-#define PRIX64 "lX"
+#define PRIu64 "llu"
+#define PRIi64 "lli"
+#define PRId64 "lld"
+#define PRIX64 "llX"
 
 typedef uint8 Byte;
 typedef uint16 Word;
@@ -74,7 +75,7 @@ typedef struct Region Region;
 
 bool doesFileExist(const char* filePath);
 
-String appendToPath(Region* arena, String base, String filePath);
+String appendToPath(Arena* arena, String base, String filePath);
 
 QuadWord quadwordFromU64(uint64 u64);
 

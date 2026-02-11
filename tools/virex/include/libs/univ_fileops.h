@@ -51,3 +51,6 @@ void closeFile(FILE* file, const char* filePath);
  * @return The size of the file in bytes.
  */
 long getFileSize(FILE* f, const char* filePath);
+
+const char* convertStrToArenaCstr(Arena* arena, String str);
+int loadFileIntoRegionStr(Arena* arena, String filePath, String* content);
