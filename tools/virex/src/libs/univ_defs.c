@@ -24,7 +24,7 @@ String appendToPath(Region* region, String base, String filePath)
 {
     const String sep = convertCstrToStr("/");
 
-    const size_t resultSize = base.length + sep.length + filePath.length;
+    const uint64 resultSize = base.length + sep.length + filePath.length;
     char* result = allocateRegion(region, resultSize);
     assert(result);
 
@@ -45,12 +45,12 @@ String appendToPath(Region* region, String base, String filePath)
     };
 }
 
-QuadWord quadwordFromU64(uint64_t u64)
+QuadWord quadwordFromU64(uint64 u64)
 {
     return (QuadWord) { .u64 = u64 };
 }
 
-QuadWord quadwordFromI64(int64_t i64)
+QuadWord quadwordFromI64(int64 i64)
 {
     return (QuadWord) { .i64 = i64 };
 }
