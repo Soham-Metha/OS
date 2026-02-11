@@ -52,5 +52,5 @@ void closeFile(FILE* file, const char* filePath);
  */
 long getFileSize(FILE* f, const char* filePath);
 
-const char* convertStrToArenaCstr(Arena* arena, String str);
-int loadFileIntoRegionStr(Arena* arena, String filePath, String* content);
+const char* convertStrToArenaCstr(Arena* arena, String_View str);
+int loadFileIntoRegionStr(Arena* arena, String_View filePath, String_View* content);

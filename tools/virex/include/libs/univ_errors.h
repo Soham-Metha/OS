@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "univ_strings.h"
+#include "../../../../common/strings.h"
 
 typedef enum {
     ERR_OK = 0,              /**< No error */
@@ -29,12 +29,12 @@ typedef enum {
 } Error;
 
 typedef struct {
-    String filePath;
+    String_View filePath;
     int lineNumber;
 } FileLocation;
 
-#define FLFmt strFmt ":%d"
-#define FLArg(location) strArg(location.filePath), location.lineNumber
+#define FLFmt "%.*s:%d"
+#define FLArg(location) Str_Fmt(location.filePath), location.lineNumber
 
 /**
  * @brief Retrieve C-style string representation of an Error enum value.
@@ -88,7 +88,7 @@ void displayMsgWithExit(const char*);
  * @param msg The message to display.
  * @param str The String object to display.
  */
-void displayStringMessageError(const char*, String);
+void displayStringMessageError(const char*, String_View);
 
 /**
  * @brief Displays a debug comment written in the String data.
@@ -101,11 +101,11 @@ void displayStringMessageError(const char*, String);
  *
  * @param s The String object to display as a debug comment.
  */
-void debugCommentDisplay(String*);
+void debugCommentDisplay(String_View*);
 
-void debugMessageDisplay(String* s);
+void debugMessageDisplay(String_View* s);
 
-void displayErrorDetailsWithExit(FileLocation location, const char* msg, String reason);
+void displayErrorDetailsWithExit(FileLocation location, const char* msg, String_View reason);
 
 void displayErrorLocationWithExit(FileLocation location, const char* msg);
 

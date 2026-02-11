@@ -25,12 +25,14 @@
 #define COMMENT_SYMBOL ';'
 #define PREP_SYMBOL '%'
 
-#include "../../../../common/types.h"
+#pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
+#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
 #include "../../../../common/memmanager.h"
+#include "../../../../common/strings.h"
+#include "../../../../common/types.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 
 #define PRIu64 "llu"
@@ -70,12 +72,11 @@ typedef union {
  */
 char* getNextCmdLineArg(int* argc, char*** argv);
 
-typedef struct String String;
 typedef struct Region Region;
 
 bool doesFileExist(const char* filePath);
 
-String appendToPath(Arena* arena, String base, String filePath);
+String_View appendToPath(Arena* arena, String_View base, String_View filePath);
 
 QuadWord quadwordFromU64(uint64 u64);
 

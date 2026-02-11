@@ -1,10 +1,11 @@
 #define IMPL_SASM_1
 #define IMPL_KMALLOC_1
 #define MEM_MANAGER_IMPL
+#define STRING_VIEW_IMPL
 #include "../../../../common/memmanager.h"
+#include "../../../../common/strings.h"
 #include "sasm_assembler.h"
 #include "univ_fileops.h"
-#include "univ_strings.h"
 
 #pragma GCC diagnostic ignored "-Wunused-result"
 const char* inputFile  = NULL;
@@ -34,7 +35,7 @@ int main(int argc, char** argv)
     }
 
     if (!disassemblyMode) {
-        translateSasmRootFile(&sasm, convertCstrToStr(inputFile));
+        translateSasmRootFile(&sasm, STR(inputFile));
         generateSmExecutable(&sasm, outputFile);
         return 0;
     }

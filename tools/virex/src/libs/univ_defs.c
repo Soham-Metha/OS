@@ -1,6 +1,5 @@
 #include "univ_defs.h"
 #include "../../../../common/memmanager.h"
-#include "univ_strings.h"
 
 char* getNextCmdLineArg(int* argc, char*** argv)
 {
@@ -20,27 +19,27 @@ bool doesFileExist(const char* filePath)
     return stat(filePath, &statbuf) == 0 && S_ISREG(statbuf.st_mode);
 }
 
-String appendToPath(Arena* arena, String base, String filePath)
+String_View appendToPath(Arena* arena, String_View base, String_View filePath)
 {
-    const String sep = convertCstrToStr("/");
+    const String_View sep = STR("/");
 
-    const uint64 resultSize = base.length + sep.length + filePath.length;
+    const uint64 resultSize = base.len + sep.len + filePath.len;
     char* result = region_alloc(arena, resultSize);
     assert(result);
 
     char* append = result;
 
-    memcpy(append, base.data, base.length);
-    append += base.length;
+    memcpy(append, base.data, base.len);
+    append += base.len;
 
-    memcpy(append, sep.data, sep.length);
-    append += sep.length;
+    memcpy(append, sep.data, sep.len);
+    append += sep.len;
 
-    memcpy(append, filePath.data, filePath.length);
-    append += filePath.length;
+    memcpy(append, filePath.data, filePath.len);
+    append += filePath.len;
 
-    return (String) {
-        .length = resultSize,
+    return (String_View) {
+        .len = resultSize,
         .data = result,
     };
 }

@@ -15,7 +15,7 @@ G_CODE := $(wildcard   $(_G_DIR)/*.c)
 A_CODE := $(filter-out $(A_MAIN), 	$(wildcard $(_A_DIR)/*.c) )
 M_CODE := $(filter-out $(M_MAIN), 	$(wildcard $(_M_DIR)/*.c) )
 
-CC	   := gcc
+CC	   := clang
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
 LIBS   := $(addprefix -I, $(wildcard ./include/*/))
 

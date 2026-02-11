@@ -45,15 +45,15 @@ long getFileSize(FILE* f, const char* filePath)
     return fileSize;
 }
 
-const char* convertStrToArenaCstr(Arena* arena, String str)
+const char* convertStrToArenaCstr(Arena* arena, String_View str)
 {
-    char* cstr = region_alloc(arena, str.length + 1);
-    memcpy(cstr, str.data, str.length);
-    cstr[str.length] = '\0';
+    char* cstr = region_alloc(arena, str.len + 1);
+    memcpy(cstr, str.data, str.len);
+    cstr[str.len] = '\0';
     return cstr;
 }
 
-int loadFileIntoRegionStr(Arena* arena, String filePath, String* content)
+int loadFileIntoRegionStr(Arena* arena, String_View filePath, String_View* content)
 {
     const char* filePathCstr = convertStrToArenaCstr(arena, filePath);
 
@@ -74,7 +74,7 @@ int loadFileIntoRegionStr(Arena* arena, String filePath, String* content)
     closeFile(f, filePath.data);
 
     if (content) {
-        content->length = n;
+        content->len = n;
         content->data   = buffer;
     }
 
