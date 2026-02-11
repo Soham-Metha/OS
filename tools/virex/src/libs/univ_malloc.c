@@ -16,7 +16,7 @@ Partition* createPartition(size_t capacity)
 
 char* insertIntoOrExpandRegion(Region* region, Partition* cur, size_t size, size_t alignedAddressMask)
 {
-    uintPtr tmp = (uintPtr)(cur->buffer + cur->size);
+    uint64 tmp = (uint64)(cur->buffer + cur->size);
     tmp = (tmp + alignedAddressMask) & ~alignedAddressMask;
 
     char* ptr = (char*)tmp;
