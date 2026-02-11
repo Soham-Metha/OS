@@ -13,18 +13,12 @@ char* getNextCmdLineArg(int* argc, char*** argv)
     return arg;
 }
 
-bool doesFileExist(const char* filePath)
-{
-    struct stat statbuf = { 0 };
-    return stat(filePath, &statbuf) == 0 && S_ISREG(statbuf.st_mode);
-}
-
 String_View appendToPath(Arena* arena, String_View base, String_View filePath)
 {
-    const String_View sep = STR("/");
+    const String_View sep   = STR("/");
 
     const uint64 resultSize = base.len + sep.len + filePath.len;
-    char* result = region_alloc(arena, resultSize);
+    char* result            = region_alloc(arena, resultSize);
     assert(result);
 
     char* append = result;
@@ -39,7 +33,7 @@ String_View appendToPath(Arena* arena, String_View base, String_View filePath)
     append += filePath.len;
 
     return (String_View) {
-        .len = resultSize,
+        .len  = resultSize,
         .data = result,
     };
 }

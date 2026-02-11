@@ -30,10 +30,9 @@
 #include "../../../../common/memmanager.h"
 #include "../../../../common/strings.h"
 #include "../../../../common/types.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
+#include <assert.h>     // assert
+#include <stdio.h>      // file, printf, fprintf
+#include <stdlib.h>     // exit
 
 #define PRIu64 "llu"
 #define PRIi64 "lli"
@@ -73,8 +72,6 @@ typedef union {
 char* getNextCmdLineArg(int* argc, char*** argv);
 
 typedef struct Region Region;
-
-bool doesFileExist(const char* filePath);
 
 String_View appendToPath(Arena* arena, String_View base, String_View filePath);
 
