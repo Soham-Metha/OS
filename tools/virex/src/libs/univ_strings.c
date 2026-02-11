@@ -8,10 +8,15 @@ String convertCstrToStr(const char* cstr)
     };
 }
 
+static bool is_space(char x)
+{
+    return x == ' ' || x == '\t';
+}
+
 String ltrim(String s)
 {
     size_t i = 0;
-    while (i < s.length && isspace(s.data[i])) {
+    while (i < s.length && is_space(s.data[i])) {
         i++;
     }
     return (String) {
@@ -23,7 +28,7 @@ String ltrim(String s)
 String rtrim(String s)
 {
     size_t i = s.length;
-    while (i > 0 && isspace(s.data[i - 1])) {
+    while (i > 0 && is_space(s.data[i - 1])) {
         i--;
     }
     return (String) {
@@ -60,12 +65,17 @@ String splitStrByChar(String* s, char c)
     return res;
 }
 
+static bool is_digit(char x)
+{
+    return (x >= '0' && x <= '9');
+}
+
 uint64_t convertStrToInt(String s)
 {
     uint64_t val = 0;
     size_t i = 0;
 
-    while (i < s.length && isdigit(s.data[i])) {
+    while (i < s.length && is_digit(s.data[i])) {
         val = val * 10 + s.data[i] - '0';
         i++;
     }

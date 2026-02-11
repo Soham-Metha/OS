@@ -28,7 +28,6 @@
 #define PREP_SYMBOL '%'
 
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 #include <locale.h>
 #include <stdbool.h>

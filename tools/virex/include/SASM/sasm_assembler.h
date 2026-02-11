@@ -1909,12 +1909,22 @@ bool moveSasmLexerToNextLine(SasmLexer* lineInterpreter, Line* output)
 
 static bool isName(char x)
 {
-    return isalnum(x) || x == '_';
+    return (x >= 'a' && x <= 'z') || (x >= 'A' && x <= 'Z') || (x >= '0' && x <= '9') || x == '_';
+}
+
+static bool isalphabet(char x)
+{
+    return (x >= 'a' && x <= 'z') || (x >= 'A' && x <= 'Z');
 }
 
 static bool isNumber(char x)
 {
-    return isalnum(x) || x == '.' || x == '-';
+    return (x >= '0' && x <= '9') || x == '.' || x == '-';
+}
+
+static bool is_digit(char x)
+{
+    return (x >= '0' && x <= '9');
 }
 
 bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, FileLocation location)
@@ -1995,10 +2005,10 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
 
     default:
         {
-            if (isalpha(*tokenizer->source.data)) {
+            if (isalphabet(*tokenizer->source.data)) {
                 token.type = TOKEN_TYPE_NAME;
                 token.text = splitStrByCondition(&tokenizer->source, isName);
-            } else if (isdigit(*tokenizer->source.data) || *tokenizer->source.data == '-') {
+            } else if (is_digit(*tokenizer->source.data) || *tokenizer->source.data == '-') {
                 token.type = TOKEN_TYPE_NUMBER;
                 token.text = splitStrByCondition(&tokenizer->source, isNumber);
             } else if (tokenizer->source.length >= 3 && *tokenizer->source.data == '[' && tokenizer->source.data[3] == ']') {

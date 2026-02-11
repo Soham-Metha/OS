@@ -31,7 +31,6 @@ int main(int argc, char** argv)
 
 void processFlag(const char* program, const char* flag, int* argc, char*** argv)
 {
-
     switch (flag[1]) {
     case 'l':
         limit = atoi(getNextCmdLineArg(argc, argv));
