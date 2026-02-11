@@ -14,8 +14,6 @@
 
 #define INTERNAL_VMCALLS_CAPACITY 1024
 #define EXTERNAL_VMCALLS_CAPACITY 1024
-#define LOAD_FACTOR_THRESHOLD 0.75
-#define _XOPEN_SOURCE_EXTENDED
 #define BINDINGS_CAPACITY 1024
 #define PROGRAM_CAPACITY 1024
 #define MEMORY_CAPACITY 65536
@@ -78,9 +76,9 @@ bool doesFileExist(const char* filePath);
 
 String appendToPath(Region* arena, String base, String filePath);
 
-QuadWord quadwordFromU64(uint64_t u64);
+QuadWord quadwordFromU64(uint64 u64);
 
-QuadWord quadwordFromI64(int64_t i64);
+QuadWord quadwordFromI64(int64 i64);
 
 QuadWord quadwordFromF64(double f64);
 
