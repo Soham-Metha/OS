@@ -31,7 +31,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <locale.h>
-#include <ncurses.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -50,8 +52,8 @@ typedef uint64_t InstAddr;
 typedef uint64_t MemoryAddr;
 typedef uint64_t StackAddr;
 typedef uint64_t u64;
-typedef int64_t  i64;
-typedef double   f64;
+typedef int64_t i64;
+typedef double f64;
 
 typedef union {
     uint64_t u64;
@@ -76,9 +78,9 @@ char* getNextCmdLineArg(int* argc, char*** argv);
 typedef struct String String;
 typedef struct Region Region;
 
-String appendToPath(Region* arena, String base, String filePath);
-
 bool doesFileExist(const char* filePath);
+
+String appendToPath(Region* arena, String base, String filePath);
 
 QuadWord quadwordFromU64(uint64_t u64);
 
