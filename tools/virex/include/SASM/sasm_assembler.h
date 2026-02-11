@@ -10,7 +10,7 @@
 #include "univ_defs.h"
 #include "univ_errors.h"
 #include "univ_fileops.h"
-#include "univ_malloc.h"
+#include "../../../../common/memmanager.h"
 #include "univ_strings.h"
 
 #define $instructionCount ->prog.instruction_count
