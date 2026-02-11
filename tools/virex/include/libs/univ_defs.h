@@ -52,8 +52,8 @@ typedef int64 i64;
 typedef double f64;
 
 typedef union {
-    uint64_t u64;
-    int64_t i64;
+    uint64 u64;
+    int64 i64;
     double f64;
     void* ptr;
 } QuadWord;
