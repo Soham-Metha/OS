@@ -491,7 +491,7 @@ struct Sasm {
     size_t memorySize;
     size_t memoryCapacity;
 
-    Region region;
+    Arena region;
 
     size_t includeLevel;
     FileLocation includeLocation;
