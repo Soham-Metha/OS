@@ -57,7 +57,8 @@ LFLAGS += --export=main --export=kernel_irq_wrapper --export-table
 else
 CC     := emcc
 LD     := emcc
-LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1
+CFLAGS += -matomics -mbulk-memory 
+LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1 -Wl,--shared-memory
 LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 endif
