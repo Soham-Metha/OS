@@ -91,7 +91,7 @@ String splitStrByChar(String*, char);
  * @param s The input string.
  * @return The integer value represented by the string.
  */
-uint64_t convertStrToInt(String);
+uint64 convertStrToInt(String);
 
 /**
  * @brief Prints a string to the standard output.
@@ -106,14 +106,14 @@ bool compareStr(String a, String b);
 
 String convertCstrToStr(const char*);
 
-bool getIndexOf(String str, char c, size_t* index);
+bool getIndexOf(String str, char c, uint64* index);
 
 bool startsWith(String str, String prefix);
 
-String splitStrByLen(String* str, size_t n);
+String splitStrByLen(String* str, uint64 n);
 
 String splitStrByCondition(String* str, bool (*predicate)(char x));
 
-String splitStrByLenReversed(String* str, size_t n);
+String splitStrByLenReversed(String* str, uint64 n);
 
 bool endsWith(String str, String expected_suffix);
