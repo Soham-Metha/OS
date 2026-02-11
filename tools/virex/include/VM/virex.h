@@ -138,8 +138,8 @@ void loadProgramIntoVm(Vm* vm, const char* filePath)
 
     size_t n      = fread(&meta, sizeof(meta), 1, f);
     if (n < 1) {
-        fprintf(stderr, "ERROR: Could not read meta data from file `%s`: %s\n",
-            filePath, strerror(errno));
+        fprintf(stderr, "ERROR: Could not read meta data from file `%s`\n",
+            filePath);
         exit(1);
     }
 

@@ -34,7 +34,7 @@ const char* getNameOfError(const Error* error)
 
 void fileErrorDispWithExit(const char* message, const char* filePath)
 {
-    fprintf(stderr, "ERROR : %s\n %s : %s\n", message, filePath, strerror(errno));
+    fprintf(stderr, "ERROR : %s\n %s\n", message, filePath);
     exit(1);
 }
 
