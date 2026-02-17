@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include "../../../../common/memmanager.h"
 #include "univ_defs.h"
 #include "univ_errors.h"
-#include "univ_fileops.h"
+#include <common/memmanager.h>
+#include <common/result.h>
 
 #define $instructionCount ->prog.instruction_count
 #define $instructions ->prog.instructions
@@ -383,6 +383,7 @@ struct ConstStmt {
 
 struct IncludeStmt {
     String_View path;
+    String_View content;
 };
 
 struct EntryStmt {
@@ -509,9 +510,15 @@ struct Metadata {
     DataEntry externalsSize;
 };
 
+typedef struct Sasm_Executable {
+    Metadata meta;
+    Sasm* sasm;
+} Sasm_Executable;
+
+Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble);
 void translateSasmRootFile(Sasm* sasm, String_View inputFilePath);
-void generateSmExecutable(Sasm* sasm, const char* filePath);
-void translateSasmFile(Sasm* sasm, String_View inputFilePath);
+Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath);
+void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputFilePath);
 void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath);
 
 void pushUnresolvedOperand(Sasm* sasm, InstAddr addr, Expr expr, FileLocation location);
@@ -521,7 +528,7 @@ void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation 
 Binding* resolveBinding(Sasm* sasm, String_View name);
 EvalResult evaluateBinding(Sasm* sasm, Binding* binding);
 
-bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Arena* arena, String_View filePath);
+bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, String_View file_content, String_View filePath);
 bool fetchCachedLineFromSasmLexer(SasmLexer* lineInterpreter, Line* output);
 bool moveSasmLexerToNextLine(SasmLexer* lineInterpreter, Line* output);
 
@@ -540,11 +547,6 @@ EvalResult resultUnresolved(Binding* unresolvedBinding);
 
 FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
 EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location);
-
-int dumpExprAsAST(FILE* stream, Expr expr, int* counter);
-int dumpStmtNodeAsAST(FILE* stream, StmtNode* stmtNode, int* counter, int* blockNo);
-int dumpStatementAsAST(FILE* stream, Stmt statement, int* counter, int* blockNo);
-void generateASTPng(String_View inputFilePath, StmtNode* start);
 
 void BeforeLineRead();
 
@@ -736,16 +738,15 @@ void translateSasmEntryDirective(Sasm* sasm, EntryStmt entry, FileLocation locat
     assert(sasm->scope);
 
     if (sasm->deferredEntry.bindingName.len > 0) {
-        fprintf(stderr,
-            FLFmt ": ERROR: entry point has been already set within the same scope!\n",
+        printf(FLFmt ": ERROR: entry point has been already set within the same scope!\n",
             FLArg(location));
-        fprintf(stderr, FLFmt ": NOTE: the first entry point\n",
+        printf(FLFmt ": NOTE: the first entry point\n",
             FLArg(sasm->deferredEntry.location));
         exit(1);
     }
 
     if (entry.value.type != EXPR_BINDING) {
-        fprintf(stderr, FLFmt ": ERROR: only bindings are allowed to be set as entry points for now.\n",
+        printf(FLFmt ": ERROR: only bindings are allowed to be set as entry points for now.\n",
             FLArg(location));
         exit(1);
     }
@@ -758,16 +759,16 @@ void translateSasmEntryDirective(Sasm* sasm, EntryStmt entry, FileLocation locat
 
 void translateSasmIncludeDirective(Sasm* sasm, IncludeStmt include, FileLocation location)
 {
-    // Load file as it is, recursively!
-    String_View resolved_path = (String_View) { 0 };
-    if (resolveIncludeFilePath(sasm, include.path, &resolved_path)) {
-        include.path = resolved_path;
-    }
+    // // Load file as it is, recursively!
+    // String_View resolved_path = (String_View) { 0 };
+    // if (resolveIncludeFilePath(sasm, include.path, &resolved_path)) {
+    //     include.path = resolved_path;
+    // }
 
     FileLocation prev_includeLocation = sasm->includeLocation;
     sasm->includeLevel += 1;
     sasm->includeLocation = location;
-    translateSasmFile(sasm, include.path);
+    translateSasmFile(sasm, include.content, include.path);
     sasm->includeLocation = prev_includeLocation;
     sasm->includeLevel -= 1;
 }
@@ -915,10 +916,10 @@ void resolveProgramEntryPoint(Sasm* sasm)
         sasm->scope = sasm->deferredEntry.scope;
 
         if (sasm->hasEntry) {
-            fprintf(stderr,
+            printf(
                 FLFmt ": ERROR: entry point has been already set!\n",
                 FLArg(sasm->deferredEntry.location));
-            fprintf(stderr, FLFmt ": NOTE: the first entry point\n",
+            printf(FLFmt ": NOTE: the first entry point\n",
                 FLArg(sasm->entryLocation));
             exit(1);
         }
@@ -927,14 +928,14 @@ void resolveProgramEntryPoint(Sasm* sasm)
             sasm,
             sasm->deferredEntry.bindingName);
         if (binding == NULL) {
-            fprintf(stderr, FLFmt ": ERROR: unknown binding `%.*s`\n",
+            printf(FLFmt ": ERROR: unknown binding `%.*s`\n",
                 FLArg(sasm->deferredEntry.location),
                 Str_Fmt(sasm->deferredEntry.bindingName));
             exit(1);
         }
 
         if (binding->type != BIND_TYPE_INST_ADDR) {
-            fprintf(stderr, FLFmt ": ERROR: Type check error. Trying to set `%.*s` that has the type of %s as an entry point. Entry point has to be %s.\n",
+            printf(FLFmt ": ERROR: Type check error. Trying to set `%.*s` that has the type of %s as an entry point. Entry point has to be %s.\n",
                 FLArg(sasm->deferredEntry.location),
                 Str_Fmt(binding->name),
                 getNameOfBindType(binding->type),
@@ -953,11 +954,11 @@ void resolveProgramEntryPoint(Sasm* sasm)
     sasm->scope = savedScope;
 }
 
-void translateSasmRootFile(Sasm* sasm, String_View inputFilePath)
+void translateSasmRootFile(Sasm* sasm, String_View inputFileData)
 {
     // Create the 'global scope' and start processing file.
     createAndPushScope(sasm);
-    translateSasmFile(sasm, inputFilePath);
+    translateSasmFile(sasm, inputFileData, STR("Root"));
     popScope(sasm);
 
     // backpatching of the operands!
@@ -965,9 +966,9 @@ void translateSasmRootFile(Sasm* sasm, String_View inputFilePath)
     resolveProgramEntryPoint(sasm);
 }
 
-void generateSmExecutable(Sasm* sasm, const char* filePath)
+Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath)
 {
-    FILE* f       = openFile(filePath, "wb");
+    // FILE* f       = openFile(filePath, "wb");
 
     Metadata meta = {
         .magic          = FILE_MAGIC,
@@ -977,46 +978,50 @@ void generateSmExecutable(Sasm* sasm, const char* filePath)
         .memorySize     = sasm->memorySize,
         .memoryCapacity = sasm->memoryCapacity,
     };
-    // BeforeAssembly();
-    /*
-     * Try to write metadata
-     */
-    fwrite(&meta, sizeof(meta), 1, f);
-    if (ferror(f)) {
-        fileErrorDispWithExit("Could not write to file", filePath);
-    }
+    // /*
+    //  * Try to write metadata
+    //  */
+    // fwrite(&meta, sizeof(meta), 1, f);
+    // if (ferror(f)) {
+    //     fileErrorDispWithExit("Could not write to file", filePath);
+    // }
 
-    /*
-     * Try to write instructions
-     */
-    fwrite(sasm $instructions, sizeof(sasm $instructions[0]), sasm $instructionCount, f);
-    if (ferror(f)) {
-        fileErrorDispWithExit("Could not write to file", filePath);
-    }
+    // /*
+    //  * Try to write instructions
+    //  */
+    // fwrite(sasm $instructions, sizeof(sasm $instructions[0]), sasm $instructionCount, f);
+    // if (ferror(f)) {
+    //     fileErrorDispWithExit("Could not write to file", filePath);
+    // }
 
-    /*
-     * Try to write program data
-     */
-    fwrite(sasm->memory, sizeof(sasm->memory[0]), sasm->memorySize, f);
-    if (ferror(f)) {
-        fileErrorDispWithExit("Could not write to file", filePath);
-    }
-    // AfterAssembly();
-    closeFile(f, filePath);
+    // /*
+    //  * Try to write program data
+    //  */
+    // fwrite(sasm->memory, sizeof(sasm->memory[0]), sasm->memorySize, f);
+    // if (ferror(f)) {
+    //     fileErrorDispWithExit("Could not write to file", filePath);
+    // }
+    // // AfterAssembly();
+    // closeFile(f, filePath);
+    // TODO!!
+    (void)sasm;
+    (void)filePath;
+    return (Sasm_Executable) {
+        .meta = meta,
+        .sasm = sasm,
+    };
 }
 
-void translateSasmFile(Sasm* sasm, String_View inputFilePath)
+void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputFilePath)
 {
-    BeforeFileProcessing(inputFilePath);
-
     SasmLexer SasmLexer = { 0 };
 
-    if (!loadSasmFileIntoSasmLexer(&SasmLexer, &sasm->arena, inputFilePath)) {
+    if (!loadSasmFileIntoSasmLexer(&SasmLexer, inputFileData, inputFilePath)) {
 
         if (sasm->includeLevel > 0) {
-            fprintf(stderr, FLFmt, FLArg(sasm->includeLocation));
+            printf(FLFmt, FLArg(sasm->includeLocation));
         }
-        fileErrorDispWithExit("Could not read file", inputFilePath.data);
+        fileErrorDispWithExit("Could not read file", inputFileData.data);
     }
     /*
      * Convert the code written in the "string" format, to the format
@@ -1029,87 +1034,86 @@ void translateSasmFile(Sasm* sasm, String_View inputFilePath)
      * actual contents written to the sm executable file)
      */
     translateSasmStatementChain(sasm, inputFileBlock.begin);
-
-    AfterFileProcessing(inputFilePath, inputFileBlock.begin);
 }
 
-void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath)
-{
-    memset(sasm, 0, sizeof(*sasm));
+// void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath)
+// {
+//     memset(sasm, 0, sizeof(*sasm));
 
-    FILE* f       = openFile(filePath, "rb");
+//     FILE* f       = openFile(filePath, "rb");
 
-    Metadata meta = { 0 };
+//     Metadata meta = { 0 };
 
-    uint64 n      = fread(&meta, sizeof(meta), 1, f);
+//     uint64 n      = fread(&meta, sizeof(meta), 1, f);
 
-    /*
-     * ensure that the sm file is readable, of the correct format,
-     * using correct version of sasm, within the program size limits
-     */
-    if (n < 1) {
-        fileErrorDispWithExit("Could not read meta data from file", filePath);
-    }
+//     /*
+//      * ensure that the sm file is readable, of the correct format,
+//      * using correct version of sasm, within the program size limits
+//      */
+//     if (n < 1) {
+//         fileErrorDispWithExit("Could not read meta data from file", filePath);
+//     }
 
-    if (meta.magic != FILE_MAGIC) {
-        fprintf(stderr, "Unexpected magic %04X. Expected %04X.\n", meta.magic, FILE_MAGIC);
-        fileErrorDispWithExit("Not a valid SASM File ", filePath);
-    }
+//     if (meta.magic != FILE_MAGIC) {
+//         printf("Unexpected magic %04X. Expected %04X.\n", meta.magic, FILE_MAGIC);
+//         fileErrorDispWithExit("Not a valid SASM File ", filePath);
+//     }
 
-    if (meta.version != FILE_VERSION) {
-        fprintf(stderr, "Encountered version %d. Expected version %d.\n", meta.version, FILE_VERSION);
-        fileErrorDispWithExit("unsupported version of SASM File ", filePath);
-    }
+//     if (meta.version != FILE_VERSION) {
+//         printf("Encountered version %d. Expected version %d.\n", meta.version, FILE_VERSION);
+//         fileErrorDispWithExit("unsupported version of SASM File ", filePath);
+//     }
 
-    if (meta.programSize > PROGRAM_CAPACITY) {
-        fprintf(stderr,
-            "The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-            meta.programSize, (u64)PROGRAM_CAPACITY);
-        fileErrorDispWithExit("program section is too big ", filePath);
-    }
+//     if (meta.programSize > PROGRAM_CAPACITY) {
+//         printf(
+//             "The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
+//             meta.programSize, (u64)PROGRAM_CAPACITY);
+//         fileErrorDispWithExit("program section is too big ", filePath);
+//     }
 
-    if (meta.memoryCapacity > MEMORY_CAPACITY) {
-        fprintf(stderr,
-            "The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-            meta.memoryCapacity, (u64)MEMORY_CAPACITY);
-        fileErrorDispWithExit(" memory section is too big ", filePath);
-    }
+//     if (meta.memoryCapacity > MEMORY_CAPACITY) {
+//         printf(
+//             "The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
+//             meta.memoryCapacity, (u64)MEMORY_CAPACITY);
+//         fileErrorDispWithExit(" memory section is too big ", filePath);
+//     }
 
-    if (meta.memorySize > meta.memoryCapacity) {
-        fprintf(stderr,
-            "ERROR: %s: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
-            filePath, meta.memorySize, meta.memoryCapacity);
-        exit(1);
-    }
+//     if (meta.memorySize > meta.memoryCapacity) {
+//         printf(
+//             "ERROR: %s: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
+//             filePath, meta.memorySize, meta.memoryCapacity);
+//         exit(1);
+//     }
 
-    if (meta.externalsSize > EXTERNAL_VMCALLS_CAPACITY) {
-        fprintf(stderr,
-            "ERROR: %s: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
-            filePath, meta.externalsSize, (u64)EXTERNAL_VMCALLS_CAPACITY);
-        exit(1);
-    }
-    /*
-     * If all the checks pass, load all instructions and data(memory contents)
-     * and ensure the amount of data read matches the expected amount.
-     */
-    sasm $instructionCount = fread(sasm $instructions, sizeof(sasm $instructions[0]), meta.programSize, f);
+//     if (meta.externalsSize > EXTERNAL_VMCALLS_CAPACITY) {
+//         printf(
+//             "ERROR: %s: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
+//             filePath, meta.externalsSize, (u64)EXTERNAL_VMCALLS_CAPACITY);
+//         exit(1);
+//     }
+//     /*
+//      * If all the checks pass, load all instructions and data(memory contents)
+//      * and ensure the amount of data read matches the expected amount.
+//      */
+//     sasm $instructionCount = fread(sasm $instructions, sizeof(sasm $instructions[0]), meta.programSize, f);
 
-    if (sasm $instructionCount != meta.programSize) {
-        fprintf(stderr, "ERROR: %s: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-            filePath, sasm $instructionCount, meta.programSize);
-        exit(1);
-    }
+//     if (sasm $instructionCount != meta.programSize) {
+//         printf("ERROR: %s: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
+//             filePath, sasm $instructionCount, meta.programSize);
+//         exit(1);
+//     }
 
-    n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.memorySize, f);
+//     n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.memorySize, f);
 
-    if (n != meta.memorySize) {
-        fprintf(stderr, "ERROR: %s: read %" PRIu64 " bytes of memory section, but expected %" PRIu64 " bytes.\n",
-            filePath, n, meta.memorySize);
-        exit(1);
-    }
+//     if (n != meta.memorySize) {
+//         printf("ERROR: %s: read %" PRIu64 " bytes of memory section, but expected %" PRIu64 " bytes.\n",
+//             filePath, n, meta.memorySize);
+//         exit(1);
+//     }
 
-    closeFile(f, filePath);
-}
+//     closeFile(f, filePath);
+// }
+
 const char* getRegName(RegID type)
 {
     switch (type) {
@@ -1160,250 +1164,6 @@ const char* getRegName(RegID type)
     }
 }
 
-int dumpExprAsAST(FILE* stream, Expr expr, int* counter)
-{
-    // Operands!
-    int id = (*counter)++;
-
-    switch (expr.type) {
-    case EXPR_BINDING:
-        fprintf(stream,
-            "Expr_%d [shape=ellipse style=filled fillcolor=lightgoldenrod1 fontname=\"Courier\" label=\"%.*s\"]\n",
-            id, Str_Fmt(expr.value.binding));
-        break;
-    case EXPR_LIT_INT:
-        fprintf(stream,
-            "Expr_%d [shape=note style=filled fillcolor=lightblue fontname=\"Courier\" label=\"%" PRIu64 "\"]\n",
-            id, expr.value.lit_int);
-        break;
-    case EXPR_LIT_FLOAT:
-        fprintf(stream, "Expr_%d [shape=note style=filled fillcolor=lightblue fontname=\"Courier\" label=\"%lf\"]\n",
-            id, expr.value.lit_float);
-        break;
-    case EXPR_LIT_CHAR:
-        fprintf(stream, "Expr_%d [shape=note style=filled fillcolor=lightblue fontname=\"Courier\" label=\"'%c'\"]\n",
-            id, expr.value.lit_char);
-        break;
-    case EXPR_LIT_STR:
-        fprintf(stream,
-            "Expr_%d [shape=note style=filled fillcolor=lightblue fontname=\"Courier\" label=\"\\\"%.*s\\\"\"]\n",
-            id, Str_Fmt(expr.value.lit_str));
-        break;
-    case EXPR_FUNCALL:
-        {
-            fprintf(stream,
-                "Expr_%d [shape=hexagon style=filled fillcolor=lightpink fontname=\"Courier\" label=\"%.*s\"]\n",
-                id, Str_Fmt(expr.value.funcall->name));
-
-            int argIds[32], argCount = 0;     // lightweight static array for common cases
-
-            for (FuncallArg* arg = expr.value.funcall->args; arg != NULL; arg = arg->next) {
-                int childId = dumpExprAsAST(stream, arg->value, counter);
-                fprintf(stream, "Expr_%d -> Expr_%d\n", id, childId);
-                argIds[argCount++] = childId;
-            }
-
-            if (argCount > 0) {
-                fprintf(stream, "{rank=same; Expr_%d", id);
-                for (int i = 0; i < argCount; i++)
-                    fprintf(stream, "; Expr_%d", argIds[i]);
-                fprintf(stream, "}\n");
-            }
-
-            break;
-        }
-
-    case EXPR_REG:
-        fprintf(stream,
-            "Expr_%d [shape=cylinder style=filled fillcolor=lightyellow fontname=\"Courier\" label=\"%s\"]\n", id,
-            getRegName(expr.value.reg_id));
-        break;
-    }
-
-    return id;
-}
-
-int dumpStmtNodeAsAST(FILE* stream, StmtNode* stmtNode, int* counter, int* blockNo)
-{
-    // Encapsulated blocks!
-    // Represent as a subgraph!
-    int id      = (*counter)++;
-    int blockid = (*blockNo)++;
-
-    fprintf(stream, "subgraph cluster_%d {\n", id);
-    fprintf(stream, "label=\"Code Block %d \";\n", blockid);
-    fprintf(stream, "style=filled;\n");
-    fprintf(stream, "color=gray;\n");
-    fprintf(stream, "fillcolor=whitesmoke;\n");
-    fprintf(stream, "fontname=\"Courier\";\n");
-
-    int block_id = -1;
-    for (; stmtNode; stmtNode = stmtNode->next) {
-        int next_id = dumpStatementAsAST(stream, stmtNode->statement, counter, blockNo);
-
-        if (block_id >= 0) {
-            fprintf(stream, "Expr_%d -> Expr_%d;\n", block_id, next_id);
-        }
-
-        block_id = next_id;
-    }
-
-    fprintf(stream, "}\n");
-    return id;
-}
-
-int dumpStatementAsAST(FILE* stream, Stmt statement, int* counter, int* blockNo)
-{
-    // statement formats in dot notation!
-    switch (statement.kind) {
-    case STMT_INST:
-        {
-            int id                = (*counter)++;
-            Opcode type           = statement.value.inst.type;
-            OpcodeDetails details = getOpcodeDetails(type);
-
-            fprintf(stream,
-                "Expr_%d [shape=component style=filled fillcolor=palegreen fontname=\"Courier\" label=\"%s\"]\n",
-                id, details.name);
-
-            int op1 = -1, op2 = -1;
-
-            if (details.has_operand) {
-                op1 = dumpExprAsAST(stream, statement.value.inst.operand, counter);
-                fprintf(stream, "Expr_%d -> Expr_%d [style=dotted]\n", id, op1);
-            }
-
-            if (details.has_operand2) {
-                op2 = dumpExprAsAST(stream, statement.value.inst.operand2, counter);
-                fprintf(stream, "Expr_%d -> Expr_%d [style=dotted]\n", id, op2);
-            }
-
-            if (op1 != -1 || op2 != -1) {
-                fprintf(stream, "{rank=same; Expr_%d", id);
-                if (op1 != -1)
-                    fprintf(stream, "; Expr_%d", op1);
-                if (op2 != -1)
-                    fprintf(stream, "; Expr_%d", op2);
-                fprintf(stream, "}\n");
-            }
-            return id;
-        }
-        break;
-
-    case STMT_LABEL:
-        {
-            int id           = (*counter)++;
-            String_View name = statement.value.label.name;
-            fprintf(stream,
-                "Expr_%d [shape=tab style=filled fillcolor=lightpink fontname=\"Courier\" label=\"%.*s\"]\n", id,
-                Str_Fmt(name));
-            return id;
-        }
-        break;
-    case STMT_CONST:
-        {
-            int id           = (*counter)++;
-            String_View name = statement.value.constant.name;
-            Expr value       = statement.value.constant.value;
-
-            fprintf(stream,
-                "Expr_%d [shape=note style=filled fillcolor=thistle fontname=\"Courier\" label=\"CONST %.*s\"]\n",
-                id, Str_Fmt(name));
-
-            int childId = dumpExprAsAST(stream, value, counter);
-            fprintf(stream, "Expr_%d -> Expr_%d [style=dotted]\n", id, childId);
-            fprintf(stream, "{rank=same; Expr_%d; Expr_%d}\n", id, childId);
-
-            return id;
-        }
-        break;
-
-    case STMT_INCLUDE:
-        {
-            int childId      = (*counter)++;
-            int id           = (*counter)++;
-
-            String_View path = statement.value.include.path;
-            fprintf(stream,
-                "Expr_%d [shape=folder style=filled fillcolor=wheat fontname=\"Courier\" label=\"%%INCLUDE\"]\n", id);
-            fprintf(stream, "Expr_%d [shape=box style=filled fillcolor=wheat fontname=\"Courier\" label=\"%.*s\"]\n",
-                childId, Str_Fmt(path));
-            fprintf(stream, "Expr_%d -> Expr_%d [style=dotted]\n", id, childId);
-            fprintf(stream, "{rank=same; Expr_%d; Expr_%d}\n", id, childId);
-
-            return id;
-        }
-        break;
-    case STMT_ENTRY:
-        {
-            int id = (*counter)++;
-            fprintf(stream, "Expr_%d [shape=pentagon style=filled fillcolor=plum1 fontname=\"Courier\" label=\"ENTRY\"]\n",
-                id);
-            int childId = dumpExprAsAST(stream, statement.value.entry.value, counter);
-            fprintf(stream, "Expr_%d -> Expr_%d [style=dotted]\n", id, childId);
-            return id;
-        }
-        break;
-
-    case STMT_BLOCK:
-    case STMT_SCOPE:
-        {
-            int oldCnt = dumpStmtNodeAsAST(stream, statement.value.block, counter, blockNo);
-            fprintf(
-                stream,
-                "Expr_%d [shape=box3d style=filled fillcolor=aquamarine fontname=\"Courier\" label=\" Code Block %d  \"]\n",
-                oldCnt, (*blockNo) - 1);
-            return oldCnt;
-        }
-        break;
-
-    default:
-        {
-            assert(false && "dumpStatementAsAST: unreachable");
-            exit(1);
-        }
-    }
-}
-
-void generateASTPng(String_View inputFilePath, StmtNode* start)
-{
-    String_View tmp = inputFilePath;
-    // trim untill last occurance of a '.' in the file name
-    // i.e. file extension
-    while (tmp.data[tmp.len - 1] != '.') {
-        tmp.len -= 1;
-    }
-    // discard the '.' as well.
-    tmp.len -= 1;
-    // if empty, use default name 'a'
-    if (tmp.len == 0) {
-        tmp.data = "a";
-        tmp.len  = 1;
-    }
-
-    char buffer[100];
-    snprintf(buffer, sizeof(buffer), "%.*s.dot", Str_Fmt(tmp));
-    FILE* out   = openFile(buffer, "w");
-    int ID      = 0;
-    int BlockNo = 0;
-    // start dumping to the dot file, uses graphviz dot notation!
-    fprintf(out,
-        "digraph %.*s {\n"
-        "nodesep=0.8;\n"
-        "ranksep=0.5;\n",
-        Str_Fmt(tmp));
-    dumpStmtNodeAsAST(out, start, &ID, &BlockNo);
-    fprintf(out, "}\n");
-
-    closeFile(out, buffer);
-
-    // try running the 'dot' command to generate the png, do nothing on failure.
-    snprintf(buffer, sizeof(buffer), "dot  -Tpng -o %.*s.png %.*s.dot", Str_Fmt(tmp), Str_Fmt(tmp));
-    if (system(buffer) != 0) {
-        // displayMsgWithExit("Disassembly Failed");
-        // printf("Failed to generate AST image, try using 'dot' command or check online\n");
-    }
-}
 Binding* resolveBindingLocalScope(Scope* scope, String_View name)
 {
     for (uint64 i = 0; i < scope->bindingsCnt; ++i) {
@@ -1438,11 +1198,11 @@ void bindUnresolvedLocalScope(Scope* scope, String_View name, BindingType type, 
 
     Binding* existing = resolveBindingLocalScope(scope, name);
     if (existing) {
-        fprintf(stderr,
+        printf(
             FLFmt ": ERROR: name `%.*s` is already bound\n",
             FLArg(location),
             Str_Fmt(name));
-        fprintf(stderr,
+        printf(
             FLFmt ": NOTE: first binding is located here\n",
             FLArg(existing->location));
         exit(1);
@@ -1463,11 +1223,11 @@ void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation 
 
     Binding* existing = resolveBindingLocalScope(scope, name);
     if (existing) {
-        fprintf(stderr,
+        printf(
             FLFmt ": ERROR: name `%.*s` is already bound\n",
             FLArg(location),
             Str_Fmt(name));
-        fprintf(stderr,
+        printf(
             FLFmt ": NOTE: first binding is located here\n",
             FLArg(existing->location));
         exit(1);
@@ -1507,7 +1267,7 @@ EvalResult evaluateBinding(Sasm* sasm, Binding* binding)
 
         return result;
     case BIND_STATUS_EVALUATING:
-        fprintf(stderr, FLFmt ": ERROR: cycling binding definition.\n",
+        printf(FLFmt ": ERROR: cycling binding definition.\n",
             FLArg(binding->location));
         exit(1);
     case BIND_STATUS_EVALUATED:
@@ -1578,7 +1338,7 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
     Token token = { 0 };
 
     if (!moveSasmTokenizerToNextToken(tokenizer, &token, location) || token.type != TOKEN_TYPE_OPEN_PAREN) {
-        fprintf(stderr, FLFmt ": ERROR: expected %s\n",
+        printf(FLFmt ": ERROR: expected %s\n",
             FLArg(location),
             getTokenName(TOKEN_TYPE_OPEN_PAREN));
         exit(1);
@@ -1605,7 +1365,7 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
         }
 
         if (!moveSasmTokenizerToNextToken(tokenizer, &token, location)) {
-            fprintf(stderr, FLFmt ": ERROR: expected %s or %s\n",
+            printf(FLFmt ": ERROR: expected %s or %s\n",
                 FLArg(location),
                 getTokenName(TOKEN_TYPE_CLOSING_PAREN),
                 getTokenName(TOKEN_TYPE_COMMA));
@@ -1614,7 +1374,7 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
     } while (token.type == TOKEN_TYPE_COMMA);
 
     if (token.type != TOKEN_TYPE_CLOSING_PAREN) {
-        fprintf(stderr, FLFmt ": ERROR: expected %s\n",
+        printf(FLFmt ": ERROR: expected %s\n",
             FLArg(location),
             getTokenName(TOKEN_TYPE_CLOSING_PAREN));
         exit(1);
@@ -1638,7 +1398,7 @@ void checkFuncArgs(Funcall* funcall, uint64 expected_arity, FileLocation locatio
     // ensure arg count matches the expected count!
     const uint64 actual_arity = getFunCallArgCnt(funcall->args);
     if (actual_arity != expected_arity) {
-        fprintf(stderr, FLFmt ": ERROR: %.*s() expects %" PRIu64 " but got %" PRIu64,
+        printf(FLFmt ": ERROR: %.*s() expects %" PRIu64 " but got %" PRIu64,
             FLArg(location),
             Str_Fmt(funcall->name),
             expected_arity,
@@ -1664,7 +1424,7 @@ EvalResult resolveFuncall(Sasm* sasm, Expr expr, FileLocation location)
         addr            = result.value;
         QuadWord length = { 0 };
         if (!getStrLenByAddr(sasm, addr.u64, &length)) {
-            fprintf(stderr, FLFmt ": ERROR: Could not compute the length of string at address %" PRIu64 "\n", FLArg(location), addr.u64);
+            printf(FLFmt ": ERROR: Could not compute the length of string at address %" PRIu64 "\n", FLArg(location), addr.u64);
             exit(1);
         }
 
@@ -1694,7 +1454,7 @@ EvalResult resolveFuncall(Sasm* sasm, Expr expr, FileLocation location)
         checkFuncArgs(expr.value.funcall, 1, location);
 
         if (expr.value.funcall->args->value.type != EXPR_REG) {
-            fprintf(stderr, FLFmt ": ERROR: ref expects a register ", FLArg(location));
+            printf(FLFmt ": ERROR: ref expects a register ", FLArg(location));
         }
 
         EvalResult result = evaluateExpression(
@@ -1707,7 +1467,7 @@ EvalResult resolveFuncall(Sasm* sasm, Expr expr, FileLocation location)
         checkFuncArgs(expr.value.funcall, 1, location);
 
         if (expr.value.funcall->args->value.type != EXPR_REG) {
-            fprintf(stderr, FLFmt ": ERROR: val expects a register ", FLArg(location));
+            printf(FLFmt ": ERROR: val expects a register ", FLArg(location));
         }
 
         EvalResult result = evaluateExpression(
@@ -1782,7 +1542,7 @@ EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location)
             String_View name = expr.value.binding;
             Binding* binding = resolveBinding(sasm, name);
             if (binding == NULL) {
-                fprintf(stderr, FLFmt ": ERROR: couldnt find binding `%.*s`.\n",
+                printf(FLFmt ": ERROR: couldnt find binding `%.*s`.\n",
                     FLArg(location), Str_Fmt(name));
                 exit(1);
             }
@@ -1804,38 +1564,11 @@ EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location)
     // AfterExpressionParse();
     return res;
 }
-void BeforeLineRead();
 
-void AfterLineRead();
-
-void BeforeFileProcessing(String_View inputFilePath)
-{
-    (void)inputFilePath;
-}
-
-void AfterFileProcessing(String_View inputFilePath, StmtNode* codeBlockBegin)
-{
-    generateASTPng(inputFilePath, codeBlockBegin);
-}
-
-void BeforeAssembly();
-
-void AfterAssembly();
-
-void BeforeStatementParse();
-
-void AfterStatementParse();
-
-void BeforeExpressionParse();
-
-void AfterExpressionParse();
-
-bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, Arena* arena, String_View filePath)
+bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, String_View file_content, String_View filePath)
 {
     assert(lineInterpreter);
-    if (loadFileIntoRegionStr(arena, filePath, &lineInterpreter->source) < 0) {
-        return false;
-    }
+    lineInterpreter->source            = file_content;
 
     lineInterpreter->location.filePath = filePath;
 
@@ -1975,7 +1708,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                 token.type = TOKEN_TYPE_STR;
                 token.text = text;
             } else {
-                fprintf(stderr, FLFmt ": ERROR: Could not find closing \"\n",
+                printf(FLFmt ": ERROR: Could not find closing \"\n",
                     FLArg(location));
                 exit(1);
             }
@@ -1994,7 +1727,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                 token.type = TOKEN_TYPE_CHAR;
                 token.text = text;
             } else {
-                fprintf(stderr, FLFmt ": ERROR: Could not find closing \'\n",
+                printf(FLFmt ": ERROR: Could not find closing \'\n",
                     FLArg(location));
                 exit(1);
             }
@@ -2011,7 +1744,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                 token.text = sv_split_by_condition(&tokenizer->source, isNumber);
             } else if (tokenizer->source.len >= 3 && *tokenizer->source.data == '[' && tokenizer->source.data[3] == ']') {
                 if (tokenizer->source.len - 2 < 2) {
-                    fprintf(stderr, FLFmt ": ERROR: Check register name %c\n",
+                    printf(FLFmt ": ERROR: Check register name %c\n",
                         FLArg(location), *tokenizer->source.data);
                 }
                 sv_split_by_len(&tokenizer->source, 1);
@@ -2021,12 +1754,12 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                     token.text = sv_split_by_len(&tokenizer->source, index);
                     sv_split_by_len(&tokenizer->source, 1);
                 } else {
-                    fprintf(stderr, FLFmt ": ERROR: Could not find closing \'\n",
+                    printf(FLFmt ": ERROR: Could not find closing \'\n",
                         FLArg(location));
                     exit(1);
                 }
             } else {
-                fprintf(stderr, FLFmt ": ERROR: Unknown token starts with %c\n",
+                printf(FLFmt ": ERROR: Unknown token starts with %c\n",
                     FLArg(location), *tokenizer->source.data);
                 exit(1);
             }
@@ -2091,7 +1824,7 @@ void confirmNoMoreTokensRemain(Tokenizer* tokenizer, FileLocation location)
 {
     Token token = { 0 };
     if (moveSasmTokenizerToNextToken(tokenizer, &token, location)) {
-        fprintf(stderr, FLFmt ": ERROR: unexpected token `%.*s`\n",
+        printf(FLFmt ": ERROR: unexpected token `%.*s`\n",
             FLArg(location), Str_Fmt(token.text));
         exit(1);
     }
@@ -2129,7 +1862,7 @@ static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocat
     Token token = { 0 };
 
     if (!moveSasmTokenizerToNextToken(tokenizer, &token, location)) {
-        fprintf(stderr, FLFmt ": ERROR: Cannot parse empty expression\n",
+        printf(FLFmt ": ERROR: Cannot parse empty expression\n",
             FLArg(location));
         exit(1);
     }
@@ -2139,13 +1872,13 @@ static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocat
     if (token.type == TOKEN_TYPE_NUMBER) {
         String_View text = token.text;
 
-        const char* cstr = convertStrToArenaCstr(arena, text);
+        const char* cstr = arena_sv_to_cstr(arena, text);
         char* endptr     = 0;
 
         if (sv_starts_with(text, STR("0x"))) {
             result.value.lit_int = strtoull(cstr, &endptr, 16);
             if ((uint64)(endptr - cstr) != text.len) {
-                fprintf(stderr, FLFmt ": ERROR: `%.*s` is not a hex literal\n",
+                printf(FLFmt ": ERROR: `%.*s` is not a hex literal\n",
                     FLArg(location), Str_Fmt(text));
                 exit(1);
             }
@@ -2156,7 +1889,7 @@ static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocat
             if ((uint64)(endptr - cstr) != text.len) {
                 result.value.lit_float = strtod(cstr, &endptr);
                 if ((uint64)(endptr - cstr) != text.len) {
-                    fprintf(stderr, FLFmt ": ERROR: `%.*s` is not a number literal\n",
+                    printf(FLFmt ": ERROR: `%.*s` is not a number literal\n",
                         FLArg(location), Str_Fmt(text));
                 } else {
                     result.type = EXPR_LIT_FLOAT;
@@ -2166,7 +1899,7 @@ static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocat
             }
         }
     } else {
-        fprintf(stderr, FLFmt ": ERROR: expected %s but got %s",
+        printf(FLFmt ": ERROR: expected %s but got %s",
             FLArg(location),
             getTokenName(TOKEN_TYPE_NUMBER),
             getTokenName(token.type));
@@ -2181,7 +1914,7 @@ void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBl
     Line line = { 0 };
 
     if (!moveSasmLexerToNextLine(lineInterpreter, &line) || line.kind != LINE_DIRECTIVE) {
-        fprintf(stderr, FLFmt ": ERROR: expected a directive line\n",
+        printf(FLFmt ": ERROR: expected a directive line\n",
             FLArg(lineInterpreter->location));
         exit(1);
     }
@@ -2198,12 +1931,13 @@ void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBl
         Expr path          = parseExprFromStr(arena, body, line.location);
 
         if (path.type != EXPR_LIT_STR) {
-            fprintf(stderr, FLFmt "ERROR: expected string literal as path for %%include directive\n",
+            printf(FLFmt "ERROR: expected string literal as path for %%include directive\n",
                 FLArg(location));
             exit(1);
         }
 
         statement.value.include.path = path.value.lit_str;
+        // statement.value.include.content = readFile();
 
         pushStatementIntoBlock(arena, output, statement);
     } else if (sv_compare(name, STR("bind"))) {
@@ -2214,7 +1948,7 @@ void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBl
         Tokenizer tokenizer = loadStringIntoTokenizer(body);
         Expr bindingName    = parsePrimaryOfSasmTokens(arena, &tokenizer, location);
         if (bindingName.type != EXPR_BINDING) {
-            fprintf(stderr, FLFmt ": ERROR: expected binding name for %%bind binding\n",
+            printf(FLFmt ": ERROR: expected binding name for %%bind binding\n",
                 FLArg(location));
             exit(1);
         }
@@ -2247,7 +1981,7 @@ void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBl
             statement.kind     = STMT_LABEL;
 
             if (expr.type != EXPR_BINDING) {
-                fprintf(stderr, FLFmt ": ERROR: expected binding name for a label\n",
+                printf(FLFmt ": ERROR: expected binding name for a label\n",
                     FLArg(location));
                 exit(1);
             }
@@ -2263,15 +1997,15 @@ void parseSasmDirectiveFromLine(Arena* arena, SasmLexer* lineInterpreter, CodeBl
         statement.value.scope = getCodeBlockFromLines(arena, lineInterpreter).begin;
 
         if (!moveSasmLexerToNextLine(lineInterpreter, &line) || line.kind != LINE_DIRECTIVE || !sv_compare(line.value.directive.name, STR("end"))) {
-            fprintf(stderr, FLFmt ": ERROR: expected `%%end` directive at the end of the `%%scope` block\n",
+            printf(FLFmt ": ERROR: expected `%%end` directive at the end of the `%%scope` block\n",
                 FLArg(lineInterpreter->location));
-            fprintf(stderr, FLFmt ": NOTE: the %%scope block starts here\n",
+            printf(FLFmt ": NOTE: the %%scope block starts here\n",
                 FLArg(statement.location));
             exit(1);
         }
         pushStatementIntoBlock(arena, output, statement);
     } else {
-        fprintf(stderr, FLFmt ": ERROR: unknown directive `%.*s`\n",
+        printf(FLFmt ": ERROR: unknown directive `%.*s`\n",
             FLArg(line.location), Str_Fmt(name));
         exit(1);
     }
@@ -2281,7 +2015,7 @@ String_View ParseStrFromSasmTokens(Tokenizer* tokenizer, FileLocation location)
 {
     Token token = { 0 };
     if (!moveSasmTokenizerToNextToken(tokenizer, &token, location) || token.type != TOKEN_TYPE_STR) {
-        fprintf(stderr, FLFmt ": ERROR: expected token %s\n",
+        printf(FLFmt ": ERROR: expected token %s\n",
             FLArg(location), getTokenName(token.type));
         exit(1);
     }
@@ -2294,7 +2028,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
     Token token = { 0 };
 
     if (!fetchCachedSasmTokenFromSasmTokenizer(tokenizer, &token, location)) {
-        fprintf(stderr, FLFmt ": ERROR: Cannot parse empty expression\n",
+        printf(FLFmt ": ERROR: Cannot parse empty expression\n",
             FLArg(location));
         exit(1);
     }
@@ -2311,7 +2045,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
 
         if (token.text.len != 1) {
-            fprintf(stderr, FLFmt ": ERROR: the length of char literal has to be exactly one\n",
+            printf(FLFmt ": ERROR: the length of char literal has to be exactly one\n",
                 FLArg(location));
             exit(1);
         }
@@ -2343,7 +2077,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         Expr expr = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         if (!moveSasmTokenizerToNextToken(tokenizer, &token, location) || token.type != TOKEN_TYPE_CLOSING_PAREN) {
-            fprintf(stderr, FLFmt ": ERROR: expected `%s`\n",
+            printf(FLFmt ": ERROR: expected `%s`\n",
                 FLArg(location), getTokenName(TOKEN_TYPE_CLOSING_PAREN));
             exit(1);
         }
@@ -2356,7 +2090,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         switch (str.data[0]) {
         case 'H':
             if (str.data[1] > '1') {
-                fprintf(stderr, FLFmt ": ERROR: Invalid register %s\n",
+                printf(FLFmt ": ERROR: Invalid register %s\n",
                     FLArg(location), str.data);
                 exit(1);
             }
@@ -2364,7 +2098,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
             break;
         case 'I':
             if (str.data[1] > '1') {
-                fprintf(stderr, FLFmt ": ERROR: Invalid register %s\n",
+                printf(FLFmt ": ERROR: Invalid register %s\n",
                     FLArg(location), str.data);
                 exit(1);
             }
@@ -2372,7 +2106,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
             break;
         case 'L':
             if (str.data[1] > '3') {
-                fprintf(stderr, FLFmt ": ERROR: Invalid register %s\n",
+                printf(FLFmt ": ERROR: Invalid register %s\n",
                     FLArg(location), str.data);
                 exit(1);
             }
@@ -2380,7 +2114,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
             break;
         case 'P':
             if (str.data[1] > '3') {
-                fprintf(stderr, FLFmt ": ERROR: Invalid register %s\n",
+                printf(FLFmt ": ERROR: Invalid register %s\n",
                     FLArg(location), str.data);
                 exit(1);
             }
@@ -2403,7 +2137,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
             break;
 
         default:
-            fprintf(stderr, FLFmt ": ERROR: Invalid register %s\n",
+            printf(FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
             exit(1);
         };
@@ -2413,7 +2147,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         break;
     case TOKEN_TYPE_COMMA:
     case TOKEN_TYPE_CLOSING_PAREN:
-        fprintf(stderr, FLFmt ": ERROR: expected primary expression but found %s\n",
+        printf(FLFmt ": ERROR: expected primary expression but found %s\n",
             FLArg(location), getTokenName(token.type));
         exit(1);
         break;
@@ -2498,6 +2232,16 @@ CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter)
     }
 
     return result;
+}
+
+Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble)
+{
+    static Sasm sasm = { 0 };
+    if (!disassemble) {
+        translateSasmRootFile(&sasm, input_prog);
+        return generateSmExecutable(&sasm, output_prog.data);
+    }
+    return (Sasm_Executable) { 0 };
 }
 
 #endif

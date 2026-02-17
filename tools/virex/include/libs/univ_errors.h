@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "../../../../common/strings.h"
+#include <common/strings.h>
 
 typedef enum {
     ERR_OK = 0,              /**< No error */
@@ -26,7 +26,7 @@ typedef enum {
     ERR_ILLEGAL_MEMORY_ACCESS,
     ERR_NAN,
     ERR_ALREADY_BOUND
-} Error;
+} VM_Error;
 
 typedef struct {
     String_View filePath;
@@ -48,7 +48,7 @@ typedef struct {
  *
  * @cite Tsoding Playlist specified in readme
  */
-const char* getNameOfError(const Error*);
+const char* getNameOfError(const VM_Error*);
 
 /**
  * @brief Displays an error message along with the file path.
@@ -68,7 +68,7 @@ void fileErrorDispWithExit(const char*, const char*);
  *
  * @param error The Error enum value representing the execution error.
  */
-void executionErrorWithExit(const Error*);
+void executionErrorWithExit(const VM_Error*);
 
 /**
  * @brief Displays an error message and exits the program.

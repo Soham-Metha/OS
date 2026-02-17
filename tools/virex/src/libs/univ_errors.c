@@ -1,7 +1,7 @@
 #include "univ_errors.h"
 #include "univ_defs.h"
 
-const char* getNameOfError(const Error* error)
+const char* getNameOfError(const VM_Error* error)
 {
     switch ((*error)) {
     case ERR_OK:
@@ -33,59 +33,59 @@ const char* getNameOfError(const Error* error)
 
 void fileErrorDispWithExit(const char* message, const char* filePath)
 {
-    fprintf(stderr, "ERROR : %s\n %s\n", message, filePath);
+    printf("ERROR : %s\n %s\n", message, filePath);
     exit(1);
 }
 
-void executionErrorWithExit(const Error* error)
+void executionErrorWithExit(const VM_Error* error)
 {
-    fprintf(stderr, "Error : %s\n", getNameOfError(error));
+    printf("Error : %s\n", getNameOfError(error));
     exit(1);
 }
 
 void displayMsgWithExit(const char* message)
 {
-    fprintf(stderr, "ERROR : %s\n", message);
+    printf("ERROR : %s\n", message);
     exit(1);
 }
 
 void displayStringMessageError(const char* msg, String_View str)
 {
-    fprintf(stderr, "\n|   |                                                                                                                              |");
-    fprintf(stderr, "\n| W | ERROR | '%.*s' | %s", Str_Fmt(str), msg);
+    printf("\n|   |                                                                                                                              |");
+    printf("\n| W | ERROR | '%.*s' | %s", Str_Fmt(str), msg);
 
     for (size_t i = strlen(msg) + str.len; i < 110; i++)
-        fprintf(stderr, " ");
+        printf(" ");
 
-    fprintf(stderr, "|"
-                    "\n|   |                                                                                                                              |\n");
+    printf("|"
+           "\n|   |                                                                                                                              |\n");
     exit(1);
 }
 
 void debugCommentDisplay(String_View* s)
 {
     String_View seperator = sv_split_by_delim(s, ' ');
-    fprintf(stdout, "\n| %.*s |", 1, seperator.data);
+    printf("\n| %.*s |", 1, seperator.data);
 
     if (s->len < 125)
-        fprintf(stdout, " %-*.*s |", (int)(124), (int)(s->len), s->data);
+        printf(" %-*.*s |", (int)(124), (int)(s->len), s->data);
     else
-        fprintf(stdout, " %.*s |", (int)(124), s->data);
+        printf(" %.*s |", (int)(124), s->data);
 }
 
 void debugMessageDisplay(String_View* s)
 {
-    fprintf(stdout, "\n| D |");
+    printf("\n| D |");
 
     if (s->len < 125)
-        fprintf(stdout, " %-*.*s |", (int)(124), (int)(s->len), s->data);
+        printf(" %-*.*s |", (int)(124), (int)(s->len), s->data);
     else
-        fprintf(stdout, " %.*s |", (int)(124), s->data);
+        printf(" %.*s |", (int)(124), s->data);
 }
 
 void displayErrorDetailsWithExit(FileLocation location, const char* msg, String_View reason)
 {
-    fprintf(stderr, FLFmt ": ERROR: %s `%.*s`\n",
+    printf(FLFmt ": ERROR: %s `%.*s`\n",
         FLArg(location),
         msg,
         Str_Fmt(reason));
@@ -94,7 +94,7 @@ void displayErrorDetailsWithExit(FileLocation location, const char* msg, String_
 
 void displayErrorLocationWithExit(FileLocation location, const char* msg)
 {
-    fprintf(stderr, "%.*s : %d : ERROR: %s \n",
+    printf("%.*s : %d : ERROR: %s \n",
         (int)location.filePath.len,
         location.filePath.data,
         location.lineNumber,
@@ -104,7 +104,7 @@ void displayErrorLocationWithExit(FileLocation location, const char* msg)
 
 void displayCErrorDetailsWithExit(FileLocation location, const char* msg, const char* reason)
 {
-    fprintf(stderr, FLFmt ": ERROR: %s `%s`\n",
+    printf(FLFmt ": ERROR: %s `%s`\n",
         FLArg(location),
         msg,
         reason);

@@ -11,14 +11,14 @@
 #pragma once
 
 #define IMPL_SASM_1
-#include "../../../../common/memmanager.h"
 #include "sasm_assembler.h"
 #include "univ_defs.h"
 #include "univ_errors.h"
+#include <common/memmanager.h>
 
 #define CALL_NAME_CAPACITY 256
 
-typedef Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
+typedef VM_Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
 
 typedef struct
 {
@@ -75,7 +75,7 @@ void executeProgram(Vm* vm, int debug, int i);
  * @param cpu The CPU of the virtual machine.
  * @return An error code indicating the success or failure of the execution.
  */
-Error executeInst(Vm* vm);
+VM_Error executeInst(Vm* vm);
 
 void loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
 void loadStandardCallsIntoVm(Vm* Vm);
@@ -85,16 +85,16 @@ void loadStandardCallsIntoVm(Vm* Vm);
  * @param vm The virtual machine instance.
  * @param inputFile The input binary file containing the program bytecode.
  */
-void loadProgramIntoVm(Vm* vm, const char* inputFile);
+void loadProgramIntoVm(Vm* vm, Sasm_Executable exec);
 
-Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena);
-Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena);
 
 #define LERP(START, END, T) (START * T + END * (1 - T))
 
@@ -120,6 +120,9 @@ enum Inputs {
     MAX_INPUTS
 };
 
+void virex_run(Sasm_Executable exec, int lim);
+void virex_test(void);
+
 #ifdef IMPL_VIREX_1
 #undef IMPL_VIREX_1
 
@@ -129,88 +132,85 @@ void loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
     vm->vmCalls.VmCallI[vm->vmCalls.internalVmCallsDefined++] = call;
 }
 
-void loadProgramIntoVm(Vm* vm, const char* filePath)
+void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
 {
     memset(&vm->prog, 0, sizeof(vm->prog));
-    FILE* f       = openFile(filePath, "rb");
+    // FILE* f       = openFile(filePath, "rb");
 
-    Metadata meta = { 0 };
+    Metadata meta = exec.meta;
 
-    size_t n      = fread(&meta, sizeof(meta), 1, f);
-    if (n < 1) {
-        fprintf(stderr, "ERROR: Could not read meta data from file `%s`\n",
-            filePath);
-        exit(1);
-    }
+    // size_t n      = fread(&meta, sizeof(meta), 1, f);
+    // if (n < 1) {
+    //     printf( "ERROR: Could not read meta data from file `%s`\n",
+    //         filePath);
+    //     exit(1);
+    // }
 
     if (meta.magic != FILE_MAGIC) {
-        fprintf(stderr,
-            "ERROR: %s does not appear to be a valid vm file. "
+        printf(
+            "ERROR: executable does not appear to be a valid vm executable. "
             "Unexpected magic %04X. Expected %04X.\n",
-            filePath, meta.magic, FILE_MAGIC);
+            meta.magic, FILE_MAGIC);
         exit(1);
     }
 
     if (meta.version != FILE_VERSION) {
-        fprintf(stderr,
-            "ERROR: %s: unsupported version of vm file %d. Expected version %d.\n",
-            filePath, meta.version, FILE_VERSION);
+        printf(
+            "ERROR: unsupported version of vm file %d. Expected version %d.\n",
+            meta.version, FILE_VERSION);
         exit(1);
     }
 
     if (meta.programSize > PROGRAM_CAPACITY) {
-        fprintf(stderr,
-            "ERROR: %s: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-            filePath, meta.programSize, (u64)PROGRAM_CAPACITY);
+        printf(
+            "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
+            meta.programSize, (u64)PROGRAM_CAPACITY);
         exit(1);
     }
 
     if (meta.memoryCapacity > MEMORY_CAPACITY) {
-        fprintf(stderr,
-            "ERROR: %s: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-            filePath, meta.memoryCapacity, (u64)MEMORY_CAPACITY);
+        printf(
+            "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
+            meta.memoryCapacity, (u64)MEMORY_CAPACITY);
         exit(1);
     }
 
     if (meta.memorySize > meta.memoryCapacity) {
-        fprintf(stderr,
-            "ERROR: %s: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
-            filePath, meta.memorySize, meta.memoryCapacity);
+        printf(
+            "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
+            meta.memorySize, meta.memoryCapacity);
         exit(1);
     }
 
     if (meta.externalsSize > EXTERNAL_VMCALLS_CAPACITY) {
-        fprintf(stderr,
-            "ERROR: %s: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
-            filePath, meta.externalsSize, (u64)EXTERNAL_VMCALLS_CAPACITY);
+        printf(
+            "ERROR: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
+            meta.externalsSize, (u64)EXTERNAL_VMCALLS_CAPACITY);
         exit(1);
     }
 
-    vm $reg[REG_NX].u64        = meta.entry;
-    vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.programSize, f);
-
+    vm $reg[REG_NX].u64 = meta.entry;
+    // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.programSize, f);
+    vm->prog            = exec.sasm->prog;
     if (vm->prog.instruction_count != meta.programSize) {
-        fprintf(stderr, "ERROR: %s: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-            filePath, vm->prog.instruction_count, meta.programSize);
+        printf("ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
+            vm->prog.instruction_count, meta.programSize);
         exit(1);
     }
 
-    n = fread(vm->mem.memory, sizeof(vm->mem.memory[0]), meta.memorySize, f);
-
-    if (n != meta.memorySize) {
-        fprintf(stderr, "ERROR: %s: read %zd bytes of memory section, but expected %" PRIu64 " bytes.\n",
-            filePath, n, meta.memorySize);
-        exit(1);
+    for (DataEntry i = 0; i < meta.memorySize; i++) {
+        vm->mem.memory[i] = exec.sasm->memory[i];
     }
 
-    vm->vmCalls.externalVmCallsDefined = fread(vm->vmCalls.VmCallE, sizeof(vm->vmCalls.VmCallE[0]), meta.externalsSize, f);
-    if (vm->vmCalls.externalVmCallsDefined != meta.externalsSize) {
-        fprintf(stderr, "ERROR: %s: read %zu external names, but expected %" PRIu64 "\n",
-            filePath, vm->vmCalls.externalVmCallsDefined, meta.externalsSize);
-        exit(1);
-    }
+    // n = fread(vm->mem.memory, sizeof(vm->mem.memory[0]), meta.memorySize, f);
 
-    closeFile(f, filePath);
+    // if (n != meta.memorySize) {
+    //     printf( "ERROR: %s: read %zd bytes of memory section, but expected %" PRIu64 " bytes.\n",
+    //         filePath, n, meta.memorySize);
+    //     exit(1);
+    // }
+
+    // closeFile(f, filePath);
 }
 
 void loadStandardCallsIntoVm(Vm* vm)
@@ -226,7 +226,7 @@ void loadStandardCallsIntoVm(Vm* vm)
 }
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
     uint64 count    = cpu->registers.QT.u64;
@@ -260,7 +260,7 @@ Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
     return ERR_OK;
 }
 
-Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
 {
 
     cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u64);
@@ -268,38 +268,38 @@ Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
     return ERR_OK;
 }
 
-Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
 {
     // clearGarbage(region);
 
     return ERR_OK;
 }
 
-Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %lf\n", cpu->registers.L1.f64);
     return ERR_OK;
 }
 
-Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %" PRId64 "", cpu->registers.L2.i64);
     return ERR_OK;
 }
 
-Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %" PRIu64 "", cpu->registers.L3.u64);
     return ERR_OK;
 }
 
-Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
 {
     printf(" %p\n", cpu->registers.RF.ptr);
     return ERR_OK;
 }
 
-Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
     uint64 count    = cpu->registers.QT.u64;
@@ -323,7 +323,7 @@ Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
     return ERR_OK;
 }
 
-Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 {
     MemoryAddr addr = cpu->registers.L0.u64;
     uint64 count    = cpu->registers.QT.u64;
@@ -355,7 +355,7 @@ static inline void stack_push(Vm* vm, QuadWord val)
 
 void executeProgram(Vm* vm, int debug, int lim)
 {
-    Error error = executeInst(vm);
+    VM_Error error = executeInst(vm);
 
     if (lim == 0 || getFlag(META_HALT, &(vm->cpu))) {
         return;
@@ -428,7 +428,7 @@ void executeProgram(Vm* vm, int debug, int lim)
         vm $reg[REG_NX].u64++;                      \
     }
 
-Error executeInst(Vm* vm)
+VM_Error executeInst(Vm* vm)
 {
     if (vm $reg[REG_NX].u64 >= vm $inst_cnt) {
         printf("error tring to access instruction at '%" PRIu64 "', but there are only '%" PRIu64 "' instructions", vm $reg[REG_NX].u64, vm $inst_cnt);
@@ -466,7 +466,7 @@ Error executeInst(Vm* vm)
         if (!vm $vm_call[inst.operand.u64])
             return ERR_NULL_CALL;
 
-        const Error err = vm $vm_call[inst.operand.u64](&vm->cpu, &vm->mem, &vm->arena);
+        const VM_Error err = vm $vm_call[inst.operand.u64](&vm->cpu, &vm->mem, &vm->arena);
         if (err != ERR_OK)
             return err;
 
@@ -854,6 +854,46 @@ Error executeInst(Vm* vm)
     }
 
     return ERR_OK;
+}
+
+void virex_run(Sasm_Executable exec, int lim)
+{
+    static Vm vm = { 0 };
+    loadStandardCallsIntoVm(&vm);
+
+    loadProgramIntoVm(&vm, exec);
+    executeProgram(&vm, 0, lim);
+}
+
+void virex_test(void)
+{
+    const char* prog     = "%bind       hello       \" Hello, World\\n\"\n"
+                           "%entry      main                             ; ENTRY POINT\n"
+                           "\n"
+                           "main:\n"
+                           "say_hello:                                   ; GLOBAL 'say_hello'\n"
+                           "%scope                                       ; ENCAPSULATION\n"
+                           "\n"
+                           "    SETR    2           ref([L2])               ; iteration count\n"
+                           "say_hello:                                   ; LOCAL 'say_hello'\n"
+                           "    SETR    hello       ref([L0])               ; ptr to string start\n"
+                           "    SETR    len(hello)  ref([QT])               ; length of string\n"
+                           "    CALL    print                               ; expects above 2 arguments\n"
+                           "    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'\n"
+                           "\n"
+                           "%end\n"
+                           "SHUTS\n"
+                           "\n"
+                           "print:\n"
+                           "%scope\n"
+                           "    INVOK    7\n"
+                           "    RET\n"
+                           "%end\n";
+
+    String_View sv_prog  = STR(prog);
+    String_View sv_out   = STR("none");
+    Sasm_Executable exec = sasm_run(sv_prog, sv_out, false);
+    virex_run(exec, -1);
 }
 
 #endif

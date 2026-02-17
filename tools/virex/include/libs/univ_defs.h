@@ -27,11 +27,12 @@
 
 #pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#include "../../../../common/memmanager.h"
-#include "../../../../common/strings.h"
-#include "../../../../common/types.h"
+#include <common/memmanager.h>
+#include <common/strings.h>
+#include <common/types.h>
+#include <common/result.h>
+#include <userspace/libs/io.h>
 #include <assert.h>     // assert
-#include <stdio.h>      // file, printf, fprintf
 #include <stdlib.h>     // exit
 
 #define PRIu64 "llu"
