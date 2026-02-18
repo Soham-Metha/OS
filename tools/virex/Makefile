@@ -17,7 +17,7 @@ M_CODE := $(filter-out $(M_MAIN), 	$(wildcard $(_M_DIR)/*.c) )
 
 CC	   := clang
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-LIBS   := $(addprefix -I, $(wildcard ./include/*/)) -I ../../
+LIBS   := $(addprefix -I, $(wildcard ./include/*/))
 
 .PHONY: clean sasm virex all
 

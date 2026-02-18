@@ -161,17 +161,17 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
         exit(1);
     }
 
-    if (meta.programSize > PROGRAM_CAPACITY) {
+    if (meta.programSize > MAX_PROGRAM_CAPACITY) {
         printf(
             "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-            meta.programSize, (u64)PROGRAM_CAPACITY);
+            meta.programSize, (u64)MAX_PROGRAM_CAPACITY);
         exit(1);
     }
 
-    if (meta.memoryCapacity > MEMORY_CAPACITY) {
+    if (meta.memoryCapacity > MAX_MEMORY_CAPACITY) {
         printf(
             "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-            meta.memoryCapacity, (u64)MEMORY_CAPACITY);
+            meta.memoryCapacity, (u64)MAX_MEMORY_CAPACITY);
         exit(1);
     }
 
@@ -231,11 +231,11 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
     MemoryAddr addr = cpu->registers.L0.u64;
     uint64 count    = cpu->registers.QT.u64;
 
-    if (addr >= MEMORY_CAPACITY) {
+    if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    if (addr + count < addr || addr + count >= MEMORY_CAPACITY) {
+    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
@@ -304,11 +304,11 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
     MemoryAddr addr = cpu->registers.L0.u64;
     uint64 count    = cpu->registers.QT.u64;
 
-    if (addr >= MEMORY_CAPACITY) {
+    if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    if (addr + count < addr || addr + count >= MEMORY_CAPACITY) {
+    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
@@ -330,11 +330,11 @@ VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 
     char* buffer    = cpu->registers.RF.ptr;
 
-    if (addr >= MEMORY_CAPACITY) {
+    if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    if (addr + count < addr || addr + count >= MEMORY_CAPACITY) {
+    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
@@ -373,7 +373,7 @@ void executeProgram(Vm* vm, int debug, int lim)
             return ERR_STACK_UNDERFLOW;                \
         }                                              \
         const MemoryAddr addr = stack_pop(vm).u64;     \
-        if (addr >= MEMORY_CAPACITY) {                 \
+        if (addr >= MAX_MEMORY_CAPACITY) {                 \
             return ERR_ILLEGAL_MEMORY_ACCESS;          \
         }                                              \
         type tmp;                                      \
@@ -389,7 +389,7 @@ void executeProgram(Vm* vm, int debug, int lim)
         }                                                 \
         const type value      = stack_pop(vm).u64;        \
         const MemoryAddr addr = stack_pop(vm).u64;        \
-        if (addr >= MEMORY_CAPACITY - size) {             \
+        if (addr >= MAX_MEMORY_CAPACITY - size) {             \
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
         }                                                 \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \

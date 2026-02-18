@@ -15,8 +15,8 @@
 #define INTERNAL_VMCALLS_CAPACITY 1024
 #define EXTERNAL_VMCALLS_CAPACITY 1024
 #define BINDINGS_CAPACITY 1024
-#define PROGRAM_CAPACITY 1024
-#define MEMORY_CAPACITY 65536
+#define MAX_PROGRAM_CAPACITY 1024
+#define MAX_MEMORY_CAPACITY 65536
 #define LABELS_CAPACITY 1024
 #define MAX_INCLUDE_LEVEL 10
 #define STACK_CAPACITY 1024
@@ -27,13 +27,13 @@
 
 #pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#include <common/memmanager.h>
-#include <common/panic.h>
-#include <common/result.h>
-#include <common/strings.h>
-#include <common/types.h>
+#include "../../../../common/memmanager.h"
+#include "../../../../common/panic.h"
+#include "../../../../common/result.h"
+#include "../../../../common/strings.h"
+#include "../../../../common/types.h"
+#include "../../../../userspace/libs/io.h"
 #include <stdlib.h>     // exit
-#include <userspace/libs/io.h>
 
 #define PRIu64 "llu"
 #define PRIi64 "lli"

@@ -155,7 +155,7 @@ struct OpcodeDetails {
 };
 
 struct Program {
-    Instruction instructions[PROGRAM_CAPACITY]; /**< The array of instructions */
+    Instruction instructions[MAX_PROGRAM_CAPACITY]; /**< The array of instructions */
     DataEntry instruction_count;                /**< The number of instructions in the program */
     DataEntry instruction_size;                 /**< The size of each instruction in bytes */
 };
@@ -199,7 +199,7 @@ struct CPU {
 
 struct Memory {
     QuadWord stack[STACK_CAPACITY];
-    Byte memory[MEMORY_CAPACITY];
+    Byte memory[MAX_MEMORY_CAPACITY];
 };
 bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* outPtr);
 
@@ -485,7 +485,7 @@ struct Sasm_Context {
     StringLength stringLens[STRING_LENGTHS_CAPACITY];
     uint64 strLensCnt;
 
-    Byte memory[MEMORY_CAPACITY];
+    Byte memory[MAX_MEMORY_CAPACITY];
     uint64 memorySize;
     uint64 memoryCapacity;
 
@@ -760,7 +760,7 @@ void translateSasmBindDirective(Sasm_Context* sasm, ConstStmt konst, FileLocatio
 
 void translateSasmInstruction(Sasm_Context* sasm, InstStmt inst, FileLocation location)
 {
-    assert(sasm $instructionCount < PROGRAM_CAPACITY);
+    assert(sasm $instructionCount < MAX_PROGRAM_CAPACITY);
     // push instruction into array
     sasm $instructions[sasm $instructionCount].type         = inst.type;
     sasm $instructions[sasm $instructionCount].operand.u64  = 0;
@@ -1042,17 +1042,17 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //         fileErrorDispWithExit("unsupported version of SASM File ", filePath);
 //     }
 
-//     if (meta.programSize > PROGRAM_CAPACITY) {
+//     if (meta.programSize > MAX_PROGRAM_CAPACITY) {
 //         printf(
 //             "The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-//             meta.programSize, (u64)PROGRAM_CAPACITY);
+//             meta.programSize, (u64)MAX_PROGRAM_CAPACITY);
 //         fileErrorDispWithExit("program section is too big ", filePath);
 //     }
 
-//     if (meta.memoryCapacity > MEMORY_CAPACITY) {
+//     if (meta.memoryCapacity > MAX_MEMORY_CAPACITY) {
 //         printf(
 //             "The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-//             meta.memoryCapacity, (u64)MEMORY_CAPACITY);
+//             meta.memoryCapacity, (u64)MAX_MEMORY_CAPACITY);
 //         fileErrorDispWithExit(" memory section is too big ", filePath);
 //     }
 
@@ -1278,7 +1278,7 @@ const char* getNameOfBindType(BindingType type)
 
 QuadWord pushStringToMemory(Sasm_Context* sasm, String_View str)
 {
-    assert(sasm->memorySize + str.len <= MEMORY_CAPACITY);
+    assert(sasm->memorySize + str.len <= MAX_MEMORY_CAPACITY);
 
     QuadWord result = quadwordFromU64(sasm->memorySize);
     memcpy(sasm->memory + sasm->memorySize, str.data, str.len);
@@ -1417,7 +1417,7 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
             expr.value.funcall->args->value,
             location);
 
-        assert(sasm->memorySize + result.value.u64 <= MEMORY_CAPACITY);
+        assert(sasm->memorySize + result.value.u64 <= MAX_MEMORY_CAPACITY);
 
         addr = quadwordFromU64(sasm->memorySize);
         sasm->memorySize += result.value.u64;
