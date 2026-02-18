@@ -296,7 +296,7 @@ typedef struct Binding Binding;                             // └───> Bin
 typedef enum BindingType BindingType;                       //       └───> Binding Type
 typedef enum BindingStatus BindingStatus;                   //       └───> Binding Status
 
-typedef struct Sasm Sasm;
+typedef struct Sasm_Context Sasm_Context;
 typedef struct StringLength StringLength;
 typedef struct Scope Scope;
 typedef struct UnresolvedOperand UnresolvedOperand;
@@ -466,7 +466,7 @@ struct DeferredEntry {
     Scope* scope;
 };
 
-struct Sasm {
+struct Sasm_Context {
     Scope* scope;
     Binding bindings[BINDINGS_CAPACITY];
     uint64 bindingCount;
@@ -510,21 +510,21 @@ struct Sasm_Metadata {
 
 typedef struct Sasm_Executable {
     Sasm_Metadata meta;
-    Sasm* sasm;
+    Sasm_Context* sasm;
 } Sasm_Executable;
 
 Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble);
-void translateSasmRootFile(Sasm* sasm, String_View inputFilePath);
-Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath);
-void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputFilePath);
-void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath);
+void translateSasmRootFile(Sasm_Context* sasm, String_View inputFilePath);
+Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath);
+void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath);
+void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath);
 
-void pushUnresolvedOperand(Sasm* sasm, InstAddr addr, Expr expr, FileLocation location);
-void pushIncludePath(Sasm* sasm, const char* path);
+void pushUnresolvedOperand(Sasm_Context* sasm, InstAddr addr, Expr expr, FileLocation location);
+void pushIncludePath(Sasm_Context* sasm, const char* path);
 void bindUnresolvedLocalScope(Scope* scope, String_View name, BindingType type, FileLocation location);
 void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation location);
-Binding* resolveBinding(Sasm* sasm, String_View name);
-EvalResult evaluateBinding(Sasm* sasm, Binding* binding);
+Binding* resolveBinding(Sasm_Context* sasm, String_View name);
+EvalResult evaluateBinding(Sasm_Context* sasm, Binding* binding);
 
 bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, String_View file_content, String_View filePath);
 bool fetchCachedLineFromSasmLexer(SasmLexer* lineInterpreter, Line* output);
@@ -544,7 +544,7 @@ EvalResult resultOK(QuadWord value, BindingType type);
 EvalResult resultUnresolved(Binding* unresolvedBinding);
 
 FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
-EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location);
+EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation location);
 
 #ifdef IMPL_SASM_1
 #undef IMPL_SASM_1
@@ -678,26 +678,26 @@ inline bool getFlag(Meta f, const CPU* cpu)
     return cpu->flags & f;
 }
 
-void pushScope(Sasm* sasm, Scope* scope)
+void pushScope(Sasm_Context* sasm, Scope* scope)
 {
     assert(scope->previous == NULL);
     scope->previous = sasm->scope;
     sasm->scope     = scope;
 }
 
-void createAndPushScope(Sasm* sasm)
+void createAndPushScope(Sasm_Context* sasm)
 {
     Scope* scope = region_alloc(&sasm->arena, sizeof(*sasm->scope));
     pushScope(sasm, scope);
 }
 
-void popScope(Sasm* sasm)
+void popScope(Sasm_Context* sasm)
 {
     assert(sasm->scope != NULL);
     sasm->scope = sasm->scope->previous;
 }
 
-bool resolveIncludeFilePath(Sasm* sasm, String_View filePath, String_View* resolvedPath)
+bool resolveIncludeFilePath(Sasm_Context* sasm, String_View filePath, String_View* resolvedPath)
 {
     for (uint64 i = 0; i < sasm->includePathsCnt; ++i) {
         String_View path = appendToPath(&sasm->arena, sasm->includePaths[i],
@@ -711,7 +711,7 @@ bool resolveIncludeFilePath(Sasm* sasm, String_View filePath, String_View* resol
     return false;
 }
 
-void translateSasmEntryDirective(Sasm* sasm, EntryStmt entry, FileLocation location)
+void translateSasmEntryDirective(Sasm_Context* sasm, EntryStmt entry, FileLocation location)
 {
     assert(sasm->scope);
 
@@ -735,7 +735,7 @@ void translateSasmEntryDirective(Sasm* sasm, EntryStmt entry, FileLocation locat
     sasm->deferredEntry.scope       = sasm->scope;
 }
 
-void translateSasmIncludeDirective(Sasm* sasm, IncludeStmt include, FileLocation location)
+void translateSasmIncludeDirective(Sasm_Context* sasm, IncludeStmt include, FileLocation location)
 {
     // // Load file as it is, recursively!
     // String_View resolved_path = (String_View) { 0 };
@@ -751,14 +751,14 @@ void translateSasmIncludeDirective(Sasm* sasm, IncludeStmt include, FileLocation
     sasm->includeLevel -= 1;
 }
 
-void translateSasmBindDirective(Sasm* sasm, ConstStmt konst, FileLocation location)
+void translateSasmBindDirective(Sasm_Context* sasm, ConstStmt konst, FileLocation location)
 {
     // ENCPSULATED SYMBOL SHOULD BELONG TO LOCAL SCOPE!
     assert(sasm->scope != NULL);
     bindExprLocalScope(sasm->scope, konst.name, konst.value, location);
 }
 
-void translateSasmInstruction(Sasm* sasm, InstStmt inst, FileLocation location)
+void translateSasmInstruction(Sasm_Context* sasm, InstStmt inst, FileLocation location)
 {
     assert(sasm $instructionCount < PROGRAM_CAPACITY);
     // push instruction into array
@@ -779,7 +779,7 @@ void translateSasmInstruction(Sasm* sasm, InstStmt inst, FileLocation location)
     sasm $instructionCount += 1;
 }
 
-void translateSasmStatementChain(Sasm* sasm, StmtNode* block)
+void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
 {
     // Resolve all preprocessor directives!
     for (StmtNode* iter = block; iter != NULL; iter = iter->next) {
@@ -849,7 +849,7 @@ void translateSasmStatementChain(Sasm* sasm, StmtNode* block)
     }
 }
 
-void resolveAllUnresolvedOperands(Sasm* sasm)
+void resolveAllUnresolvedOperands(Sasm_Context* sasm)
 {
     // Check the concept of Backpatching in single pass assemblers to understand!
     Scope* savedScope = sasm->scope;
@@ -886,7 +886,7 @@ void resolveAllUnresolvedOperands(Sasm* sasm)
     sasm->scope = savedScope;
 }
 
-void resolveProgramEntryPoint(Sasm* sasm)
+void resolveProgramEntryPoint(Sasm_Context* sasm)
 {
     Scope* savedScope = sasm->scope;
     if (sasm->deferredEntry.bindingName.len > 0) {
@@ -932,7 +932,7 @@ void resolveProgramEntryPoint(Sasm* sasm)
     sasm->scope = savedScope;
 }
 
-void translateSasmRootFile(Sasm* sasm, String_View inputFileData)
+void translateSasmRootFile(Sasm_Context* sasm, String_View inputFileData)
 {
     // Create the 'global scope' and start processing file.
     createAndPushScope(sasm);
@@ -944,7 +944,7 @@ void translateSasmRootFile(Sasm* sasm, String_View inputFileData)
     resolveProgramEntryPoint(sasm);
 }
 
-Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath)
+Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
 {
     // FILE* f       = openFile(filePath, "wb");
 
@@ -990,7 +990,7 @@ Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath)
     };
 }
 
-void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputFilePath)
+void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath)
 {
     SasmLexer SasmLexer = { 0 };
 
@@ -1014,7 +1014,7 @@ void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputF
     translateSasmStatementChain(sasm, inputFileBlock.begin);
 }
 
-// void loadSmExecutableIntoSasm(Sasm* sasm, const char* filePath)
+// void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath)
 // {
 //     memset(sasm, 0, sizeof(*sasm));
 
@@ -1153,7 +1153,7 @@ Binding* resolveBindingLocalScope(Scope* scope, String_View name)
     return NULL;
 }
 
-void pushUnresolvedOperand(Sasm* sasm, InstAddr addr, Expr expr, FileLocation location)
+void pushUnresolvedOperand(Sasm_Context* sasm, InstAddr addr, Expr expr, FileLocation location)
 {
     assert(sasm->symbolsCount < LABELS_CAPACITY);
     sasm->symbols[sasm->symbolsCount++] = (UnresolvedOperand) {
@@ -1164,7 +1164,7 @@ void pushUnresolvedOperand(Sasm* sasm, InstAddr addr, Expr expr, FileLocation lo
     };
 }
 
-void pushIncludePath(Sasm* sasm, const char* path)
+void pushIncludePath(Sasm_Context* sasm, const char* path)
 {
     assert(sasm->includePathsCnt < INCLUDE_PATHS_CAPACITY);
     sasm->includePaths[sasm->includePathsCnt++] = STR(path);
@@ -1218,7 +1218,7 @@ void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation 
     };
 }
 
-Binding* resolveBinding(Sasm* sasm, String_View name)
+Binding* resolveBinding(Sasm_Context* sasm, String_View name)
 {
     for (Scope* scope = sasm->scope; scope != NULL; scope = scope->previous) {
         Binding* binding = resolveBindingLocalScope(scope, name);
@@ -1230,7 +1230,7 @@ Binding* resolveBinding(Sasm* sasm, String_View name)
     return NULL;
 }
 
-EvalResult evaluateBinding(Sasm* sasm, Binding* binding)
+EvalResult evaluateBinding(Sasm_Context* sasm, Binding* binding)
 {
     switch (binding->status) {
     case BIND_STATUS_UNEVALUATED:
@@ -1276,7 +1276,7 @@ const char* getNameOfBindType(BindingType type)
     }
 }
 
-QuadWord pushStringToMemory(Sasm* sasm, String_View str)
+QuadWord pushStringToMemory(Sasm_Context* sasm, String_View str)
 {
     assert(sasm->memorySize + str.len <= MEMORY_CAPACITY);
 
@@ -1296,7 +1296,7 @@ QuadWord pushStringToMemory(Sasm* sasm, String_View str)
     return result;
 }
 
-bool getStrLenByAddr(Sasm* sasm, InstAddr addr, QuadWord* length)
+bool getStrLenByAddr(Sasm_Context* sasm, InstAddr addr, QuadWord* length)
 {
     for (uint64 i = 0; i < sasm->strLensCnt; ++i) {
         if (sasm->stringLens[i].addr == addr) {
@@ -1385,7 +1385,7 @@ void checkFuncArgs(Funcall* funcall, uint64 expected_arity, FileLocation locatio
     }
 }
 
-EvalResult resolveFuncall(Sasm* sasm, Expr expr, FileLocation location)
+EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
 {
     // Individual Compile-Time-Functions implementation!
     if (sv_compare(expr.value.funcall->name, STR("len"))) {
@@ -1481,7 +1481,7 @@ EvalResult resultUnresolved(Binding* unresolvedBinding)
     };
 }
 
-EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location)
+EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation location)
 {
     // Resolve Operands!
     // BeforeExpressionParse();
@@ -2214,7 +2214,7 @@ CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter)
 
 Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble)
 {
-    static Sasm sasm = { 0 };
+    static Sasm_Context sasm = { 0 };
     if (!disassemble) {
         translateSasmRootFile(&sasm, input_prog);
         return generateSmExecutable(&sasm, output_prog.data);
