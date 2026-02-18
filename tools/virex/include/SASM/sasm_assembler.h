@@ -9,8 +9,6 @@
 
 #include "univ_defs.h"
 #include "univ_errors.h"
-#include <common/memmanager.h>
-#include <common/result.h>
 
 #define $instructionCount ->prog.instruction_count
 #define $instructions ->prog.instructions
@@ -305,7 +303,7 @@ typedef struct UnresolvedOperand UnresolvedOperand;
 typedef struct DeferredAssert DeferredAssert;
 typedef struct DeferredEntry DeferredEntry;
 
-typedef struct __attribute__((__packed__)) Metadata Metadata;
+typedef struct __attribute__((__packed__)) Sasm_Metadata Sasm_Metadata;
 
 union ExprValue {
     String_View binding;
@@ -500,7 +498,7 @@ struct Sasm {
     uint64 includePathsCnt;
 };
 
-struct Metadata {
+struct Sasm_Metadata {
     DoubleWord magic;
     Word version;
     DataEntry programSize;
@@ -511,7 +509,7 @@ struct Metadata {
 };
 
 typedef struct Sasm_Executable {
-    Metadata meta;
+    Sasm_Metadata meta;
     Sasm* sasm;
 } Sasm_Executable;
 
@@ -547,26 +545,6 @@ EvalResult resultUnresolved(Binding* unresolvedBinding);
 
 FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
 EvalResult evaluateExpression(Sasm* sasm, Expr expr, FileLocation location);
-
-void BeforeLineRead();
-
-void AfterLineRead();
-
-void BeforeFileProcessing(String_View inputFilePath);
-
-void AfterFileProcessing(String_View inputFilePath, StmtNode* codeBlockBegin);
-
-void BeforeAssembly();
-
-void AfterAssembly();
-
-void BeforeStatementParse();
-
-void AfterStatementParse();
-
-void BeforeExpressionParse();
-
-void AfterExpressionParse();
 
 #ifdef IMPL_SASM_1
 #undef IMPL_SASM_1
@@ -970,7 +948,7 @@ Sasm_Executable generateSmExecutable(Sasm* sasm, const char* filePath)
 {
     // FILE* f       = openFile(filePath, "wb");
 
-    Metadata meta = {
+    Sasm_Metadata meta = {
         .magic          = FILE_MAGIC,
         .version        = FILE_VERSION,
         .entry          = sasm->entry,
@@ -1042,7 +1020,7 @@ void translateSasmFile(Sasm* sasm, String_View inputFileData, String_View inputF
 
 //     FILE* f       = openFile(filePath, "rb");
 
-//     Metadata meta = { 0 };
+//     Sasm_Metadata meta = { 0 };
 
 //     uint64 n      = fread(&meta, sizeof(meta), 1, f);
 

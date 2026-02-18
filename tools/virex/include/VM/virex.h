@@ -137,7 +137,7 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
     memset(&vm->prog, 0, sizeof(vm->prog));
     // FILE* f       = openFile(filePath, "rb");
 
-    Metadata meta = exec.meta;
+    Sasm_Metadata meta = exec.meta;
 
     // size_t n      = fread(&meta, sizeof(meta), 1, f);
     // if (n < 1) {
