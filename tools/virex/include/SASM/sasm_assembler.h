@@ -501,7 +501,7 @@ struct Sasm_Context {
 struct Sasm_Metadata {
     DoubleWord magic;
     Word version;
-    DataEntry programSize;
+    DataEntry prog_size;
     DataEntry entry;
     DataEntry memorySize;
     DataEntry memoryCapacity;
@@ -952,7 +952,7 @@ Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
         .magic          = FILE_MAGIC,
         .version        = FILE_VERSION,
         .entry          = sasm->entry,
-        .programSize    = sasm $instructionCount,
+        .prog_size    = sasm $instructionCount,
         .memorySize     = sasm->memorySize,
         .memoryCapacity = sasm->memoryCapacity,
     };
@@ -1042,10 +1042,10 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //         fileErrorDispWithExit("unsupported version of SASM File ", filePath);
 //     }
 
-//     if (meta.programSize > MAX_PROGRAM_CAPACITY) {
+//     if (meta.prog_size > MAX_PROGRAM_CAPACITY) {
 //         printf(
 //             "The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-//             meta.programSize, (u64)MAX_PROGRAM_CAPACITY);
+//             meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
 //         fileErrorDispWithExit("program section is too big ", filePath);
 //     }
 
@@ -1073,11 +1073,11 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //      * If all the checks pass, load all instructions and data(memory contents)
 //      * and ensure the amount of data read matches the expected amount.
 //      */
-//     sasm $instructionCount = fread(sasm $instructions, sizeof(sasm $instructions[0]), meta.programSize, f);
+//     sasm $instructionCount = fread(sasm $instructions, sizeof(sasm $instructions[0]), meta.prog_size, f);
 
-//     if (sasm $instructionCount != meta.programSize) {
+//     if (sasm $instructionCount != meta.prog_size) {
 //         printf("ERROR: %s: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-//             filePath, sasm $instructionCount, meta.programSize);
+//             filePath, sasm $instructionCount, meta.prog_size);
 //         exit(1);
 //     }
 

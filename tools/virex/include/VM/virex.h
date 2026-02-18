@@ -161,10 +161,10 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
         exit(1);
     }
 
-    if (meta.programSize > MAX_PROGRAM_CAPACITY) {
+    if (meta.prog_size > MAX_PROGRAM_CAPACITY) {
         printf(
             "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-            meta.programSize, (u64)MAX_PROGRAM_CAPACITY);
+            meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
         exit(1);
     }
 
@@ -190,11 +190,11 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
     }
 
     vm $reg[REG_NX].u64 = meta.entry;
-    // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.programSize, f);
+    // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
     vm->prog            = exec.sasm->prog;
-    if (vm->prog.instruction_count != meta.programSize) {
+    if (vm->prog.instruction_count != meta.prog_size) {
         printf("ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-            vm->prog.instruction_count, meta.programSize);
+            vm->prog.instruction_count, meta.prog_size);
         exit(1);
     }
 
