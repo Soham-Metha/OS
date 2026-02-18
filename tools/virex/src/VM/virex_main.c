@@ -3,8 +3,6 @@
 #define MEM_MANAGER_IMPL
 #define STRING_VIEW_IMPL
 #include "virex.h"
-#include <common/memmanager.h>
-#include <common/strings.h>
 
 int main()
 {

@@ -512,10 +512,14 @@ typedef struct Sasm_Executable {
     Program prog;
 } Sasm_Executable;
 
-Sasm_Executable sasm_assemble(String_View input_prog);
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
 
-void sasm_translate_root_file(Sasm_Context* sasm, String_View inputFilePath);
+Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
+void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
+void sasm_resolve_operands(Sasm_Context* sasm);
+Result8 sasm_resolve_entry_point(Sasm_Context* sasm);
+void scope_push(Sasm_Context* sasm);
+void scope_pop(Sasm_Context* sasm);
+
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath);
 void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath);
 
@@ -814,7 +818,7 @@ void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
         case STMT_SCOPE:
             scope_push(sasm);
             translateSasmStatementChain(sasm, statement.value.scope);
-            popScope(sasm);
+            scope_pop(sasm);
             break;
 
         case STMT_BLOCK:
@@ -828,52 +832,6 @@ void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
             exit(1);
         }
     }
-}
-
-void resolveProgramEntryPoint(Sasm_Context* sasm)
-{
-    Scope* savedScope = sasm->scope;
-    if (sasm->deferredEntry.bindingName.len > 0) {
-        assert(sasm->deferredEntry.scope);
-        sasm->scope = sasm->deferredEntry.scope;
-
-        if (sasm->hasEntry) {
-            printf(
-                FLFmt ": ERROR: entry point has been already set!\n",
-                FLArg(sasm->deferredEntry.location));
-            printf(FLFmt ": NOTE: the first entry point\n",
-                FLArg(sasm->entryLocation));
-            exit(1);
-        }
-
-        Binding* binding = resolveBinding(
-            sasm,
-            sasm->deferredEntry.bindingName);
-        if (binding == NULL) {
-            printf(FLFmt ": ERROR: unknown binding `%.*s`\n",
-                FLArg(sasm->deferredEntry.location),
-                Str_Fmt(sasm->deferredEntry.bindingName));
-            exit(1);
-        }
-
-        if (binding->type != BIND_TYPE_INST_ADDR) {
-            printf(FLFmt ": ERROR: Type check error. Trying to set `%.*s` that has the type of %s as an entry point. Entry point has to be %s.\n",
-                FLArg(sasm->deferredEntry.location),
-                Str_Fmt(binding->name),
-                getNameOfBindType(binding->type),
-                getNameOfBindType(BIND_TYPE_INST_ADDR));
-            exit(1);
-        }
-
-        EvalResult result = evaluateBinding(sasm, binding);
-        assert(result.status == EVAL_STATUS_OK);
-
-        sasm->entry         = result.value.u64;
-        sasm->hasEntry      = true;
-        sasm->entryLocation = sasm->deferredEntry.location;
-    }
-
-    sasm->scope = savedScope;
 }
 
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath)

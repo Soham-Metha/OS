@@ -1,12 +1,9 @@
 #ifndef KERN_SASM_1
 #define KERN_SASM_1
 
-#include "sasm_isa.h"
-#include <common/memmanager.h>
-#include <common/strings.h>
-#include <common/types.h>
-#include <tools/virex/include/SASM/sasm_assembler.h>
-#include <tools/virex/include/libs/univ_defs.h>
+#define IMPL_SASM_1
+#include "sasm_assembler.h"
+#include "univ_defs.h"
 
 // #define MAX_MEMORY_CAPACITY 2048      // Max amount of memory initially assigned to a sasm program
 // #define MAX_PROGRAM_CAPACITY 1024     // Max amount of instructions in any sasm program
@@ -27,14 +24,8 @@ Sasm_Executable sasm_assemble(String_View input_prog);
 
 // ---------------------------------------------------------------------------------------------------
 
-#ifndef IMPL_KERN_SASM_1
+#ifdef IMPL_KERN_SASM_1
 #undef IMPL_KERN_SASM_1
-
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
-void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
-void sasm_resolve_operands(Sasm_Context* sasm);
-void scope_push(Sasm_Context* sasm);
-void scope_pop(Sasm_Context* sasm);
 
 void scope_push(Sasm_Context* sasm)
 {
@@ -86,6 +77,43 @@ void sasm_resolve_operands(Sasm_Context* sasm)
     sasm->scope = savedScope;
 }
 
+Result8 sasm_resolve_entry_point(Sasm_Context* sasm)
+{
+    Scope* savedScope = sasm->scope;
+    if (sasm->deferredEntry.bindingName.len > 0) {
+        assert(sasm->deferredEntry.scope);
+        sasm->scope = sasm->deferredEntry.scope;
+
+        if (sasm->hasEntry) {
+            printf(FLFmt ": ERROR: entry point has been already set!\n", FLArg(sasm->deferredEntry.location));
+            printf(FLFmt ": NOTE: the first entry point\n", FLArg(sasm->entryLocation));
+            return Err8(1);
+        }
+
+        Binding* binding = resolveBinding(sasm, sasm->deferredEntry.bindingName);
+        if (binding == NULL) {
+            printf(FLFmt ": ERROR: unknown binding `%.*s`\n", FLArg(sasm->deferredEntry.location), Str_Fmt(sasm->deferredEntry.bindingName));
+            return Err8(1);
+        }
+
+        if (binding->type != BIND_TYPE_INST_ADDR) {
+            printf(FLFmt ": ERROR: Type check error. Trying to set `%.*s` that has the type of %s as an entry point. Entry point has to be %s.\n",
+                FLArg(sasm->deferredEntry.location), Str_Fmt(binding->name), getNameOfBindType(binding->type), getNameOfBindType(BIND_TYPE_INST_ADDR));
+            return Err8(1);
+        }
+
+        EvalResult result = evaluateBinding(sasm, binding);
+        assert(result.status == EVAL_STATUS_OK);
+
+        sasm->entry         = result.value.u64;
+        sasm->hasEntry      = true;
+        sasm->entryLocation = sasm->deferredEntry.location;
+    }
+
+    sasm->scope = savedScope;
+    return Ok8(0);
+}
+
 void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data)
 {
     scope_push(sasm);
@@ -93,7 +121,7 @@ void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data)
     scope_pop(sasm);
 
     sasm_resolve_operands(sasm);
-    resolveProgramEntryPoint(sasm);
+    sasm_resolve_entry_point(sasm);
 }
 
 Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
@@ -107,6 +135,9 @@ Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
                  .mem_size     = sasm->mem_size,
                  .mem_capacity = sasm->mem_capacity,
                  },
+        .prog = {
+                 .instruction_count = sasm $instructionCount,
+                 }
     };
 
     for (uint64 i = 0; i < sasm->mem_size; i++) {

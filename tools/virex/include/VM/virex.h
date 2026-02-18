@@ -10,11 +10,10 @@
 
 #pragma once
 
-#define IMPL_SASM_1
-#include "sasm_assembler.h"
+#define IMPL_KERN_SASM_1
+#include "sasm.h"
 #include "univ_defs.h"
 #include "univ_errors.h"
-#include <common/memmanager.h>
 
 #define CALL_NAME_CAPACITY 256
 
@@ -184,7 +183,7 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
 
     vm $reg[REG_NX].u64 = meta.entry;
     // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
-    vm->prog            = exec.sasm->prog;
+    vm->prog            = exec.prog;
     if (vm->prog.instruction_count != meta.prog_size) {
         printf("ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
             vm->prog.instruction_count, meta.prog_size);
@@ -192,7 +191,7 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
     }
 
     for (DataEntry i = 0; i < meta.mem_size; i++) {
-        vm->mem.memory[i] = exec.sasm->memory[i];
+        vm->mem.memory[i] = exec.memory[i];
     }
 
     // n = fread(vm->mem.memory, sizeof(vm->mem.memory[0]), meta.mem_size, f);
@@ -366,7 +365,7 @@ void executeProgram(Vm* vm, int debug, int lim)
             return ERR_STACK_UNDERFLOW;                \
         }                                              \
         const MemoryAddr addr = stack_pop(vm).u64;     \
-        if (addr >= MAX_MEMORY_CAPACITY) {                 \
+        if (addr >= MAX_MEMORY_CAPACITY) {             \
             return ERR_ILLEGAL_MEMORY_ACCESS;          \
         }                                              \
         type tmp;                                      \
@@ -382,7 +381,7 @@ void executeProgram(Vm* vm, int debug, int lim)
         }                                                 \
         const type value      = stack_pop(vm).u64;        \
         const MemoryAddr addr = stack_pop(vm).u64;        \
-        if (addr >= MAX_MEMORY_CAPACITY - size) {             \
+        if (addr >= MAX_MEMORY_CAPACITY - size) {         \
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
         }                                                 \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \
@@ -884,8 +883,7 @@ void virex_test(void)
                            "%end\n";
 
     String_View sv_prog  = STR(prog);
-    String_View sv_out   = STR("none");
-    Sasm_Executable exec = sasm_assemble(sv_prog, sv_out, false);
+    Sasm_Executable exec = sasm_assemble(sv_prog);
     virex_run(exec, -1);
 }
 
