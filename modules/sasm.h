@@ -30,7 +30,9 @@ Sasm_Executable sasm_assemble(String_View input_prog);
 #ifndef IMPL_KERN_SASM_1
 #undef IMPL_KERN_SASM_1
 
-void scope_push(Sasm_Context* sasm, Scope* scope);
+Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
+void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
+void sasm_resolve_operands(Sasm_Context* sasm);
 void scope_push(Sasm_Context* sasm);
 void scope_pop(Sasm_Context* sasm);
 
@@ -47,13 +49,50 @@ void scope_pop(Sasm_Context* sasm)
     sasm->scope = sasm->scope->previous;
 }
 
-void sasm_translate_root_file(Sasm_Context* sasm, String_View inputFileData)
+void sasm_resolve_operands(Sasm_Context* sasm)
+{
+    Scope* savedScope = sasm->scope;
+
+    for (uint64 i = 0; i < sasm->symbolsCount; ++i) {
+        assert(sasm->symbols[i].scope);
+        sasm->scope           = sasm->symbols[i].scope;
+
+        InstAddr addr         = sasm->symbols[i].addr;
+        Expr expr             = sasm->symbols[i].expr;
+        FileLocation location = sasm->symbols[i].location;
+
+        EvalResult result     = evaluateExpression(sasm, expr, location);
+        assert(result.status == EVAL_STATUS_OK);
+        sasm $instructions[addr].operand = result.value;
+        if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
+            sasm $instructions[addr].opr1IsReg = true;
+        }
+
+        OpcodeDetails inst_def = getOpcodeDetails(sasm $instructions[addr].type);
+        assert(inst_def.has_operand);
+
+        if (!inst_def.has_operand2)
+            continue;
+        i++;
+        Expr expr2         = sasm->symbols[i].expr;
+        EvalResult result2 = evaluateExpression(sasm, expr2, location);
+        assert(result2.status == EVAL_STATUS_OK);
+        sasm $instructions[addr].operand2 = result2.value;
+        if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
+            sasm $instructions[addr].opr2IsReg = true;
+        }
+    }
+
+    sasm->scope = savedScope;
+}
+
+void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data)
 {
     scope_push(sasm);
-    translateSasmFile(sasm, inputFileData, STR("src"));
+    translateSasmFile(sasm, input_file_data, STR("src"));
     scope_pop(sasm);
 
-    resolveAllUnresolvedOperands(sasm);
+    sasm_resolve_operands(sasm);
     resolveProgramEntryPoint(sasm);
 }
 

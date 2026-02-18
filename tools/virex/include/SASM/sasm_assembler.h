@@ -830,43 +830,6 @@ void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
     }
 }
 
-void resolveAllUnresolvedOperands(Sasm_Context* sasm)
-{
-    // Check the concept of Backpatching in single pass assemblers to understand!
-    Scope* savedScope = sasm->scope;
-
-    for (uint64 i = 0; i < sasm->symbolsCount; ++i) {
-        assert(sasm->symbols[i].scope);
-        sasm->scope           = sasm->symbols[i].scope;
-
-        InstAddr addr         = sasm->symbols[i].addr;
-        Expr expr             = sasm->symbols[i].expr;
-        FileLocation location = sasm->symbols[i].location;
-
-        EvalResult result     = evaluateExpression(sasm, expr, location);
-        assert(result.status == EVAL_STATUS_OK);
-        sasm $instructions[addr].operand = result.value;
-        if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
-            sasm $instructions[addr].opr1IsReg = true;
-        }
-
-        OpcodeDetails inst_def = getOpcodeDetails(sasm $instructions[addr].type);
-        assert(inst_def.has_operand);
-
-        if (inst_def.has_operand2) {
-            i++;
-            Expr expr2                        = sasm->symbols[i].expr;
-            EvalResult result2                = evaluateExpression(sasm, expr2, location);
-            sasm $instructions[addr].operand2 = result2.value;
-            if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
-                sasm $instructions[addr].opr2IsReg = true;
-            }
-        }
-    }
-
-    sasm->scope = savedScope;
-}
-
 void resolveProgramEntryPoint(Sasm_Context* sasm)
 {
     Scope* savedScope = sasm->scope;
