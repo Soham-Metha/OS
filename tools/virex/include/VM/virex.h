@@ -892,7 +892,7 @@ void virex_test(void)
 
     String_View sv_prog  = STR(prog);
     String_View sv_out   = STR("none");
-    Sasm_Executable exec = sasm_run(sv_prog, sv_out, false);
+    Sasm_Executable exec = sasm_assemble(sv_prog, sv_out, false);
     virex_run(exec, -1);
 }
 

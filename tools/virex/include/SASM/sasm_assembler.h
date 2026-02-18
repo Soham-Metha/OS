@@ -512,9 +512,9 @@ typedef struct Sasm_Executable {
     Sasm_Context* sasm;
 } Sasm_Executable;
 
-Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble);
+// Sasm_Executable sasm_assemble(String_View input_prog);
 void translateSasmRootFile(Sasm_Context* sasm, String_View inputFilePath);
-Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath);
+Sasm_Executable generateSmExecutable(Sasm_Context* sasm);
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath);
 void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath);
 
@@ -943,7 +943,7 @@ void translateSasmRootFile(Sasm_Context* sasm, String_View inputFileData)
     resolveProgramEntryPoint(sasm);
 }
 
-Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
+Sasm_Executable generateSmExecutable(Sasm_Context* sasm)
 {
     // FILE* f       = openFile(filePath, "wb");
 
@@ -982,7 +982,6 @@ Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
     // closeFile(f, filePath);
     // TODO!!
     (void)sasm;
-    (void)filePath;
     return (Sasm_Executable) {
         .meta = meta,
         .sasm = sasm,
@@ -2211,14 +2210,11 @@ CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter)
     return result;
 }
 
-Sasm_Executable sasm_run(String_View input_prog, String_View output_prog, bool disassemble)
+Sasm_Executable sasm_assemble(String_View input_prog)
 {
     static Sasm_Context sasm = { 0 };
-    if (!disassemble) {
-        translateSasmRootFile(&sasm, input_prog);
-        return generateSmExecutable(&sasm, output_prog.data);
-    }
-    return (Sasm_Executable) { 0 };
+    translateSasmRootFile(&sasm, input_prog);
+    return generateSmExecutable(&sasm);
 }
 
 #endif
