@@ -156,8 +156,8 @@ struct OpcodeDetails {
 
 struct Program {
     Instruction instructions[MAX_PROGRAM_CAPACITY]; /**< The array of instructions */
-    DataEntry instruction_count;                /**< The number of instructions in the program */
-    DataEntry instruction_size;                 /**< The size of each instruction in bytes */
+    DataEntry instruction_count;                    /**< The number of instructions in the program */
+    DataEntry instruction_size;                     /**< The size of each instruction in bytes */
 };
 
 union Registers {
@@ -499,13 +499,12 @@ struct Sasm_Context {
 };
 
 struct Sasm_Metadata {
-    DoubleWord magic;
-    Word version;
-    DataEntry prog_size;
-    DataEntry entry;
-    DataEntry mem_size;
-    DataEntry mem_capacity;
-    DataEntry externalsSize;
+    uint32 magic;               // random value
+    uint32 version;             // assembler ver
+    DataEntry entry;            // idx of the instruction where execution should start
+    DataEntry prog_size;        // instruction count
+    DataEntry mem_size;         // memory used
+    DataEntry mem_capacity;     // max amt memory that can be used
 };
 
 typedef struct Sasm_Executable {
@@ -949,9 +948,9 @@ Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
     // FILE* f       = openFile(filePath, "wb");
 
     Sasm_Metadata meta = {
-        .magic          = FILE_MAGIC,
-        .version        = FILE_VERSION,
-        .entry          = sasm->entry,
+        .magic        = FILE_MAGIC,
+        .version      = FILE_VERSION,
+        .entry        = sasm->entry,
         .prog_size    = sasm $instructionCount,
         .mem_size     = sasm->mem_size,
         .mem_capacity = sasm->mem_capacity,
