@@ -30,6 +30,33 @@ Sasm_Executable sasm_assemble(String_View input_prog);
 #ifndef IMPL_KERN_SASM_1
 #undef IMPL_KERN_SASM_1
 
+void scope_push(Sasm_Context* sasm, Scope* scope);
+void scope_push(Sasm_Context* sasm);
+void scope_pop(Sasm_Context* sasm);
+
+void scope_push(Sasm_Context* sasm)
+{
+    Scope* scope    = (Scope*)region_alloc(&sasm->arena, sizeof(*sasm->scope));
+    scope->previous = sasm->scope;
+    sasm->scope     = scope;
+}
+
+void scope_pop(Sasm_Context* sasm)
+{
+    assert(sasm->scope != NULL);
+    sasm->scope = sasm->scope->previous;
+}
+
+void sasm_translate_root_file(Sasm_Context* sasm, String_View inputFileData)
+{
+    scope_push(sasm);
+    translateSasmFile(sasm, inputFileData, STR("src"));
+    scope_pop(sasm);
+
+    resolveAllUnresolvedOperands(sasm);
+    resolveProgramEntryPoint(sasm);
+}
+
 Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
 {
     Sasm_Executable res = (Sasm_Executable) {
@@ -57,13 +84,8 @@ Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
 Sasm_Executable sasm_assemble(String_View input_prog)
 {
     Sasm_Context sasm = { 0 };
-    translateSasmRootFile(&sasm, input_prog);
+    sasm_translate_root_file(&sasm, input_prog);
     return sasm_generate_executable(&sasm);
 }
 
 #endif
-
-/**
- * Renamed:
- *  QuadWord -> Word
- */

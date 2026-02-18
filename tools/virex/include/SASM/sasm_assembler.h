@@ -515,7 +515,7 @@ typedef struct Sasm_Executable {
 Sasm_Executable sasm_assemble(String_View input_prog);
 Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
 
-void translateSasmRootFile(Sasm_Context* sasm, String_View inputFilePath);
+void sasm_translate_root_file(Sasm_Context* sasm, String_View inputFilePath);
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath);
 void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath);
 
@@ -678,25 +678,6 @@ inline bool getFlag(Meta f, const CPU* cpu)
     return cpu->flags & f;
 }
 
-void pushScope(Sasm_Context* sasm, Scope* scope)
-{
-    assert(scope->previous == NULL);
-    scope->previous = sasm->scope;
-    sasm->scope     = scope;
-}
-
-void createAndPushScope(Sasm_Context* sasm)
-{
-    Scope* scope = region_alloc(&sasm->arena, sizeof(*sasm->scope));
-    pushScope(sasm, scope);
-}
-
-void popScope(Sasm_Context* sasm)
-{
-    assert(sasm->scope != NULL);
-    sasm->scope = sasm->scope->previous;
-}
-
 bool resolveIncludeFilePath(Sasm_Context* sasm, String_View filePath, String_View* resolvedPath)
 {
     for (uint64 i = 0; i < sasm->includePathsCnt; ++i) {
@@ -831,7 +812,7 @@ void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
             break;
 
         case STMT_SCOPE:
-            createAndPushScope(sasm);
+            scope_push(sasm);
             translateSasmStatementChain(sasm, statement.value.scope);
             popScope(sasm);
             break;
@@ -930,18 +911,6 @@ void resolveProgramEntryPoint(Sasm_Context* sasm)
     }
 
     sasm->scope = savedScope;
-}
-
-void translateSasmRootFile(Sasm_Context* sasm, String_View inputFileData)
-{
-    // Create the 'global scope' and start processing file.
-    createAndPushScope(sasm);
-    translateSasmFile(sasm, inputFileData, STR("Root"));
-    popScope(sasm);
-
-    // backpatching of the operands!
-    resolveAllUnresolvedOperands(sasm);
-    resolveProgramEntryPoint(sasm);
 }
 
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath)
