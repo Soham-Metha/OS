@@ -486,8 +486,8 @@ struct Sasm_Context {
     uint64 strLensCnt;
 
     Byte memory[MAX_MEMORY_CAPACITY];
-    uint64 memorySize;
-    uint64 memoryCapacity;
+    uint64 mem_size;
+    uint64 mem_capacity;
 
     Arena arena;
 
@@ -503,8 +503,8 @@ struct Sasm_Metadata {
     Word version;
     DataEntry prog_size;
     DataEntry entry;
-    DataEntry memorySize;
-    DataEntry memoryCapacity;
+    DataEntry mem_size;
+    DataEntry mem_capacity;
     DataEntry externalsSize;
 };
 
@@ -953,8 +953,8 @@ Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
         .version        = FILE_VERSION,
         .entry          = sasm->entry,
         .prog_size    = sasm $instructionCount,
-        .memorySize     = sasm->memorySize,
-        .memoryCapacity = sasm->memoryCapacity,
+        .mem_size     = sasm->mem_size,
+        .mem_capacity = sasm->mem_capacity,
     };
     // /*
     //  * Try to write metadata
@@ -975,7 +975,7 @@ Sasm_Executable generateSmExecutable(Sasm_Context* sasm, const char* filePath)
     // /*
     //  * Try to write program data
     //  */
-    // fwrite(sasm->memory, sizeof(sasm->memory[0]), sasm->memorySize, f);
+    // fwrite(sasm->memory, sizeof(sasm->memory[0]), sasm->mem_size, f);
     // if (ferror(f)) {
     //     fileErrorDispWithExit("Could not write to file", filePath);
     // }
@@ -1049,17 +1049,17 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //         fileErrorDispWithExit("program section is too big ", filePath);
 //     }
 
-//     if (meta.memoryCapacity > MAX_MEMORY_CAPACITY) {
+//     if (meta.mem_capacity > MAX_MEMORY_CAPACITY) {
 //         printf(
 //             "The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-//             meta.memoryCapacity, (u64)MAX_MEMORY_CAPACITY);
+//             meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
 //         fileErrorDispWithExit(" memory section is too big ", filePath);
 //     }
 
-//     if (meta.memorySize > meta.memoryCapacity) {
+//     if (meta.mem_size > meta.mem_capacity) {
 //         printf(
 //             "ERROR: %s: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
-//             filePath, meta.memorySize, meta.memoryCapacity);
+//             filePath, meta.mem_size, meta.mem_capacity);
 //         exit(1);
 //     }
 
@@ -1081,11 +1081,11 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //         exit(1);
 //     }
 
-//     n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.memorySize, f);
+//     n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.mem_size, f);
 
-//     if (n != meta.memorySize) {
+//     if (n != meta.mem_size) {
 //         printf("ERROR: %s: read %" PRIu64 " bytes of memory section, but expected %" PRIu64 " bytes.\n",
-//             filePath, n, meta.memorySize);
+//             filePath, n, meta.mem_size);
 //         exit(1);
 //     }
 
@@ -1278,14 +1278,14 @@ const char* getNameOfBindType(BindingType type)
 
 QuadWord pushStringToMemory(Sasm_Context* sasm, String_View str)
 {
-    assert(sasm->memorySize + str.len <= MAX_MEMORY_CAPACITY);
+    assert(sasm->mem_size + str.len <= MAX_MEMORY_CAPACITY);
 
-    QuadWord result = quadwordFromU64(sasm->memorySize);
-    memcpy(sasm->memory + sasm->memorySize, str.data, str.len);
-    sasm->memorySize += str.len;
+    QuadWord result = quadwordFromU64(sasm->mem_size);
+    memcpy(sasm->memory + sasm->mem_size, str.data, str.len);
+    sasm->mem_size += str.len;
 
-    if (sasm->memorySize > sasm->memoryCapacity) {
-        sasm->memoryCapacity = sasm->memorySize;
+    if (sasm->mem_size > sasm->mem_capacity) {
+        sasm->mem_capacity = sasm->mem_size;
     }
 
     sasm->stringLens[sasm->strLensCnt++] = (StringLength) {
@@ -1417,13 +1417,13 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
             expr.value.funcall->args->value,
             location);
 
-        assert(sasm->memorySize + result.value.u64 <= MAX_MEMORY_CAPACITY);
+        assert(sasm->mem_size + result.value.u64 <= MAX_MEMORY_CAPACITY);
 
-        addr = quadwordFromU64(sasm->memorySize);
-        sasm->memorySize += result.value.u64;
+        addr = quadwordFromU64(sasm->mem_size);
+        sasm->mem_size += result.value.u64;
 
-        if (sasm->memorySize > sasm->memoryCapacity) {
-            sasm->memoryCapacity = sasm->memorySize;
+        if (sasm->mem_size > sasm->mem_capacity) {
+            sasm->mem_capacity = sasm->mem_size;
         }
 
         return resultOK(addr, BIND_TYPE_UINT);

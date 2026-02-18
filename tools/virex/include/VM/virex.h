@@ -168,17 +168,17 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
         exit(1);
     }
 
-    if (meta.memoryCapacity > MAX_MEMORY_CAPACITY) {
+    if (meta.mem_capacity > MAX_MEMORY_CAPACITY) {
         printf(
             "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-            meta.memoryCapacity, (u64)MAX_MEMORY_CAPACITY);
+            meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
         exit(1);
     }
 
-    if (meta.memorySize > meta.memoryCapacity) {
+    if (meta.mem_size > meta.mem_capacity) {
         printf(
             "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
-            meta.memorySize, meta.memoryCapacity);
+            meta.mem_size, meta.mem_capacity);
         exit(1);
     }
 
@@ -198,15 +198,15 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
         exit(1);
     }
 
-    for (DataEntry i = 0; i < meta.memorySize; i++) {
+    for (DataEntry i = 0; i < meta.mem_size; i++) {
         vm->mem.memory[i] = exec.sasm->memory[i];
     }
 
-    // n = fread(vm->mem.memory, sizeof(vm->mem.memory[0]), meta.memorySize, f);
+    // n = fread(vm->mem.memory, sizeof(vm->mem.memory[0]), meta.mem_size, f);
 
-    // if (n != meta.memorySize) {
+    // if (n != meta.mem_size) {
     //     printf( "ERROR: %s: read %zd bytes of memory section, but expected %" PRIu64 " bytes.\n",
-    //         filePath, n, meta.memorySize);
+    //         filePath, n, meta.mem_size);
     //     exit(1);
     // }
 
