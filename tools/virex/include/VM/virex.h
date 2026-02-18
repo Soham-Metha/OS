@@ -182,13 +182,6 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
         exit(1);
     }
 
-    if (meta.externalsSize > EXTERNAL_VMCALLS_CAPACITY) {
-        printf(
-            "ERROR: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
-            meta.externalsSize, (u64)EXTERNAL_VMCALLS_CAPACITY);
-        exit(1);
-    }
-
     vm $reg[REG_NX].u64 = meta.entry;
     // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
     vm->prog            = exec.sasm->prog;

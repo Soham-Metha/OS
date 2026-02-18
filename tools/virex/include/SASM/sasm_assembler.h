@@ -157,7 +157,6 @@ struct OpcodeDetails {
 struct Program {
     Instruction instructions[MAX_PROGRAM_CAPACITY]; /**< The array of instructions */
     DataEntry instruction_count;                    /**< The number of instructions in the program */
-    DataEntry instruction_size;                     /**< The size of each instruction in bytes */
 };
 
 union Registers {
@@ -509,12 +508,14 @@ struct Sasm_Metadata {
 
 typedef struct Sasm_Executable {
     Sasm_Metadata meta;
-    Sasm_Context* sasm;
+    Byte memory[MAX_MEMORY_CAPACITY];
+    Program prog;
 } Sasm_Executable;
 
-// Sasm_Executable sasm_assemble(String_View input_prog);
+Sasm_Executable sasm_assemble(String_View input_prog);
+Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
+
 void translateSasmRootFile(Sasm_Context* sasm, String_View inputFilePath);
-Sasm_Executable generateSmExecutable(Sasm_Context* sasm);
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath);
 void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath);
 
@@ -943,51 +944,6 @@ void translateSasmRootFile(Sasm_Context* sasm, String_View inputFileData)
     resolveProgramEntryPoint(sasm);
 }
 
-Sasm_Executable generateSmExecutable(Sasm_Context* sasm)
-{
-    // FILE* f       = openFile(filePath, "wb");
-
-    Sasm_Metadata meta = {
-        .magic        = FILE_MAGIC,
-        .version      = FILE_VERSION,
-        .entry        = sasm->entry,
-        .prog_size    = sasm $instructionCount,
-        .mem_size     = sasm->mem_size,
-        .mem_capacity = sasm->mem_capacity,
-    };
-    // /*
-    //  * Try to write metadata
-    //  */
-    // fwrite(&meta, sizeof(meta), 1, f);
-    // if (ferror(f)) {
-    //     fileErrorDispWithExit("Could not write to file", filePath);
-    // }
-
-    // /*
-    //  * Try to write instructions
-    //  */
-    // fwrite(sasm $instructions, sizeof(sasm $instructions[0]), sasm $instructionCount, f);
-    // if (ferror(f)) {
-    //     fileErrorDispWithExit("Could not write to file", filePath);
-    // }
-
-    // /*
-    //  * Try to write program data
-    //  */
-    // fwrite(sasm->memory, sizeof(sasm->memory[0]), sasm->mem_size, f);
-    // if (ferror(f)) {
-    //     fileErrorDispWithExit("Could not write to file", filePath);
-    // }
-    // // AfterAssembly();
-    // closeFile(f, filePath);
-    // TODO!!
-    (void)sasm;
-    return (Sasm_Executable) {
-        .meta = meta,
-        .sasm = sasm,
-    };
-}
-
 void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_View inputFilePath)
 {
     SasmLexer SasmLexer = { 0 };
@@ -1015,13 +971,9 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 // void loadSmExecutableIntoSasm(Sasm_Context* sasm, const char* filePath)
 // {
 //     memset(sasm, 0, sizeof(*sasm));
-
 //     FILE* f       = openFile(filePath, "rb");
-
 //     Sasm_Metadata meta = { 0 };
-
 //     uint64 n      = fread(&meta, sizeof(meta), 1, f);
-
 //     /*
 //      * ensure that the sm file is readable, of the correct format,
 //      * using correct version of sasm, within the program size limits
@@ -1029,38 +981,32 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //     if (n < 1) {
 //         fileErrorDispWithExit("Could not read meta data from file", filePath);
 //     }
-
 //     if (meta.magic != FILE_MAGIC) {
 //         printf("Unexpected magic %04X. Expected %04X.\n", meta.magic, FILE_MAGIC);
 //         fileErrorDispWithExit("Not a valid SASM File ", filePath);
 //     }
-
 //     if (meta.version != FILE_VERSION) {
 //         printf("Encountered version %d. Expected version %d.\n", meta.version, FILE_VERSION);
 //         fileErrorDispWithExit("unsupported version of SASM File ", filePath);
 //     }
-
 //     if (meta.prog_size > MAX_PROGRAM_CAPACITY) {
 //         printf(
 //             "The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
 //             meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
 //         fileErrorDispWithExit("program section is too big ", filePath);
 //     }
-
 //     if (meta.mem_capacity > MAX_MEMORY_CAPACITY) {
 //         printf(
 //             "The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
 //             meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
 //         fileErrorDispWithExit(" memory section is too big ", filePath);
 //     }
-
 //     if (meta.mem_size > meta.mem_capacity) {
 //         printf(
 //             "ERROR: %s: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
 //             filePath, meta.mem_size, meta.mem_capacity);
 //         exit(1);
 //     }
-
 //     if (meta.externalsSize > EXTERNAL_VMCALLS_CAPACITY) {
 //         printf(
 //             "ERROR: %s: external names section is too big. The file contains %" PRIu64 " external names. But the capacity is %" PRIu64 " external names\n",
@@ -1072,21 +1018,17 @@ void translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
 //      * and ensure the amount of data read matches the expected amount.
 //      */
 //     sasm $instructionCount = fread(sasm $instructions, sizeof(sasm $instructions[0]), meta.prog_size, f);
-
 //     if (sasm $instructionCount != meta.prog_size) {
 //         printf("ERROR: %s: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
 //             filePath, sasm $instructionCount, meta.prog_size);
 //         exit(1);
 //     }
-
 //     n = fread(sasm->memory, sizeof(sasm->memory[0]), meta.mem_size, f);
-
 //     if (n != meta.mem_size) {
 //         printf("ERROR: %s: read %" PRIu64 " bytes of memory section, but expected %" PRIu64 " bytes.\n",
 //             filePath, n, meta.mem_size);
 //         exit(1);
 //     }
-
 //     closeFile(f, filePath);
 // }
 
@@ -2208,13 +2150,6 @@ CodeBlock getCodeBlockFromLines(Arena* arena, SasmLexer* lineInterpreter)
     }
 
     return result;
-}
-
-Sasm_Executable sasm_assemble(String_View input_prog)
-{
-    static Sasm_Context sasm = { 0 };
-    translateSasmRootFile(&sasm, input_prog);
-    return generateSmExecutable(&sasm);
 }
 
 #endif
