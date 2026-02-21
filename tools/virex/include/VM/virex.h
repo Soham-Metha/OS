@@ -1,14 +1,5 @@
-/**
- * @file virex.h
- * @brief This file contains the declarations of functions and structures related to the virtual machine.
- *
- * The virtual machine represents the execution environment for the Game Boy program.
- *
- * @author Soham Metha
- * @date January 2025
- */
-
-#pragma once
+#ifndef KERN_VIREX_1
+#define KERN_VIREX_1
 
 #define IMPL_KERN_SASM_1
 #include "sasm.h"
@@ -45,8 +36,10 @@ typedef struct {
 bool virex_run(Sasm_Executable exec, int lim);
 bool virex_test(void);
 
-#ifdef IMPL_VIREX_1
-#undef IMPL_VIREX_1
+#endif
+
+#ifdef IMPL_KERN_VIREX_1
+#undef IMPL_KERN_VIREX_1
 
 bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
 bool loadStandardCallsIntoVm(Vm* Vm);
