@@ -43,12 +43,6 @@ bool virex_test(void);
 
 bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
 bool loadStandardCallsIntoVm(Vm* Vm);
-/**
- * Loads the program from the specified input file into the virtual machine.
- *
- * @param vm The virtual machine instance.
- * @param inputFile The input binary file containing the program bytecode.
- */
 bool loadProgramIntoVm(Vm* vm, Sasm_Executable exec);
 
 bool executeProgram(Vm* vm, int debug, int i);
