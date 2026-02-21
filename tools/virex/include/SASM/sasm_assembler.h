@@ -227,7 +227,8 @@ enum BindingStatus {
 
 enum EvalStatus {
     EVAL_STATUS_OK = 0,
-    EVAL_STATUS_DEFERRED
+    EVAL_STATUS_DEFERRED,
+    EVAL_CYCLIC,
 };
 
 enum TokenType {
@@ -512,11 +513,10 @@ typedef struct Sasm_Executable {
     Program prog;
 } Sasm_Executable;
 
-
 Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
-void sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
-void sasm_resolve_operands(Sasm_Context* sasm);
-Result8 sasm_resolve_entry_point(Sasm_Context* sasm);
+bool sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
+bool sasm_resolve_operands(Sasm_Context* sasm);
+bool sasm_resolve_entry_point(Sasm_Context* sasm);
 void scope_push(Sasm_Context* sasm);
 void scope_pop(Sasm_Context* sasm);
 
@@ -527,8 +527,8 @@ void pushUnresolvedOperand(Sasm_Context* sasm, InstAddr addr, Expr expr, FileLoc
 void pushIncludePath(Sasm_Context* sasm, const char* path);
 void bindUnresolvedLocalScope(Scope* scope, String_View name, BindingType type, FileLocation location);
 void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation location);
-Binding* resolveBinding(Sasm_Context* sasm, String_View name);
-EvalResult evaluateBinding(Sasm_Context* sasm, Binding* binding);
+Binding* binding_resolve(Sasm_Context* sasm, String_View name);
+EvalResult binding_eval(Sasm_Context* sasm, Binding* binding);
 
 bool loadSasmFileIntoSasmLexer(SasmLexer* lineInterpreter, String_View file_content, String_View filePath);
 bool fetchCachedLineFromSasmLexer(SasmLexer* lineInterpreter, Line* output);
@@ -806,7 +806,7 @@ void translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
 
         case STMT_LABEL:
             {
-                Binding* binding = resolveBinding(sasm, statement.value.label.name);
+                Binding* binding = binding_resolve(sasm, statement.value.label.name);
                 assert(binding != NULL);
                 assert(binding->status == BIND_STATUS_DEFERRED);
 
@@ -1046,47 +1046,6 @@ void bindExprLocalScope(Scope* scope, String_View name, Expr expr, FileLocation 
         .expr     = expr,
         .location = location,
     };
-}
-
-Binding* resolveBinding(Sasm_Context* sasm, String_View name)
-{
-    for (Scope* scope = sasm->scope; scope != NULL; scope = scope->previous) {
-        Binding* binding = resolveBindingLocalScope(scope, name);
-        if (binding) {
-            return binding;
-        }
-    }
-
-    return NULL;
-}
-
-EvalResult evaluateBinding(Sasm_Context* sasm, Binding* binding)
-{
-    switch (binding->status) {
-    case BIND_STATUS_UNEVALUATED:
-        binding->status   = BIND_STATUS_EVALUATING;
-        EvalResult result = evaluateExpression(sasm, binding->expr, binding->location);
-        binding->status   = BIND_STATUS_EVALUATED;
-
-        if (result.status == EVAL_STATUS_OK) {
-            binding->type  = result.type;
-            binding->value = result.value;
-        }
-
-        return result;
-    case BIND_STATUS_EVALUATING:
-        printf(FLFmt ": ERROR: cycling binding definition.\n",
-            FLArg(binding->location));
-        exit(1);
-    case BIND_STATUS_EVALUATED:
-        return resultOK(binding->value, binding->type);
-    case BIND_STATUS_DEFERRED:
-        return resultUnresolved(binding);
-
-    default:
-        assert(false && "evaluateBinding: unreachable");
-        exit(1);
-    }
 }
 
 const char* getNameOfBindType(BindingType type)
@@ -1348,14 +1307,14 @@ EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation locati
     case EXPR_BINDING:
         {
             String_View name = expr.value.binding;
-            Binding* binding = resolveBinding(sasm, name);
+            Binding* binding = binding_resolve(sasm, name);
             if (binding == NULL) {
                 printf(FLFmt ": ERROR: couldnt find binding `%.*s`.\n",
                     FLArg(location), Str_Fmt(name));
                 exit(1);
             }
 
-            res = evaluateBinding(sasm, binding);
+            res = binding_eval(sasm, binding);
         }
         break;
 
