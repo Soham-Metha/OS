@@ -3,13 +3,16 @@
 
 #define IMPL_SASM_1
 
-#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#include "../../../../common/memmanager.h"
-#include "../../../../common/panic.h"
-#include "../../../../common/result.h"
-#include "../../../../common/strings.h"
-#include "../../../../common/types.h"
-#include "../../../../userspace/libs/io.h"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+
+#include <common/memmanager.h>
+#include <common/panic.h>
+#include <common/result.h>
+#include <common/strings.h>
+#include <common/types.h>
+#include <userspace/libs/io.h>
 
 #define NULL ((void*)0)
 
@@ -894,6 +897,8 @@ const char* getNameOfBindType(BindingType type)
         return "Mem_Addr";
     case BIND_TYPE_INST_ADDR:
         return "Inst_Addr";
+    default:
+        return "";
     }
 }
 
@@ -1061,6 +1066,8 @@ const char* getTokenName(TokenType type)
         return "comma";
     case TOKEN_TYPE_REGISTER:
         return "register";
+    default:
+        return "";
     }
 }
 
@@ -1158,6 +1165,8 @@ EvalResult sasm_binding_eval(Sasm_Context* sasm, Binding* binding)
         return resultOK(binding->value, binding->type);
     case BIND_STATUS_DEFERRED:
         return resultUnresolved(binding);
+    default:
+        return (EvalResult) { .status = EVAL_ERR };
     }
 }
 
@@ -2243,7 +2252,7 @@ const char* getNameOfError(const VM_Error* error)
     case ERR_ALREADY_BOUND:
         return "ERR_ALREADY_BOUND";
     default:
-        assert(0 && "univ_errors : getNameOfError : Unreachable");
+        return "";
     }
 }
 

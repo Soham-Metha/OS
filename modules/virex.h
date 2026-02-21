@@ -808,8 +808,10 @@ bool virex_test(void)
                            "    RET\n"
                            "%end\n";
 
-    String_View sv_prog  = STR(prog);
+    String_View sv_prog = STR(prog);
+    printf("\nsasm prog converted to string!");
     Sasm_Executable exec = sasm_assemble(sv_prog);
+    printf("\nsasm assembled!");
     return virex_run(exec, -1);
 }
 
