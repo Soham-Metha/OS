@@ -12,8 +12,6 @@
 
 #define IMPL_KERN_SASM_1
 #include "sasm.h"
-#include "univ_defs.h"
-#include "univ_errors.h"
 
 #define CALL_NAME_CAPACITY 256
 
@@ -21,27 +19,14 @@ typedef VM_Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
 
 typedef struct
 {
-    char name[CALL_NAME_CAPACITY];
-} ExternalVmCall;
-
-typedef struct
-{
     InternalVmCall VmCallI[INTERNAL_VMCALLS_CAPACITY];
-    size_t internalVmCallsDefined;
-
-    ExternalVmCall VmCallE[EXTERNAL_VMCALLS_CAPACITY];
-    size_t externalVmCallsDefined;
+    uint64 internalVmCallsDefined;
 } VmCalls;
 
-/**
- * @struct Vm
- * Represents the virtual machine instance.
- */
-
 typedef struct {
-    Memory mem;   /**< The memory component of the virtual machine. */
-    Program prog; /**< The program component of the virtual machine. */
-    CPU cpu;      /**< The CPU component of the virtual machine. */
+    Memory mem;
+    Program prog;
+    CPU cpu;
     VmCalls vmCalls;
     Arena arena;
 } Vm;
@@ -57,34 +42,24 @@ typedef struct {
 
 #define $vm_call ->vmCalls.VmCallI
 
-/**
- * Executes the program loaded in the virtual machine.
- *
- * @param vm The virtual machine instance.
- * @param debug The debug level (0, 1, or 2).
- * @param i The current execution count.
- */
-void executeProgram(Vm* vm, int debug, int i);
+bool virex_run(Sasm_Executable exec, int lim);
+bool virex_test(void);
 
-/**
- * @brief Executes an instruction in the virtual machine.
- *
- * @param prog The program containing the instructions.
- * @param mem The memory of the virtual machine.
- * @param cpu The CPU of the virtual machine.
- * @return An error code indicating the success or failure of the execution.
- */
-VM_Error executeInst(Vm* vm);
+#ifdef IMPL_VIREX_1
+#undef IMPL_VIREX_1
 
-void loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
-void loadStandardCallsIntoVm(Vm* Vm);
+bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
+bool loadStandardCallsIntoVm(Vm* Vm);
 /**
  * Loads the program from the specified input file into the virtual machine.
  *
  * @param vm The virtual machine instance.
  * @param inputFile The input binary file containing the program bytecode.
  */
-void loadProgramIntoVm(Vm* vm, Sasm_Executable exec);
+bool loadProgramIntoVm(Vm* vm, Sasm_Executable exec);
+
+bool executeProgram(Vm* vm, int debug, int i);
+VM_Error executeInst(Vm* vm);
 
 VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena);
 VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena);
@@ -95,100 +70,55 @@ VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena);
 VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena);
 VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena);
 
-#define LERP(START, END, T) (START * T + END * (1 - T))
-
-enum WindowID {
-    OUTPUT,
-    INPUT,
-    DETAILS,
-    MEMORY,
-    PROGRAM,
-    NAME,
-    STACK,
-    MAX_WINDOW_COUNT
-};
-
-enum Inputs {
-    EXEC_SM,
-    ASSEMBLE_EXEC_SASM,
-    CUSTOM_CMD,
-    ASSEMBLE_SASM,
-    DISASSEMBLE_SM,
-    COMPILE_ORIN,
-    EXIT_VM,
-    MAX_INPUTS
-};
-
-void virex_run(Sasm_Executable exec, int lim);
-void virex_test(void);
-
-#ifdef IMPL_VIREX_1
-#undef IMPL_VIREX_1
-
-void loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
+bool loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
 {
-    assert(vm->vmCalls.internalVmCallsDefined < INTERNAL_VMCALLS_CAPACITY);
+    try(vm->vmCalls.internalVmCallsDefined < INTERNAL_VMCALLS_CAPACITY, "VMCall cap exceeded!", "");
     vm->vmCalls.VmCallI[vm->vmCalls.internalVmCallsDefined++] = call;
+    return true;
+ret_err:
+    return false;
 }
 
-void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
+bool loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
 {
     memset(&vm->prog, 0, sizeof(vm->prog));
     // FILE* f       = openFile(filePath, "rb");
 
     Sasm_Metadata meta = exec.meta;
 
-    // size_t n      = fread(&meta, sizeof(meta), 1, f);
+    // uint64 n      = fread(&meta, sizeof(meta), 1, f);
     // if (n < 1) {
     //     printf( "ERROR: Could not read meta data from file `%s`\n",
     //         filePath);
     //     exit(1);
     // }
 
-    if (meta.magic != FILE_MAGIC) {
-        printf(
-            "ERROR: executable does not appear to be a valid vm executable. "
-            "Unexpected magic %04X. Expected %04X.\n",
-            meta.magic, FILE_MAGIC);
-        exit(1);
-    }
+    try(meta.magic == FILE_MAGIC,
+        "ERROR: executable does not appear to be a valid vm executable. "
+        "Unexpected magic %04X. Expected %04X.\n",
+        meta.magic, FILE_MAGIC);
 
-    if (meta.version != FILE_VERSION) {
-        printf(
-            "ERROR: unsupported version of vm file %d. Expected version %d.\n",
-            meta.version, FILE_VERSION);
-        exit(1);
-    }
+    try(meta.version == FILE_VERSION,
+        "ERROR: unsupported version of vm file %d. Expected version %d.\n",
+        meta.version, FILE_VERSION);
 
-    if (meta.prog_size > MAX_PROGRAM_CAPACITY) {
-        printf(
-            "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-            meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
-        exit(1);
-    }
+    try(meta.prog_size <= MAX_PROGRAM_CAPACITY,
+        "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
+        meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
 
-    if (meta.mem_capacity > MAX_MEMORY_CAPACITY) {
-        printf(
-            "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-            meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
-        exit(1);
-    }
+    try(meta.mem_capacity <= MAX_MEMORY_CAPACITY,
+        "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
+        meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
 
-    if (meta.mem_size > meta.mem_capacity) {
-        printf(
-            "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
-            meta.mem_size, meta.mem_capacity);
-        exit(1);
-    }
+    try(meta.mem_size <= meta.mem_capacity,
+        "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
+        meta.mem_size, meta.mem_capacity);
 
     vm $reg[REG_NX].u64 = meta.entry;
     // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
     vm->prog            = exec.prog;
-    if (vm->prog.instruction_count != meta.prog_size) {
-        printf("ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-            vm->prog.instruction_count, meta.prog_size);
-        exit(1);
-    }
+    try(vm->prog.instruction_count == meta.prog_size, "ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
+        vm->prog.instruction_count, meta.prog_size);
 
     for (DataEntry i = 0; i < meta.mem_size; i++) {
         vm->mem.memory[i] = exec.memory[i];
@@ -203,18 +133,24 @@ void loadProgramIntoVm(Vm* vm, Sasm_Executable exec)
     // }
 
     // closeFile(f, filePath);
+    return true;
+ret_err:
+    return false;
 }
 
-void loadStandardCallsIntoVm(Vm* vm)
+bool loadStandardCallsIntoVm(Vm* vm)
 {
-    loadInternalCallIntoVm(vm, vmcall_alloc);           // 0
-    loadInternalCallIntoVm(vm, vmcall_free);            // 1
-    loadInternalCallIntoVm(vm, vmcall_print_f64);       // 2
-    loadInternalCallIntoVm(vm, vmcall_print_i64);       // 3
-    loadInternalCallIntoVm(vm, vmcall_print_u64);       // 4
-    loadInternalCallIntoVm(vm, vmcall_print_ptr);       // 5
-    loadInternalCallIntoVm(vm, vmcall_dump_memory);     // 6
-    loadInternalCallIntoVm(vm, vmcall_write);           // 7
+    try(loadInternalCallIntoVm(vm, vmcall_alloc), "Unable to load vm call '%d'!", 0);
+    try(loadInternalCallIntoVm(vm, vmcall_free), "Unable to load vm call '%d'!", 1);
+    try(loadInternalCallIntoVm(vm, vmcall_print_f64), "Unable to load vm call '%d'!", 2);
+    try(loadInternalCallIntoVm(vm, vmcall_print_i64), "Unable to load vm call '%d'!", 3);
+    try(loadInternalCallIntoVm(vm, vmcall_print_u64), "Unable to load vm call '%d'!", 4);
+    try(loadInternalCallIntoVm(vm, vmcall_print_ptr), "Unable to load vm call '%d'!", 5);
+    try(loadInternalCallIntoVm(vm, vmcall_dump_memory), "Unable to load vm call '%d'!", 6);
+    try(loadInternalCallIntoVm(vm, vmcall_write), "Unable to load vm call '%d'!", 7);
+    return true;
+ret_err:
+    return false;
 }
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -345,18 +281,19 @@ static inline void stack_push(Vm* vm, QuadWord val)
     vm $stack[vm $stack_top++] = val;
 }
 
-void executeProgram(Vm* vm, int debug, int lim)
+bool executeProgram(Vm* vm, int debug, int lim)
 {
     VM_Error error = executeInst(vm);
 
     if (lim == 0 || getFlag(META_HALT, &(vm->cpu))) {
-        return;
+        return true;
     }
 
-    if (error != ERR_OK)
-        executionErrorWithExit(&error);
+    try(error == ERR_OK, "Error when executing inst! ecode: %d", error);
 
-    executeProgram(vm, debug, lim - 1);
+    return executeProgram(vm, debug, lim - 1);
+ret_err:
+    return false;
 }
 
 #define READ_OP(type, out)                             \
@@ -848,16 +785,18 @@ VM_Error executeInst(Vm* vm)
     return ERR_OK;
 }
 
-void virex_run(Sasm_Executable exec, int lim)
+bool virex_run(Sasm_Executable exec, int lim)
 {
     static Vm vm = { 0 };
-    loadStandardCallsIntoVm(&vm);
-
-    loadProgramIntoVm(&vm, exec);
-    executeProgram(&vm, 0, lim);
+    try(loadStandardCallsIntoVm(&vm), "Unable to load vm calls", "");
+    try(loadProgramIntoVm(&vm, exec), "Unable to load program", "");
+    try(executeProgram(&vm, 0, lim), "Unable to exec prog", "");
+    return true;
+ret_err:
+    return false;
 }
 
-void virex_test(void)
+bool virex_test(void)
 {
     const char* prog     = "%bind       hello       \" Hello, World\\n\"\n"
                            "%entry      main                             ; ENTRY POINT\n"
@@ -884,7 +823,7 @@ void virex_test(void)
 
     String_View sv_prog  = STR(prog);
     Sasm_Executable exec = sasm_assemble(sv_prog);
-    virex_run(exec, -1);
+    return virex_run(exec, -1);
 }
 
 #endif

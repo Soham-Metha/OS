@@ -12,52 +12,7 @@
 
 #pragma once
 
-#define INTERNAL_VMCALLS_CAPACITY 1024
-#define EXTERNAL_VMCALLS_CAPACITY 1024
-#define BINDINGS_CAPACITY 1024
-#define MAX_PROGRAM_CAPACITY 1024
-#define MAX_MEMORY_CAPACITY 65536
-#define LABELS_CAPACITY 1024
-#define MAX_INCLUDE_LEVEL 10
-#define STACK_CAPACITY 1024
-#define FILE_MAGIC 0x484f53
-#define FILE_VERSION 0x4D41
-#define COMMENT_SYMBOL ';'
-#define PREP_SYMBOL '%'
-
 #pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
-#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#include "../../../../common/memmanager.h"
-#include "../../../../common/panic.h"
-#include "../../../../common/result.h"
-#include "../../../../common/strings.h"
-#include "../../../../common/types.h"
-#include "../../../../userspace/libs/io.h"
-#include <stdlib.h>     // exit
-
-#define PRIu64 "llu"
-#define PRIi64 "lli"
-#define PRId64 "lld"
-#define PRIX64 "llX"
-
-typedef uint8 Byte;
-typedef uint16 Word;
-typedef uint32 DoubleWord;
-
-typedef uint64 DataEntry;
-typedef uint64 InstAddr;
-typedef uint64 MemoryAddr;
-typedef uint64 StackAddr;
-typedef uint64 u64;
-typedef int64 i64;
-typedef double f64;
-
-typedef union {
-    uint64 u64;
-    int64 i64;
-    double f64;
-    void* ptr;
-} QuadWord;
 
 /**
  * @brief Retrieves the next command line argument.
@@ -73,13 +28,3 @@ typedef union {
 char* getNextCmdLineArg(int* argc, char*** argv);
 
 typedef struct Region Region;
-
-String_View appendToPath(Arena* arena, String_View base, String_View filePath);
-
-QuadWord quadwordFromU64(uint64 u64);
-
-QuadWord quadwordFromI64(int64 i64);
-
-QuadWord quadwordFromF64(double f64);
-
-QuadWord quadwordFromPtr(void* ptr);
