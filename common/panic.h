@@ -17,3 +17,11 @@ void printf(const char* fmt, ...);
         log(fmt, __VA_ARGS__); \
         goto ret_err;          \
     } while (0);
+
+#define try(cond, fmt, ...)        \
+    do {                           \
+        if (!(cond)) {             \
+            log(fmt, __VA_ARGS__); \
+            goto ret_err;          \
+        }                          \
+    } while (0);
