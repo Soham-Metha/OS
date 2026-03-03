@@ -49,6 +49,7 @@ $(_HAL): arch/native/boot.c arch/hal.h | $(BUILDS)
 else
 
 ifeq ($(COMPILER),clang)
+CC     := clang-15
 LD     := wasm-ld
 CFLAGS += --target=wasm32-unknown-unknown
 LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
