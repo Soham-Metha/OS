@@ -809,7 +809,13 @@ bool virex_test(void)
                           "\n%end";
 
     String_View sv_prog = STR(prog);
+    printf("\nTest Program:");
+    printf("\n-------------");
+    printf("\n%s", sv_prog.data);
+    printf("\n-------------");
     Sasm_Executable exec = sasm_assemble(sv_prog);
+    printf("\nOutput:");
+    printf("\n-------------");
     return virex_run(&exec, -1);
 }
 
