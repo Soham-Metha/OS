@@ -68,6 +68,13 @@ void printf(const char* fmt, ...)
             case 'd':
                 print_int(va_arg(vargs, int));
                 break;
+            case 'c':
+                putch(va_arg(vargs, int));
+                break;
+            default:
+                putch('%');
+                putch(*fmt);
+                break;
             }
         } else {
             putch(*fmt);

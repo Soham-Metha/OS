@@ -2,7 +2,7 @@
 #define UTILS_MEM_MANAGER_1
 
 #include "heap.h"
-// #include "strings.h"
+#include "strings.h"
 #include "types.h"
 
 #define REGION_DEFAULT_CAPACITY 64 * 1024
@@ -24,8 +24,8 @@ struct Arena {
 };
 
 void* region_alloc(Arena* arena, uint64 size);
-// const char* arena_sv_to_cstr(Arena* arena, String_View str);
-// String_View arena_cstr_concat(Arena* arena, const char* a, const char* b);
+const char* arena_sv_to_cstr(Arena* arena, String_View str);
+String_View arena_cstr_concat(Arena* arena, const char* a, const char* b);
 void arena_clear(Arena* arena);
 void arena_free(Arena* arena);
 
@@ -100,26 +100,26 @@ void* region_alloc(Arena* arena, uint64 size)
     return region_alloc_aligned(arena, size, sizeof(void*));
 }
 
-// const char* arena_sv_to_cstr(Arena* arena, String_View str)
-// {
-//     char* cstr = (char*)region_alloc(arena, str.len + 1);
-//     memcpy(cstr, str.data, str.len);
-//     cstr[str.len] = '\0';
-//     return cstr;
-// }
+const char* arena_sv_to_cstr(Arena* arena, String_View str)
+{
+    char* cstr = (char*)region_alloc(arena, str.len + 1);
+    memcpy(cstr, str.data, str.len);
+    cstr[str.len] = '\0';
+    return cstr;
+}
 
-// String_View arena_cstr_concat(Arena* arena, const char* a, const char* b)
-// {
-//     const uint64 aLen = strlen(a);
-//     const uint64 bLen = strlen(b);
-//     char* buf         = (char*)region_alloc(arena, aLen + bLen);
-//     memcpy(buf, a, aLen);
-//     memcpy(buf + aLen, b, bLen);
-//     return (String_View) {
-//         .len  = aLen + bLen,
-//         .data = buf
-//     };
-// }
+String_View arena_cstr_concat(Arena* arena, const char* a, const char* b)
+{
+    const uint64 aLen = strlen(a);
+    const uint64 bLen = strlen(b);
+    char* buf         = (char*)region_alloc(arena, aLen + bLen);
+    memcpy(buf, a, aLen);
+    memcpy(buf + aLen, b, bLen);
+    return (String_View) {
+        .len  = aLen + bLen,
+        .data = buf
+    };
+}
 
 void arena_clear(Arena* arena)
 {

@@ -1,14 +1,18 @@
 #define IMPL_FS_1
+#define IMPL_KERN_VIREX_1
 #define IMPL_SCHEDULER_1
 #define IMPL_TERMINAL_1
 #define IMPL_USPACE_IO_1
 #define IMPL_WM_1
 #define MEM_MANAGER_IMPL
+#define STRING_VIEW_IMPL
 #include "shell.h"
 #include "libs/io.h"
 #include "services/wm.h"
 #include <common/event.h>
 #include <common/memmanager.h>
+#include <common/strings.h>
+#include <modules/virex.h>
 // TODO: fix boundary violation
 #include <kernel/fs.h>
 #include <kernel/scheduler.h>
@@ -92,11 +96,27 @@ void shell_win_init(void)
     print_str("\n> ");
 }
 
+void shell_handler(String_View inp)
+{
+    if (sv_compare(inp, STR("test"))) {
+        virex_test();     // TODO: doesn't work in 'native' mode
+    } else if (sv_compare(inp, STR("help"))) {
+        printf("\nAvailable commands: ");
+        printf("\n    help : display this help dialog");
+        printf("\n    test : run the SASM test program");
+    } else {
+        printf("\nInvalid command entered, use 'help' for a list of commands!");
+        printf("\n    You entered: %s", inp.data);
+    }
+    printf("\n> ");
+}
+
 void shell_loop(void)
 {
     ResultPtr r = getline();
     if RESULT_OK (r) {
-        printf("%s\n> ", (const char*)RESULT_VAL(r));
+        const char* str = (const char*)RESULT_VAL(r);
+        shell_handler(STR(str));
     }
     p_yield();     // TODO: improve context switching logic to allow pre-emption
 }
