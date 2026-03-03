@@ -24,14 +24,14 @@ typedef uint64 DataEntry;
 typedef uint64 InstAddr;
 typedef uint64 MemoryAddr;
 typedef uint64 StackAddr;
-typedef uint64 u64;
-typedef int64 i64;
-typedef double f64;
+typedef uint32 u64;
+typedef int32 i64;
+typedef float f64;
 
 typedef union {
-    uint64 u64;
-    int64 i64;
-    double f64;
+    uint32 u64;
+    int32 i64;
+    float f64;
     void* ptr;
 } QuadWord;
 
@@ -1244,9 +1244,9 @@ Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
 
 Sasm_Executable sasm_assemble(String_View input_prog)
 {
-    Sasm_Context sasm = { 0 };
-    sasm_translate_root_file(&sasm, input_prog);
-    return sasm_generate_executable(&sasm);
+    Sasm_Context *sasm = kmalloc(sizeof(Sasm_Context));
+    sasm_translate_root_file(sasm, input_prog);
+    return sasm_generate_executable(sasm);
 }
 
 bool sasm_codeblock_push(Arena* arena, CodeBlock* list, Stmt statement)
