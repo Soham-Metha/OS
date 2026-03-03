@@ -2,6 +2,12 @@ window.kernel = {
   wasm: null,
 };
 
+const memory = new WebAssembly.Memory({
+  initial: 144,
+  maximum: 144,
+  shared: true,
+});
+
 const IRQ_TIMER = 0;
 const IRQ_KEYBOARD = 1;
 const IRQ_MOUSE = 12;
@@ -137,6 +143,7 @@ async function boot() {
       __hal_present,
       __hal_get_width,
       __hal_get_height,
+      memory,
     },
   };
 
