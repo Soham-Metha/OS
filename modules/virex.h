@@ -33,7 +33,7 @@ typedef struct {
 
 #define $vm_call ->vmCalls.VmCallI
 
-bool virex_run(Sasm_Executable *exec, int lim);
+bool virex_run(Sasm_Executable* exec, int lim);
 bool virex_test(void);
 
 #endif
@@ -43,7 +43,7 @@ bool virex_test(void);
 
 bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
 bool loadStandardCallsIntoVm(Vm* Vm);
-bool loadProgramIntoVm(Vm* vm, Sasm_Executable *exec);
+bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec);
 
 bool executeProgram(Vm* vm, int debug, int i);
 VM_Error executeInst(Vm* vm);
@@ -66,7 +66,7 @@ ret_err:
     return false;
 }
 
-bool loadProgramIntoVm(Vm* vm, Sasm_Executable *exec)
+bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
 {
     memset(&vm->prog, 0, sizeof(vm->prog));
     // FILE* f       = openFile(filePath, "rb");
@@ -772,9 +772,9 @@ VM_Error executeInst(Vm* vm)
     return ERR_OK;
 }
 
-bool virex_run(Sasm_Executable *exec, int lim)
+bool virex_run(Sasm_Executable* exec, int lim)
 {
-    Vm *vm = kmalloc(sizeof(Vm));
+    Vm* vm = kmalloc(sizeof(Vm));
     try(loadStandardCallsIntoVm(vm), "Unable to load vm calls", "");
     try(loadProgramIntoVm(vm, exec), "Unable to load program", "");
     try(executeProgram(vm, 0, lim), "Unable to exec prog", "");
@@ -785,28 +785,28 @@ ret_err:
 
 bool virex_test(void)
 {
-    const char* prog    = "%bind       hello       \" Hello, World\\n\"\n"
-                          "%entry      main                             ; ENTRY POINT\n"
+    const char* prog    = "\n%bind       hello       \"\\n Hello, World\""
+                          "\n%entry      main                             ; ENTRY POINT"
                           "\n"
-                          "main:\n"
-                          "say_hello:                                   ; GLOBAL 'say_hello'\n"
-                          "%scope                                       ; ENCAPSULATION\n"
+                          "\nmain:"
+                          "\nsay_hello:                                   ; GLOBAL 'say_hello'"
+                          "\n%scope                                       ; ENCAPSULATION"
                           "\n"
-                          "    SETR    2           ref([L2])               ; iteration count\n"
-                          "say_hello:                                   ; LOCAL 'say_hello'\n"
-                          "    SETR    hello       ref([L0])               ; ptr to string start\n"
-                          "    SETR    len(hello)  ref([QT])               ; length of string\n"
-                          "    CALL    print                               ; expects above 2 arguments\n"
-                          "    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'\n"
+                          "\n    SETR    2           ref([L2])               ; iteration count"
+                          "\nsay_hello:                                   ; LOCAL 'say_hello'"
+                          "\n    SETR    hello       ref([L0])               ; ptr to string start"
+                          "\n    SETR    len(hello)  ref([QT])               ; length of string"
+                          "\n    CALL    print                               ; expects above 2 arguments"
+                          "\n    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
                           "\n"
-                          "%end\n"
-                          "SHUTS\n"
+                          "\n%end"
+                          "\nSHUTS"
                           "\n"
-                          "print:\n"
-                          "%scope\n"
-                          "    INVOK    7\n"
-                          "    RET\n"
-                          "%end\n";
+                          "\nprint:"
+                          "\n%scope"
+                          "\n    INVOK    7"
+                          "\n    RET"
+                          "\n%end";
 
     String_View sv_prog = STR(prog);
     Sasm_Executable exec = sasm_assemble(sv_prog);
