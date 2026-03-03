@@ -12,7 +12,6 @@ struct String_View {
 #define STR(s) ((String_View) { .len = strlen(s), .data = s })
 #define Str_Fmt(s) (int)s.len, s.data
 
-#pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 int strlen(const char* str);
 int sv_equals_cstr(String_View sv, const char* cstr);
 char* strcpy(char* dst, const char* src);

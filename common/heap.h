@@ -1,7 +1,6 @@
 #ifndef KMALLOC_1
 #define KMALLOC_1
 
-#pragma GCC diagnostic ignored "-Wincompatible-library-redeclaration"
 #include "types.h"
 #define KHEAP_SIZE (8 * 1024 * 1024)
 
