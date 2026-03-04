@@ -4,6 +4,7 @@
 #define COMPOSITOR_1
 
 #include <common/types.h>
+#include <modules/graphics.h>
 #define COMPOSITOR_MAX_SURFACES 4
 
 typedef struct Surface {
@@ -43,7 +44,7 @@ void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w,
 
 #ifdef IMPL_COMPOSITOR_1
 #undef IMPL_COMPOSITOR_1
-#include <arch/hal.h> // TODO: fix boundary violation
+#include <arch/hal.h>     // TODO: fix boundary violation
 
 private
 void blit_surface(Surface* s, int width, int height)
@@ -199,10 +200,7 @@ void surface_clear(Surface* s, uint32 color)
     if (!s || !s->pixels)
         return;
 
-    int total = s->width * s->height;
-    for (int i = 0; i < total; i++)
-        s->pixels[i] = color;
-
+    graphics_fill(s->pixels, s->width, s->height, color);
     s->dirty = true;
 }
 
@@ -210,31 +208,7 @@ void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color)
 {
     if (!s || !s->pixels)
         return;
-
-    if (x < 0) {
-        w += x;
-        x = 0;
-    }
-
-    if (y < 0) {
-        h += y;
-        y = 0;
-    }
-
-    if (x + w > s->width)
-        w = s->width - x;
-    if (y + h > s->height)
-        h = s->height - y;
-
-    if (w <= 0 || h <= 0)
-        return;
-
-    for (int yy = y; yy < y + h; yy++) {
-        uint32* row = &s->pixels[SURF_IDX(s, x, yy)];
-        for (int xx = 0; xx < w; xx++)
-            row[xx] = color;
-    }
-
+    graphics_fill_rect(s->pixels, s->width, s->height, x, y, w, h, color);
     s->dirty = true;
 }
 
