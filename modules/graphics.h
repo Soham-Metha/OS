@@ -4,20 +4,20 @@
 
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
-void graphics_fill(uint32* px, int px_width, int px_height, uint32 col);
-bool graphics_put_pixel(uint32* px, int px_width, int px_height, int x, int y, uint32 col);
-void graphics_fill_rect(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
-void graphics_fill_circ(uint32* px, int px_width, int px_height, int x, int y, int r, uint32 col);
-void graphics_fill_rowspan(uint32* px, int px_width, int px_height, int y, int x1, int x2, uint32 col);
+void gfx_fill(uint32* px, int px_width, int px_height, uint32 col);
+bool gfx_put_pixel(uint32* px, int px_width, int px_height, int x, int y, uint32 col);
+void gfx_fill_rect(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
+void gfx_fill_circ(uint32* px, int px_width, int px_height, int x, int y, int r, uint32 col);
+void gfx_fill_rowspan(uint32* px, int px_width, int px_height, int y, int x1, int x2, uint32 col);
 
-void graphics_checker_pattern(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
-void graphics_circle_pattern(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 col);
+void gfx_pattern_checker(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
+void gfx_pattern_circles(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
 
-bool graphics_put_pixel(uint32* px, int px_width, int px_height,
+bool gfx_put_pixel(uint32* px, int px_width, int px_height,
     int x, int y, uint32 col)
 {
     if (x < 0 || y < 0 || x >= px_width || y >= px_height)
@@ -27,14 +27,14 @@ bool graphics_put_pixel(uint32* px, int px_width, int px_height,
     return true;
 }
 
-void graphics_fill(uint32* px, int px_width, int px_height,
+void gfx_fill(uint32* px, int px_width, int px_height,
     uint32 col)
 {
     for (int i = 0; i < px_width * px_height; i++)
         px[i] = col;
 }
 
-void graphics_fill_rect(uint32* px, int px_width, int px_height,
+void gfx_fill_rect(uint32* px, int px_width, int px_height,
     int x, int y, int w, int h, uint32 col)
 {
     if (x < 0) {
@@ -60,7 +60,7 @@ void graphics_fill_rect(uint32* px, int px_width, int px_height,
     }
 }
 
-void graphics_fill_rowspan(uint32* px, int px_width, int px_height,
+void gfx_fill_rowspan(uint32* px, int px_width, int px_height,
     int y, int x1, int x2, uint32 col)
 {
     if (y < 0 || y >= px_height)
@@ -77,16 +77,16 @@ void graphics_fill_rowspan(uint32* px, int px_width, int px_height,
         row[x] = col;
 }
 
-void graphics_fill_circ(uint32* px, int px_width, int px_height, int xc, int yc, int r, uint32 col)
+void gfx_fill_circ(uint32* px, int px_width, int px_height, int xc, int yc, int r, uint32 col)
 {     // See: bresenham's algorithm for circle drawing
     int x = 0, y = r;
     int d = 3 - 2 * r;
 
     while (y >= x) {
-        graphics_fill_rowspan(px, px_width, px_height, yc + y, xc - x, xc + x, col);
-        graphics_fill_rowspan(px, px_width, px_height, yc - y, xc - x, xc + x, col);
-        graphics_fill_rowspan(px, px_width, px_height, yc + x, xc - y, xc + y, col);
-        graphics_fill_rowspan(px, px_width, px_height, yc - x, xc - y, xc + y, col);
+        gfx_fill_rowspan(px, px_width, px_height, yc + y, xc - x, xc + x, col);
+        gfx_fill_rowspan(px, px_width, px_height, yc - y, xc - x, xc + x, col);
+        gfx_fill_rowspan(px, px_width, px_height, yc + x, xc - y, xc + y, col);
+        gfx_fill_rowspan(px, px_width, px_height, yc - x, xc - y, xc + y, col);
 
         if (d > 0) {
             y -= 1;
@@ -98,7 +98,7 @@ void graphics_fill_circ(uint32* px, int px_width, int px_height, int xc, int yc,
     }
 }
 
-void graphics_checker_pattern(uint32* px, int px_width, int px_height,
+void gfx_pattern_checker(uint32* px, int px_width, int px_height,
     int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg)
 {
     int row_cnt = h / box_side - 1;
@@ -109,24 +109,24 @@ void graphics_checker_pattern(uint32* px, int px_width, int px_height,
             if ((xx + yy) % 2 == 0) {
                 col = fg;
             }
-            graphics_fill_rect(px, px_width, px_height,
+            gfx_fill_rect(px, px_width, px_height,
                 x + xx * box_side, y + yy * box_side,
                 box_side, box_side, col);
         }
     }
 }
 
-void graphics_circle_pattern(uint32* px, int px_width, int px_height,
-    int x, int y, int w, int h, int box_side, uint32 col)
+void gfx_pattern_circles(uint32* px, int px_width, int px_height,
+    int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col)
 {
-    int row_cnt = h / box_side - 1;
-    int col_cnt = w / box_side - 1;
+    int cell_w = w / col_cnt;
+    int cell_h = h / row_cnt;
     for (int yy = 0; yy <= row_cnt; yy++) {
         for (int xx = 0; xx <= col_cnt; xx++) {
-            int r = box_side / 2;
+            int r = (cell_w / 2 > cell_h / 2) ? cell_h / 2 : cell_w / 2;
             r     = r * 0.5f + (r - r * 0.5f) * (((float)xx / col_cnt + (float)yy / row_cnt) / 2);     // lerp, r = r/2 -> r
-            graphics_fill_circ(px, px_width, px_height,
-                x + xx * box_side + r, y + yy * box_side + r,
+            gfx_fill_circ(px, px_width, px_height,
+                x + xx * cell_w + r, y + yy * cell_h + r,
                 r, col);
         }
     }

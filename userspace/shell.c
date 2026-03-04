@@ -49,15 +49,15 @@ void render_loop(void)
 
 void graphics_test(Surface* s)
 {
-    graphics_fill(s->pixels, s->width, s->height,
+    gfx_fill(s->pixels, s->width, s->height,
         COL(0x11, 0x11, 0x11, 0xFF));
 
-    graphics_checker_pattern(s->pixels, s->width, s->height,
+    gfx_pattern_checker(s->pixels, s->width, s->height,
         0, 0, s->width / 2, s->height / 2,
-        95, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
-    graphics_circle_pattern(s->pixels, s->width, s->height,
-        s->width / 2, 0, s->width / 2, s->height,
-        47, COL(0x22, 0x22, 0xFF, 0xFF));
+        100, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+    gfx_pattern_circles(s->pixels, s->width, s->height,
+        0, s->height / 2, s->width, s->height / 2,
+        12, 22, COL(0x22, 0x22, 0xFF, 0xFF));
     s->dirty = true;
 }
 

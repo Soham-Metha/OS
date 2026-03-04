@@ -188,7 +188,7 @@ void surface_put_pixel(Surface* s, int x, int y, uint32 color)
     if (!s || !s->pixels)
         return;
 
-    if (graphics_put_pixel(s->pixels, s->width, s->height, x, y, color))
+    if (gfx_put_pixel(s->pixels, s->width, s->height, x, y, color))
         s->dirty = true;
 }
 
@@ -197,7 +197,7 @@ void surface_clear(Surface* s, uint32 color)
     if (!s || !s->pixels)
         return;
 
-    graphics_fill(s->pixels, s->width, s->height, color);
+    gfx_fill(s->pixels, s->width, s->height, color);
     s->dirty = true;
 }
 
@@ -205,7 +205,7 @@ void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color)
 {
     if (!s || !s->pixels)
         return;
-    graphics_fill_rect(s->pixels, s->width, s->height, x, y, w, h, color);
+    gfx_fill_rect(s->pixels, s->width, s->height, x, y, w, h, color);
     s->dirty = true;
 }
 
