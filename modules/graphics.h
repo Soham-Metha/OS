@@ -6,6 +6,8 @@
 void graphics_fill(uint32* px, int px_width, int px_height, uint32 col);
 void graphics_fill_rect(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
 
+void graphics_checker_pattern(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
+
 #endif
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
@@ -40,6 +42,22 @@ void graphics_fill_rect(uint32* px, int px_width, int px_height,
         uint32* row = &px[yy * px_width + x];
         for (int xx = 0; xx < w; xx++)
             row[xx] = col;
+    }
+}
+
+void graphics_checker_pattern(uint32* px, int px_width, int px_height,
+    int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg)
+{
+    for (int yy = 0; yy <= (h / box_side); yy++) {
+        for (int xx = 0; xx <= (w / box_side); xx++) {
+            uint32 col = bg;
+            if ((xx + yy) % 2 == 0) {
+                col = fg;
+            }
+            graphics_fill_rect(px, px_width, px_height,
+                x + xx * box_side, y + yy * box_side,
+                box_side, box_side, col);
+        }
     }
 }
 

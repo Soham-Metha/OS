@@ -52,14 +52,9 @@ void graphics_test(Surface* s)
     graphics_fill(s->pixels, s->width, s->height,
         COL(0x11, 0x11, 0x11, 0xFF));
 
-    // Checker Pattern with box of side 100
-    for (int yy = 0; yy <= screen_h / 100; yy++) {
-        for (int xx = 0; xx <= screen_w / 100; xx++) {
-            if ((xx + yy) % 2 == 0)
-                graphics_fill_rect(s->pixels, s->width, s->height,
-                    xx * 100, yy * 100, 100, 100, COL(0x22, 0x22, 0xFF, 0xFF));
-        }
-    }
+    graphics_checker_pattern(s->pixels, s->width, s->height,
+        0, 0, s->width / 2, s->height / 2,
+        100, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     s->dirty = true;
 }
 
@@ -74,7 +69,7 @@ void kernel_init(void)
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
     shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+           COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
 
     graphics_test(&graphics_win->surface);
 }
