@@ -15,6 +15,7 @@
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
+uint32 gfx_lerp_color(uint32 a, uint32 b);
 void gfx_fill(uint32* px, int px_width, int px_height, uint32 col);
 bool gfx_put_pixel(uint32* px, int px_width, int px_height, int x, int y, uint32 col);
 void gfx_fill_circ(uint32* px, int px_width, int px_height, int x, int y, int r, uint32 col);
@@ -29,13 +30,45 @@ void gfx_pattern_shapes(uint32* px, int px_width, int px_height, int x, int y, i
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
 
+static inline uint8 lerpc(int16 c1, int16 c2, int16 a)
+{
+    return c1 + (c2 - c1) * a / 255;
+}
+
+uint32 gfx_lerp_color(uint32 a, uint32 b)
+{
+    enum {
+        COL_A,
+        COL_B,
+        COL_G,
+        COL_R,
+    };
+
+    typedef union Color {
+        uint32 as_u32;
+        uint8 as_[4];
+    } Color;
+
+    Color c1 = (Color) { .as_u32 = a };
+    Color c2 = (Color) { .as_u32 = b };
+    if (c2.as_[COL_A] == 0xFF)
+        return c2.as_u32;
+
+    c1.as_[COL_R] = lerpc(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A]);
+    c1.as_[COL_G] = lerpc(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A]);
+    c1.as_[COL_B] = lerpc(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A]);
+    c1.as_[COL_A] = lerpc(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A]);
+
+    return c1.as_u32;
+}
+
 bool gfx_put_pixel(uint32* px, int px_width, int px_height,
     int x, int y, uint32 col)
 {
     if (x < 0 || y < 0 || x >= px_width || y >= px_height)
         return false;
 
-    px[y * px_width + x] = col;
+    px[y * px_width + x] = gfx_lerp_color(px[y * px_width + x], col);
     return true;
 }
 
@@ -43,7 +76,7 @@ void gfx_fill(uint32* px, int px_width, int px_height,
     uint32 col)
 {
     for (int i = 0; i < px_width * px_height; i++)
-        px[i] = col;
+        px[i] = gfx_lerp_color(px[i], col);
 }
 
 void gfx_fill_rect(uint32* px, int px_width, int px_height,
@@ -68,7 +101,7 @@ void gfx_fill_rect(uint32* px, int px_width, int px_height,
     for (int yy = y; yy < y + h; yy++) {
         uint32* row = &px[yy * px_width + x];
         for (int xx = 0; xx < w; xx++)
-            row[xx] = col;
+            row[xx] = gfx_lerp_color(row[xx], col);
     }
 }
 
@@ -86,7 +119,7 @@ void gfx_fill_rowspan(uint32* px, int px_width, int px_height,
     uint32* row = px + y * px_width;
 
     for (int x = x1; x <= x2; x++)
-        row[x] = col;
+        row[x] = gfx_lerp_color(row[x], col);
 }
 
 void gfx_draw_line(uint32* px, int px_width, int px_height,
@@ -128,9 +161,12 @@ void gfx_draw_line(uint32* px, int px_width, int px_height,
 void gfx_fill_triangle(uint32* px, int px_width, int px_height,
     int x0, int y0, int x1, int y1, int x2, int y2, uint32 col)
 {
-    if (y1 < y0) swap_points(x0, y0, x1, y1);
-    if (y2 < y0) swap_points(x0, y0, x2, y2);
-    if (y2 < y1) swap_points(x1, y1, x2, y2);
+    if (y1 < y0)
+        swap_points(x0, y0, x1, y1);
+    if (y2 < y0)
+        swap_points(x0, y0, x2, y2);
+    if (y2 < y1)
+        swap_points(x1, y1, x2, y2);
 
     for (int i = 0; i < (y2 - y0); i++) {
         if (i > y1 - y0 || y1 == y0) {
@@ -206,8 +242,17 @@ void gfx_pattern_circles(uint32* px, int px_width, int px_height,
 void gfx_pattern_shapes(uint32* px, int px_width, int px_height,
     int x, int y, int w, int h, uint32 col)
 {
-    gfx_fill_triangle(px, px_width, px_height, 100, 100, 200, 150, 120, 250, COL(0x11,0x11,0xFF,0xFF));
-    gfx_fill_triangle(px, px_width, px_height, 300, 100, 250, 250, 400, 220, COL(0x11,0x11,0xFF,0xFF));
+    gfx_fill_triangle(px, px_width, px_height,
+        80, 80, 320, 80, 200, 420,
+        COL(0xFF, 0x00, 0xFF, 0xFF));
+
+    gfx_fill_triangle(px, px_width, px_height,
+        100, 100, 250, 200, 120, 350,
+        COL(0x00, 0x00, 0xFF, 0xAA));
+
+    gfx_fill_triangle(px, px_width, px_height,
+        120, 150, 300, 220, 180, 380,
+        COL(0xFF, 0xFF, 0x00, 0x88));
 
     gfx_draw_line(px, px_width, px_height, x, y, x + w, y, col);
     gfx_draw_line(px, px_width, px_height, x + w, y, x + w, y + h, col);
