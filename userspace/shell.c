@@ -50,19 +50,20 @@ void render_loop(void)
 void graphics_test(Surface* s)
 {
     GFX_Canvas canvas = GFX_CANVAS(s->pixels, s->width, s->height);
-    gfx_fill(canvas,
-        COL(0x11, 0x11, 0x11, 0xFF));
+    GFX_Canvas sub_c1 = gfx_init_subcanvas(canvas, canvas.px_w / 2, 0, canvas.px_w / 2, canvas.px_h / 2);
+    GFX_Canvas sub_c2 = gfx_init_subcanvas(canvas, 0, canvas.px_h / 2, canvas.px_w, canvas.px_h / 2);
+    GFX_Canvas sub_c3 = gfx_init_subcanvas(canvas, 0, 0, canvas.px_w / 2, canvas.px_h / 2);
+    gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
+    gfx_fill(sub_c1, COL(0xFF, 0, 0, 0x88));
+    gfx_fill(sub_c2, COL(0, 0xFF, 0, 0x88));
+    gfx_fill(sub_c3, COL(0, 0, 0xFF, 0x88));
 
-    gfx_pattern_checker(canvas,
-        s->width / 2, 0, s->width / 2, s->height / 2,
-        95, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
-    gfx_pattern_circles(canvas,
-        0, s->height / 2, s->width, s->height / 2,
-        12, 22, COL(0xFF, 0x22, 0x22, 0xFF));
-    gfx_pattern_shapes(canvas,
-        0, 0, s->width / 2, s->height / 2,
+    gfx_pattern_checker(sub_c1,
+        47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+    gfx_pattern_circles(sub_c2,
+        6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
+    gfx_pattern_shapes(sub_c3,
         COL(0x22, 0xFF, 0x22, 0xFF));
-
     s->dirty = true;
 }
 

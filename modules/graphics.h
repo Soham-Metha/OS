@@ -7,11 +7,12 @@ typedef struct gfx_canvas {
     int px_w;
     int px_h;
     int px_stride;
+    int act_w;
+    int act_h;
 } GFX_Canvas;
 
-#define GFX_CANVAS(p, w, h) \
-    (GFX_Canvas) { .px = p, .px_w = w, .px_h = h, .px_stride = w }
-
+#define GFX_SUBSAMPLE_FACTOR (2)
+#define GFX_CANVAS(p, w, h) gfx_init_canvas(p, w, h)
 #define swap_points(ax, ay, bx, by) \
     do {                            \
         int tx = ax;                \
@@ -32,6 +33,8 @@ typedef struct gfx_canvas {
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h);
+GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h);
 uint32 gfx_lerp_color(uint32 a, uint32 b);
 void gfx_fill(GFX_Canvas canvas, uint32 col);
 bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col);
@@ -39,9 +42,9 @@ void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
 void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col);
-void gfx_pattern_checker(GFX_Canvas canvas, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
-void gfx_pattern_circles(GFX_Canvas canvas, int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col);
-void gfx_pattern_shapes(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
+void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg);
+void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col);
+void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -82,9 +85,11 @@ GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h)
 {
     GFX_Canvas res = (GFX_Canvas) {
         .px        = px,
-        .px_w      = px_w,
-        .px_h      = px_h,
+        .px_w      = px_w / GFX_SUBSAMPLE_FACTOR,
+        .px_h      = px_h / GFX_SUBSAMPLE_FACTOR,
         .px_stride = px_w,
+        .act_w     = px_w,
+        .act_h     = px_h,
     };
 
     return res;
@@ -95,12 +100,13 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h)
     GFX_Canvas res = { 0 };
     int x1, y1, x2, y2;
     if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
-        res = (GFX_Canvas)
-        {
-            .px        = &canvas.px[y * canvas.px_stride + x],
+        res = (GFX_Canvas) {
+            .px        = &canvas.px[(int)(y * GFX_SUBSAMPLE_FACTOR * canvas.px_stride + x * GFX_SUBSAMPLE_FACTOR)],
             .px_w      = x2 - x1 + 1,
             .px_h      = y2 - y1 + 1,
             .px_stride = canvas.px_stride,
+            .act_w     = GFX_SUBSAMPLE_FACTOR * (x2 - x1 + 1),
+            .act_h     = GFX_SUBSAMPLE_FACTOR * (y2 - y1 + 1),
         };
     }
 
@@ -139,7 +145,17 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
     if (x < 0 || y < 0 || x >= canvas.px_w || y >= canvas.px_h)
         return false;
 
-    canvas.px[y * canvas.px_stride + x] = gfx_lerp_color(canvas.px[y * canvas.px_stride + x], col);
+    int phys_x = x * GFX_SUBSAMPLE_FACTOR;
+    int phys_y = y * GFX_SUBSAMPLE_FACTOR;
+
+    for (int dy = 0; dy < GFX_SUBSAMPLE_FACTOR; dy++) {
+        for (int dx = 0; dx < GFX_SUBSAMPLE_FACTOR; dx++) {
+
+            uint32* p = &canvas.px[(phys_y + dy) * canvas.px_stride + (phys_x + dx)];
+            *p        = gfx_lerp_color(*p, col);
+        }
+    }
+
     return true;
 }
 
@@ -152,12 +168,12 @@ void gfx_fill(GFX_Canvas canvas, uint32 col)
     }
 }
 
-void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
+inline void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
 {
     gfx_fill(gfx_init_subcanvas(canvas, x, y, w, h), col);
 }
 
-void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
+inline void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
 {
     gfx_fill(gfx_init_subcanvas(canvas, x1, y, x2 - x1 + 1, 1), col);
 }
@@ -199,9 +215,12 @@ void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col
 
 void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col)
 {
-    if (y1 < y0) swap_points(x0, y0, x1, y1);
-    if (y2 < y0) swap_points(x0, y0, x2, y2);
-    if (y2 < y1) swap_points(x1, y1, x2, y2);
+    if (y1 < y0)
+        swap_points(x0, y0, x1, y1);
+    if (y2 < y0)
+        swap_points(x0, y0, x2, y2);
+    if (y2 < y1)
+        swap_points(x1, y1, x2, y2);
 
     for (int i = 0; i < (y2 - y0); i++) {
         if (i > y1 - y0 || y1 == y0) {
@@ -239,10 +258,10 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
     }
 }
 
-void gfx_pattern_checker(GFX_Canvas canvas, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg)
+void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
-    int row_cnt = h / box_side - 1;
-    int col_cnt = w / box_side - 1;
+    int row_cnt = canvas.px_h / box_side - 1;
+    int col_cnt = canvas.px_w / box_side - 1;
     for (int yy = 0; yy <= row_cnt; yy++) {
         for (int xx = 0; xx <= col_cnt; xx++) {
             uint32 col = bg;
@@ -250,53 +269,59 @@ void gfx_pattern_checker(GFX_Canvas canvas, int x, int y, int w, int h, int box_
                 col = fg;
             }
             gfx_fill_rect(canvas,
-                x + xx * box_side, y + yy * box_side,
+                xx * box_side, yy * box_side,
                 box_side, box_side, col);
         }
     }
 }
 
-void gfx_pattern_circles(GFX_Canvas canvas, int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col)
+void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col)
 {
-    int cell_w = w / col_cnt;
-    int cell_h = h / row_cnt;
+    int cell_w = canvas.px_w / col_cnt;
+    int cell_h = canvas.px_h / row_cnt;
     for (int yy = 0; yy <= row_cnt; yy++) {
         for (int xx = 0; xx <= col_cnt; xx++) {
             int r = (cell_w / 2 > cell_h / 2) ? cell_h / 2 : cell_w / 2;
             r     = lerp(r / 2, r, ((float)xx / col_cnt + (float)yy / row_cnt) / 2);
             gfx_fill_circ(canvas,
-                x + xx * cell_w + r, y + yy * cell_h + r,
+                xx * cell_w + r, yy * cell_h + r,
                 r, col);
         }
     }
 }
 
-void gfx_pattern_shapes(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
+void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
 {
     gfx_fill_triangle(canvas,
-        80, 80, 320, 80, 200, 420,
+        80 / GFX_SUBSAMPLE_FACTOR, 80 / GFX_SUBSAMPLE_FACTOR,
+        320 / GFX_SUBSAMPLE_FACTOR, 80 / GFX_SUBSAMPLE_FACTOR,
+        200 / GFX_SUBSAMPLE_FACTOR, 420 / GFX_SUBSAMPLE_FACTOR,
         COL(0xFF, 0x00, 0xFF, 0xFF));
 
     gfx_fill_triangle(canvas,
-        100, 100, 250, 200, 120, 350,
+        100 / GFX_SUBSAMPLE_FACTOR, 100 / GFX_SUBSAMPLE_FACTOR,
+        250 / GFX_SUBSAMPLE_FACTOR, 200 / GFX_SUBSAMPLE_FACTOR,
+        120 / GFX_SUBSAMPLE_FACTOR, 350 / GFX_SUBSAMPLE_FACTOR,
         COL(0x00, 0x00, 0xFF, 0xAA));
 
     gfx_fill_triangle(canvas,
-        120, 150, 300, 220, 180, 380,
+        120 / GFX_SUBSAMPLE_FACTOR, 150 / GFX_SUBSAMPLE_FACTOR,
+        300 / GFX_SUBSAMPLE_FACTOR, 220 / GFX_SUBSAMPLE_FACTOR,
+        180 / GFX_SUBSAMPLE_FACTOR, 380 / GFX_SUBSAMPLE_FACTOR,
         COL(0xFF, 0xFF, 0x00, 0x88));
 
-    gfx_draw_line(canvas, x, y, x + w, y, col);
-    gfx_draw_line(canvas, x + w, y, x + w, y + h, col);
-    gfx_draw_line(canvas, x + w, y + h, x, y + h, col);
-    gfx_draw_line(canvas, x, y + h, x, y, col);
+    gfx_draw_line(canvas, 0, 0, canvas.px_w - 1, 0, col);
+    gfx_draw_line(canvas, canvas.px_w - 1, 0, canvas.px_w - 1, canvas.px_h - 1, col);
+    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, canvas.px_h - 1, col);
+    gfx_draw_line(canvas, 0, canvas.px_h - 1, 0, 0, col);
 
-    gfx_draw_line(canvas, x, y, x + w / 4, y + h, col);
-    gfx_draw_line(canvas, x + w, y, x + 3 * w / 4, y + h, col);
+    gfx_draw_line(canvas, 0, 0, canvas.px_w / 4, canvas.px_h - 1, col);
+    gfx_draw_line(canvas, canvas.px_w - 1, 0, 3 * canvas.px_w / 4, canvas.px_h - 1, col);
 
-    gfx_draw_line(canvas, x + w, y + h, x, y, col);
-    gfx_draw_line(canvas, x, y + h, x + w, y, col);
+    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, 0, col);
+    gfx_draw_line(canvas, 0, canvas.px_h - 1, canvas.px_w - 1, 0, col);
 
-    gfx_draw_line(canvas, x + w / 2, y + h / 3, x + w / 2, y + h / 3, col);
+    gfx_draw_line(canvas, canvas.px_w / 2, canvas.px_h / 3, canvas.px_w / 2, canvas.px_h / 3, col);
 }
 
 #endif
