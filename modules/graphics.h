@@ -146,13 +146,18 @@ uint32 gfx_lerp_color(uint32 a, uint32 b, int mode)
     return c1.as_u32;
 }
 
+static inline int round(float x)
+{
+    return (int)(x + (x >= 0 ? 0.5f : -0.5f));
+}
+
 bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
 {
     if (x < 0 || y < 0 || x >= canvas.px_w || y >= canvas.px_h)
         return false;
 
-    int phys_x = x * canvas.scale;
-    int phys_y = y * canvas.scale;
+    int phys_x = round(x * canvas.scale);
+    int phys_y = round(y * canvas.scale);
 
     for (int dy = 0; dy < canvas.scale; dy++) {
         for (int dx = 0; dx < canvas.scale; dx++) {
