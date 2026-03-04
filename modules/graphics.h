@@ -6,9 +6,11 @@ typedef struct gfx_canvas {
     uint32* px;
     int px_w;
     int px_h;
+    int px_stride;
 } GFX_Canvas;
 
-#define GFX_CANVAS(p, w, h) (GFX_Canvas) { .px = p, .px_w = w, .px_h = h }
+#define GFX_CANVAS(p, w, h) \
+    (GFX_Canvas) { .px = p, .px_w = w, .px_h = h, .px_stride = w }
 
 #define swap_points(ax, ay, bx, by) \
     do {                            \
@@ -18,6 +20,13 @@ typedef struct gfx_canvas {
         int ty = ay;                \
         ay     = by;                \
         by     = ty;                \
+    } while (0);
+
+#define swap(a, b) \
+    do {           \
+        int t = a; \
+        a     = b; \
+        b     = t; \
     } while (0);
 
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
@@ -75,7 +84,7 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
     if (x < 0 || y < 0 || x >= canvas.px_w || y >= canvas.px_h)
         return false;
 
-    canvas.px[y * canvas.px_w + x] = gfx_lerp_color(canvas.px[y * canvas.px_w + x], col);
+    canvas.px[y * canvas.px_stride + x] = gfx_lerp_color(canvas.px[y * canvas.px_stride + x], col);
     return true;
 }
 
@@ -83,6 +92,46 @@ void gfx_fill(GFX_Canvas canvas, uint32 col)
 {
     for (int i = 0; i < canvas.px_w * canvas.px_h; i++)
         canvas.px[i] = gfx_lerp_color(canvas.px[i], col);
+}
+
+bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int* y1, int* x2, int* y2)
+{
+    *x1 = x;
+    *y1 = y;
+    *x2 = *x1 + w;
+    *y2 = *y1 + h;
+
+    if (w > 0) {
+        *x2 -= 1;
+    } else if (w < 0) {
+        *x2 += 1;
+    }
+    if (*x2 < *x1)
+        swap(*x1, *x2);
+
+    if (h > 0) {
+        *y2 -= 1;
+    } else if (h < 0) {
+        *y2 += 1;
+    }
+    if (*y2 < *y1)
+        swap(*y1, *y2);
+
+    if (*x1 >= px_w || *x2 < 0)
+        return false;
+    if (*y1 >= px_h || *y2 < 0)
+        return false;
+
+    if (*x1 < 0)
+        *x1 = 0;
+    if (*y1 < 0)
+        *y1 = 0;
+    if (*x2 >= px_w)
+        *x2 = px_w - 1;
+    if (*y2 >= px_h)
+        *y2 = px_h - 1;
+
+    return true;
 }
 
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
@@ -102,12 +151,12 @@ void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
 
     if (w <= 0 || h <= 0)
         return;
-
-    for (int yy = y; yy < y + h; yy++) {
-        uint32* row = &canvas.px[yy * canvas.px_w + x];
-        for (int xx = 0; xx < w; xx++)
-            row[xx] = gfx_lerp_color(row[xx], col);
-    }
+    int x1, y1, x2, y2;
+    if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2))
+        for (int yy = y1; yy < y2; yy++) {
+            for (int xx = x1; xx < x2; xx++)
+                canvas.px[yy * canvas.px_stride + xx] = gfx_lerp_color(canvas.px[yy * canvas.px_stride + xx], col);
+        }
 }
 
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
@@ -120,7 +169,7 @@ void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
     if (x2 >= canvas.px_w)
         x2 = canvas.px_w - 1;
 
-    uint32* row = canvas.px + y * canvas.px_w;
+    uint32* row = canvas.px + y * canvas.px_stride;
 
     for (int x = x1; x <= x2; x++)
         row[x] = gfx_lerp_color(row[x], col);
