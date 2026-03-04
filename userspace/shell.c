@@ -54,7 +54,10 @@ void graphics_test(Surface* s)
 
     graphics_checker_pattern(s->pixels, s->width, s->height,
         0, 0, s->width / 2, s->height / 2,
-        100, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+        95, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+    graphics_circle_pattern(s->pixels, s->width, s->height,
+        s->width / 2, 0, s->width / 2, s->height,
+        47, COL(0x22, 0x22, 0xFF, 0xFF));
     s->dirty = true;
 }
 

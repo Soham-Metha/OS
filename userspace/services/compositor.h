@@ -188,11 +188,8 @@ void surface_put_pixel(Surface* s, int x, int y, uint32 color)
     if (!s || !s->pixels)
         return;
 
-    if (x < 0 || y < 0 || x >= s->width || y >= s->height)
-        return;
-
-    s->pixels[y * s->width + x] = color;
-    s->dirty                    = true;
+    if (graphics_put_pixel(s->pixels, s->width, s->height, x, y, color))
+        s->dirty = true;
 }
 
 void surface_clear(Surface* s, uint32 color)
