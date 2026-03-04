@@ -53,11 +53,15 @@ void graphics_test(Surface* s)
         COL(0x11, 0x11, 0x11, 0xFF));
 
     gfx_pattern_checker(s->pixels, s->width, s->height,
-        0, 0, s->width / 2, s->height / 2,
-        100, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+        s->width / 2, 0, s->width / 2, s->height / 2,
+        95, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     gfx_pattern_circles(s->pixels, s->width, s->height,
         0, s->height / 2, s->width, s->height / 2,
-        12, 22, COL(0x22, 0x22, 0xFF, 0xFF));
+        12, 22, COL(0xFF, 0x22, 0x22, 0xFF));
+    gfx_pattern_lines(s->pixels, s->width, s->height,
+        0, 0, s->width / 2, s->height / 2,
+        COL(0x22, 0xFF, 0x22, 0xFF));
+
     s->dirty = true;
 }
 
@@ -72,7 +76,7 @@ void kernel_init(void)
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
     shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
-           COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
 
     graphics_test(&graphics_win->surface);
 }

@@ -6,12 +6,13 @@
 
 void gfx_fill(uint32* px, int px_width, int px_height, uint32 col);
 bool gfx_put_pixel(uint32* px, int px_width, int px_height, int x, int y, uint32 col);
-void gfx_fill_rect(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
 void gfx_fill_circ(uint32* px, int px_width, int px_height, int x, int y, int r, uint32 col);
+void gfx_fill_rect(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
+void gfx_draw_line(uint32* px, int px_width, int px_height, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_fill_rowspan(uint32* px, int px_width, int px_height, int y, int x1, int x2, uint32 col);
-
 void gfx_pattern_checker(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
 void gfx_pattern_circles(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col);
+void gfx_pattern_lines(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -77,7 +78,44 @@ void gfx_fill_rowspan(uint32* px, int px_width, int px_height,
         row[x] = col;
 }
 
-void gfx_fill_circ(uint32* px, int px_width, int px_height, int xc, int yc, int r, uint32 col)
+void gfx_draw_line(uint32* px, int px_width, int px_height,
+    int x1, int y1, int x2, int y2, uint32 col)
+{     // See: bresenham's algorithm for line drawing
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    if (dx < 0)
+        dx = -dx;
+    if (dy > 0)
+        dy = -dy;
+
+    int sx = (x1 < x2) ? 1 : -1;
+    int sy = (y1 < y2) ? 1 : -1;
+
+    int er = dx + dy;
+
+    while (1) {
+        gfx_put_pixel(px, px_width, px_height, x1, y1, col);
+
+        int e2 = 2 * er;
+
+        if (e2 >= dy) {
+            if (x1 == x2)
+                break;
+            er += dy;
+            x1 += sx;
+        }
+
+        if (e2 <= dx) {
+            if (y1 == y2)
+                break;
+            er += dx;
+            y1 += sy;
+        }
+    }
+}
+
+void gfx_fill_circ(uint32* px, int px_width, int px_height,
+    int xc, int yc, int r, uint32 col)
 {     // See: bresenham's algorithm for circle drawing
     int x = 0, y = r;
     int d = 3 - 2 * r;
@@ -130,6 +168,23 @@ void gfx_pattern_circles(uint32* px, int px_width, int px_height,
                 r, col);
         }
     }
+}
+
+void gfx_pattern_lines(uint32* px, int px_width, int px_height,
+    int x, int y, int w, int h, uint32 col)
+{
+    gfx_draw_line(px, px_width, px_height, x, y, x + w, y, col);
+    gfx_draw_line(px, px_width, px_height, x + w, y, x + w, y + h, col);
+    gfx_draw_line(px, px_width, px_height, x + w, y + h, x, y + h, col);
+    gfx_draw_line(px, px_width, px_height, x, y + h, x, y, col);
+
+    gfx_draw_line(px, px_width, px_height, x, y, x + w / 4, y + h, col);
+    gfx_draw_line(px, px_width, px_height, x + w, y, x + 3 * w / 4, y + h, col);
+
+    gfx_draw_line(px, px_width, px_height, x + w, y + h, x, y, col);
+    gfx_draw_line(px, px_width, px_height, x, y + h, x + w, y, col);
+
+    gfx_draw_line(px, px_width, px_height, x + w / 2, y + h / 3, x + w / 2, y + h / 3, col);
 }
 
 #endif
