@@ -7,12 +7,10 @@ typedef struct gfx_canvas {
     int px_w;
     int px_h;
     int px_stride;
-    int act_w;
-    int act_h;
+    float scale;
 } GFX_Canvas;
 
-#define GFX_SUBSAMPLE_FACTOR (2)
-#define GFX_CANVAS(p, w, h) gfx_init_canvas(p, w, h)
+#define GFX_CANVAS(p, w, h, s) gfx_init_canvas(p, w, h, s)
 #define swap_points(ax, ay, bx, by) \
     do {                            \
         int tx = ax;                \
@@ -33,9 +31,9 @@ typedef struct gfx_canvas {
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
-GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h);
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h, float scale);
 GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h);
-uint32 gfx_lerp_color(uint32 a, uint32 b);
+uint32 gfx_lerp_color(uint32 a, uint32 b, int mode);
 void gfx_fill(GFX_Canvas canvas, uint32 col);
 bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col);
 void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
@@ -50,7 +48,7 @@ void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col);
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
 
-static inline uint8 lerpc(int16 c1, int16 c2, int16 a)
+static inline uint8 gfx_blend_color(int16 c1, int16 c2, int16 a)
 {
     return c1 + (c2 - c1) * a / 255;
 }
@@ -81,15 +79,14 @@ bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int*
     return true;
 }
 
-GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h)
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h, float scale)
 {
     GFX_Canvas res = (GFX_Canvas) {
         .px        = px,
-        .px_w      = px_w / GFX_SUBSAMPLE_FACTOR,
-        .px_h      = px_h / GFX_SUBSAMPLE_FACTOR,
+        .px_w      = px_w / scale,
+        .px_h      = px_h / scale,
         .px_stride = px_w,
-        .act_w     = px_w,
-        .act_h     = px_h,
+        .scale     = scale,
     };
 
     return res;
@@ -100,20 +97,22 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h)
     GFX_Canvas res = { 0 };
     int x1, y1, x2, y2;
     if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
-        res = (GFX_Canvas) {
-            .px        = &canvas.px[(int)(y * GFX_SUBSAMPLE_FACTOR * canvas.px_stride + x * GFX_SUBSAMPLE_FACTOR)],
-            .px_w      = x2 - x1 + 1,
-            .px_h      = y2 - y1 + 1,
-            .px_stride = canvas.px_stride,
-            .act_w     = GFX_SUBSAMPLE_FACTOR * (x2 - x1 + 1),
-            .act_h     = GFX_SUBSAMPLE_FACTOR * (y2 - y1 + 1),
+        int phys_x = (int)(x * canvas.scale);
+        int phys_y = (int)(y * canvas.scale);
+
+        res        = (GFX_Canvas) {
+                   .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
+                   .px_w      = x2 - x1 + 1,
+                   .px_h      = y2 - y1 + 1,
+                   .px_stride = canvas.px_stride,
+                   .scale     = canvas.scale,
         };
     }
 
     return res;
 }
 
-uint32 gfx_lerp_color(uint32 a, uint32 b)
+uint32 gfx_lerp_color(uint32 a, uint32 b, int mode)
 {
     enum {
         COL_A,
@@ -132,10 +131,17 @@ uint32 gfx_lerp_color(uint32 a, uint32 b)
     if (c2.as_[COL_A] == 0xFF)
         return c2.as_u32;
 
-    c1.as_[COL_R] = lerpc(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A]);
-    c1.as_[COL_G] = lerpc(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A]);
-    c1.as_[COL_B] = lerpc(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A]);
-    // c1.as_[COL_A] = lerpc(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A]);
+    if (mode == 0) {
+        c1.as_[COL_R] = gfx_blend_color(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A]);
+        c1.as_[COL_G] = gfx_blend_color(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A]);
+        c1.as_[COL_B] = gfx_blend_color(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A]);
+        // c1.as_[COL_A] = gfx_blend_color(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A]);
+    } else {
+        c1.as_[COL_R] = gfx_blend_color(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A] / 4);
+        c1.as_[COL_G] = gfx_blend_color(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A] / 4);
+        c1.as_[COL_B] = gfx_blend_color(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A] / 4);
+        // c1.as_[COL_A] = gfx_blend_color(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A] / 4);
+    }
 
     return c1.as_u32;
 }
@@ -145,14 +151,14 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
     if (x < 0 || y < 0 || x >= canvas.px_w || y >= canvas.px_h)
         return false;
 
-    int phys_x = x * GFX_SUBSAMPLE_FACTOR;
-    int phys_y = y * GFX_SUBSAMPLE_FACTOR;
+    int phys_x = x * canvas.scale;
+    int phys_y = y * canvas.scale;
 
-    for (int dy = 0; dy < GFX_SUBSAMPLE_FACTOR; dy++) {
-        for (int dx = 0; dx < GFX_SUBSAMPLE_FACTOR; dx++) {
+    for (int dy = 0; dy < canvas.scale; dy++) {
+        for (int dx = 0; dx < canvas.scale; dx++) {
 
             uint32* p = &canvas.px[(phys_y + dy) * canvas.px_stride + (phys_x + dx)];
-            *p        = gfx_lerp_color(*p, col);
+            *p        = gfx_lerp_color(*p, col, canvas.scale < 1);
         }
     }
 
@@ -293,21 +299,21 @@ void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col
 void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
 {
     gfx_fill_triangle(canvas,
-        80 / GFX_SUBSAMPLE_FACTOR, 80 / GFX_SUBSAMPLE_FACTOR,
-        320 / GFX_SUBSAMPLE_FACTOR, 80 / GFX_SUBSAMPLE_FACTOR,
-        200 / GFX_SUBSAMPLE_FACTOR, 420 / GFX_SUBSAMPLE_FACTOR,
+        80 / canvas.scale, 80 / canvas.scale,
+        320 / canvas.scale, 80 / canvas.scale,
+        200 / canvas.scale, 420 / canvas.scale,
         COL(0xFF, 0x00, 0xFF, 0xFF));
 
     gfx_fill_triangle(canvas,
-        100 / GFX_SUBSAMPLE_FACTOR, 100 / GFX_SUBSAMPLE_FACTOR,
-        250 / GFX_SUBSAMPLE_FACTOR, 200 / GFX_SUBSAMPLE_FACTOR,
-        120 / GFX_SUBSAMPLE_FACTOR, 350 / GFX_SUBSAMPLE_FACTOR,
+        100 / canvas.scale, 100 / canvas.scale,
+        250 / canvas.scale, 200 / canvas.scale,
+        120 / canvas.scale, 350 / canvas.scale,
         COL(0x00, 0x00, 0xFF, 0xAA));
 
     gfx_fill_triangle(canvas,
-        120 / GFX_SUBSAMPLE_FACTOR, 150 / GFX_SUBSAMPLE_FACTOR,
-        300 / GFX_SUBSAMPLE_FACTOR, 220 / GFX_SUBSAMPLE_FACTOR,
-        180 / GFX_SUBSAMPLE_FACTOR, 380 / GFX_SUBSAMPLE_FACTOR,
+        120 / canvas.scale, 150 / canvas.scale,
+        300 / canvas.scale, 220 / canvas.scale,
+        180 / canvas.scale, 380 / canvas.scale,
         COL(0xFF, 0xFF, 0x00, 0x88));
 
     gfx_draw_line(canvas, 0, 0, canvas.px_w - 1, 0, col);

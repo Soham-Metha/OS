@@ -49,7 +49,7 @@ void render_loop(void)
 
 void graphics_test(Surface* s)
 {
-    GFX_Canvas canvas = GFX_CANVAS(s->pixels, s->width, s->height);
+    GFX_Canvas canvas = GFX_CANVAS(s->pixels, s->width, s->height, 0.5);
     GFX_Canvas sub_c1 = gfx_init_subcanvas(canvas, canvas.px_w / 2, 0, canvas.px_w / 2, canvas.px_h / 2);
     GFX_Canvas sub_c2 = gfx_init_subcanvas(canvas, 0, canvas.px_h / 2, canvas.px_w, canvas.px_h / 2);
     GFX_Canvas sub_c3 = gfx_init_subcanvas(canvas, 0, 0, canvas.px_w / 2, canvas.px_h / 2);
