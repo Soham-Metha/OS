@@ -2,6 +2,17 @@
 #define GRAPHICS_1
 #include <common/types.h>
 
+#define swap_points(ax, ay, bx, by) \
+    do {                            \
+        int tx = ax;                \
+        ax     = bx;                \
+        bx     = tx;                \
+        int ty = ay;                \
+        ay     = by;                \
+        by     = ty;                \
+    } while (0);
+
+#define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
 void gfx_fill(uint32* px, int px_width, int px_height, uint32 col);
@@ -12,7 +23,7 @@ void gfx_draw_line(uint32* px, int px_width, int px_height, int x1, int y1, int 
 void gfx_fill_rowspan(uint32* px, int px_width, int px_height, int y, int x1, int x2, uint32 col);
 void gfx_pattern_checker(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int box_side, uint32 fg, uint32 bg);
 void gfx_pattern_circles(uint32* px, int px_width, int px_height, int x, int y, int w, int h, int row_cnt, int col_cnt, uint32 col);
-void gfx_pattern_lines(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
+void gfx_pattern_shapes(uint32* px, int px_width, int px_height, int x, int y, int w, int h, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -114,6 +125,28 @@ void gfx_draw_line(uint32* px, int px_width, int px_height,
     }
 }
 
+void gfx_fill_triangle(uint32* px, int px_width, int px_height,
+    int x0, int y0, int x1, int y1, int x2, int y2, uint32 col)
+{
+    if (y1 < y0) swap_points(x0, y0, x1, y1);
+    if (y2 < y0) swap_points(x0, y0, x2, y2);
+    if (y2 < y1) swap_points(x1, y1, x2, y2);
+
+    for (int i = 0; i < (y2 - y0); i++) {
+        if (i > y1 - y0 || y1 == y0) {
+            gfx_fill_rowspan(px, px_width, px_height, y0 + i,
+                lerp(x0, x2, i / (y2 - y0)),
+                lerp(x1, x2, (i - (y1 - y0)) / (y2 - y1)),
+                col);
+        } else {
+            gfx_fill_rowspan(px, px_width, px_height, y0 + i,
+                lerp(x0, x2, i / (y2 - y0)),
+                lerp(x0, x1, i / (y1 - y0)),
+                col);
+        }
+    }
+}
+
 void gfx_fill_circ(uint32* px, int px_width, int px_height,
     int xc, int yc, int r, uint32 col)
 {     // See: bresenham's algorithm for circle drawing
@@ -162,7 +195,7 @@ void gfx_pattern_circles(uint32* px, int px_width, int px_height,
     for (int yy = 0; yy <= row_cnt; yy++) {
         for (int xx = 0; xx <= col_cnt; xx++) {
             int r = (cell_w / 2 > cell_h / 2) ? cell_h / 2 : cell_w / 2;
-            r     = r * 0.5f + (r - r * 0.5f) * (((float)xx / col_cnt + (float)yy / row_cnt) / 2);     // lerp, r = r/2 -> r
+            r     = lerp(r / 2, r, ((float)xx / col_cnt + (float)yy / row_cnt) / 2);
             gfx_fill_circ(px, px_width, px_height,
                 x + xx * cell_w + r, y + yy * cell_h + r,
                 r, col);
@@ -170,9 +203,12 @@ void gfx_pattern_circles(uint32* px, int px_width, int px_height,
     }
 }
 
-void gfx_pattern_lines(uint32* px, int px_width, int px_height,
+void gfx_pattern_shapes(uint32* px, int px_width, int px_height,
     int x, int y, int w, int h, uint32 col)
 {
+    gfx_fill_triangle(px, px_width, px_height, 100, 100, 200, 150, 120, 250, COL(0x11,0x11,0xFF,0xFF));
+    gfx_fill_triangle(px, px_width, px_height, 300, 100, 250, 250, 400, 220, COL(0x11,0x11,0xFF,0xFF));
+
     gfx_draw_line(px, px_width, px_height, x, y, x + w, y, col);
     gfx_draw_line(px, px_width, px_height, x + w, y, x + w, y + h, col);
     gfx_draw_line(px, px_width, px_height, x + w, y + h, x, y + h, col);

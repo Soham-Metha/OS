@@ -58,7 +58,7 @@ void graphics_test(Surface* s)
     gfx_pattern_circles(s->pixels, s->width, s->height,
         0, s->height / 2, s->width, s->height / 2,
         12, 22, COL(0xFF, 0x22, 0x22, 0xFF));
-    gfx_pattern_lines(s->pixels, s->width, s->height,
+    gfx_pattern_shapes(s->pixels, s->width, s->height,
         0, 0, s->width / 2, s->height / 2,
         COL(0x22, 0xFF, 0x22, 0xFF));
 
