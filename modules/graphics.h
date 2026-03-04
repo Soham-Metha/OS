@@ -35,7 +35,7 @@ void gfx_pattern_circles(GFX_Canvas canvas, int x, int y, int w, int h, int row_
 void gfx_pattern_shapes(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
 
 #endif
-#ifndef IMPL_GRAPHICS_1
+#ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
 
 static inline uint8 lerpc(int16 c1, int16 c2, int16 a)
@@ -79,8 +79,7 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
     return true;
 }
 
-void gfx_fill(GFX_Canvas canvas,
-    uint32 col)
+void gfx_fill(GFX_Canvas canvas, uint32 col)
 {
     for (int i = 0; i < canvas.px_w * canvas.px_h; i++)
         canvas.px[i] = gfx_lerp_color(canvas.px[i], col);
