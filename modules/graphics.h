@@ -52,6 +52,61 @@ static inline uint8 lerpc(int16 c1, int16 c2, int16 a)
     return c1 + (c2 - c1) * a / 255;
 }
 
+bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int* y1, int* x2, int* y2)
+{
+    *x1 = x;
+    *y1 = y;
+    *x2 = *x1 + w;
+    *y2 = *y1 + h;
+
+    if      (w > 0)  { *x2 -= 1; }
+    else if (w < 0)  { *x2 += 1; }
+    if  (*x2 < *x1)  swap(*x1, *x2);
+
+    if      (h > 0)  { *y2 -= 1; }
+    else if (h < 0)  { *y2 += 1; }
+    if  (*y2 < *y1)  swap(*y1, *y2);
+
+    if (*x1 >= px_w || *x2 < 0) return false;
+    if (*y1 >= px_h || *y2 < 0) return false;
+
+    if (*x1 < 0)     *x1 = 0;
+    if (*y1 < 0)     *y1 = 0;
+    if (*x2 >= px_w) *x2 = px_w - 1;
+    if (*y2 >= px_h) *y2 = px_h - 1;
+
+    return true;
+}
+
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h)
+{
+    GFX_Canvas res = (GFX_Canvas) {
+        .px        = px,
+        .px_w      = px_w,
+        .px_h      = px_h,
+        .px_stride = px_w,
+    };
+
+    return res;
+}
+
+GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h)
+{
+    GFX_Canvas res = { 0 };
+    int x1, y1, x2, y2;
+    if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
+        res = (GFX_Canvas)
+        {
+            .px        = &canvas.px[y * canvas.px_stride + x],
+            .px_w      = x2 - x1 + 1,
+            .px_h      = y2 - y1 + 1,
+            .px_stride = canvas.px_stride,
+        };
+    }
+
+    return res;
+}
+
 uint32 gfx_lerp_color(uint32 a, uint32 b)
 {
     enum {
@@ -90,89 +145,21 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
 
 void gfx_fill(GFX_Canvas canvas, uint32 col)
 {
-    for (int i = 0; i < canvas.px_w * canvas.px_h; i++)
-        canvas.px[i] = gfx_lerp_color(canvas.px[i], col);
-}
-
-bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int* y1, int* x2, int* y2)
-{
-    *x1 = x;
-    *y1 = y;
-    *x2 = *x1 + w;
-    *y2 = *y1 + h;
-
-    if (w > 0) {
-        *x2 -= 1;
-    } else if (w < 0) {
-        *x2 += 1;
+    for (int y = 0; y < canvas.px_h; y++) {
+        for (int x = 0; x < canvas.px_w; x++) {
+            gfx_put_pixel(canvas, x, y, col);
+        }
     }
-    if (*x2 < *x1)
-        swap(*x1, *x2);
-
-    if (h > 0) {
-        *y2 -= 1;
-    } else if (h < 0) {
-        *y2 += 1;
-    }
-    if (*y2 < *y1)
-        swap(*y1, *y2);
-
-    if (*x1 >= px_w || *x2 < 0)
-        return false;
-    if (*y1 >= px_h || *y2 < 0)
-        return false;
-
-    if (*x1 < 0)
-        *x1 = 0;
-    if (*y1 < 0)
-        *y1 = 0;
-    if (*x2 >= px_w)
-        *x2 = px_w - 1;
-    if (*y2 >= px_h)
-        *y2 = px_h - 1;
-
-    return true;
 }
 
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col)
 {
-    if (x < 0) {
-        x = 0;
-    }
-
-    if (y < 0) {
-        y = 0;
-    }
-
-    if (x + w > canvas.px_w)
-        w = canvas.px_w - x;
-    if (y + h > canvas.px_h)
-        h = canvas.px_h - y;
-
-    if (w <= 0 || h <= 0)
-        return;
-    int x1, y1, x2, y2;
-    if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2))
-        for (int yy = y1; yy < y2; yy++) {
-            for (int xx = x1; xx < x2; xx++)
-                canvas.px[yy * canvas.px_stride + xx] = gfx_lerp_color(canvas.px[yy * canvas.px_stride + xx], col);
-        }
+    gfx_fill(gfx_init_subcanvas(canvas, x, y, w, h), col);
 }
 
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
 {
-    if (y < 0 || y >= canvas.px_h)
-        return;
-
-    if (x1 < 0)
-        x1 = 0;
-    if (x2 >= canvas.px_w)
-        x2 = canvas.px_w - 1;
-
-    uint32* row = canvas.px + y * canvas.px_stride;
-
-    for (int x = x1; x <= x2; x++)
-        row[x] = gfx_lerp_color(row[x], col);
+    gfx_fill(gfx_init_subcanvas(canvas, x1, y, x2 - x1 + 1, 1), col);
 }
 
 void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col)
@@ -212,12 +199,9 @@ void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col
 
 void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col)
 {
-    if (y1 < y0)
-        swap_points(x0, y0, x1, y1);
-    if (y2 < y0)
-        swap_points(x0, y0, x2, y2);
-    if (y2 < y1)
-        swap_points(x1, y1, x2, y2);
+    if (y1 < y0) swap_points(x0, y0, x1, y1);
+    if (y2 < y0) swap_points(x0, y0, x2, y2);
+    if (y2 < y1) swap_points(x1, y1, x2, y2);
 
     for (int i = 0; i < (y2 - y0); i++) {
         if (i > y1 - y0 || y1 == y0) {
