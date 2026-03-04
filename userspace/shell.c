@@ -49,16 +49,17 @@ void render_loop(void)
 
 void graphics_test(Surface* s)
 {
-    gfx_fill(s->pixels, s->width, s->height,
+    GFX_Canvas canvas = GFX_CANVAS(s->pixels, s->width, s->height);
+    gfx_fill(canvas,
         COL(0x11, 0x11, 0x11, 0xFF));
 
-    gfx_pattern_checker(s->pixels, s->width, s->height,
+    gfx_pattern_checker(canvas,
         s->width / 2, 0, s->width / 2, s->height / 2,
         95, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
-    gfx_pattern_circles(s->pixels, s->width, s->height,
+    gfx_pattern_circles(canvas,
         0, s->height / 2, s->width, s->height / 2,
         12, 22, COL(0xFF, 0x22, 0x22, 0xFF));
-    gfx_pattern_shapes(s->pixels, s->width, s->height,
+    gfx_pattern_shapes(canvas,
         0, 0, s->width / 2, s->height / 2,
         COL(0x22, 0xFF, 0x22, 0xFF));
 
@@ -76,7 +77,7 @@ void kernel_init(void)
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
     shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+           COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
 
     graphics_test(&graphics_win->surface);
 }
@@ -100,9 +101,12 @@ void fs_init(void)
     ResultPtr d     = inode_create(fs, &dir_nm, DIR);
     ResultPtr f     = inode_create(fs, &fl_nm, FILE);
 
-    if RESULT_ERR (r) printf("\nError when formatting disk : %d", r.error);
-    if RESULT_ERR (d) printf("\nError when creating dir    : %d", d.error);
-    if RESULT_ERR (f) printf("\nError when creating file   : %d", f.error);
+    if RESULT_ERR (r)
+        printf("\nError when formatting disk : %d", r.error);
+    if RESULT_ERR (d)
+        printf("\nError when creating dir    : %d", d.error);
+    if RESULT_ERR (f)
+        printf("\nError when creating file   : %d", f.error);
 
     fs_show(fs, true);
 }
