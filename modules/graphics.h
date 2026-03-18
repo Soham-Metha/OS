@@ -40,9 +40,6 @@ void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
 void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col);
-void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg);
-void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col);
-void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -267,72 +264,6 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
         }
         x += 1;
     }
-}
-
-void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
-{
-    int row_cnt = canvas.px_h / box_side - 1;
-    int col_cnt = canvas.px_w / box_side - 1;
-    for (int yy = 0; yy <= row_cnt; yy++) {
-        for (int xx = 0; xx <= col_cnt; xx++) {
-            uint32 col = bg;
-            if ((xx + yy) % 2 == 0) {
-                col = fg;
-            }
-            gfx_fill_rect(canvas,
-                xx * box_side, yy * box_side,
-                box_side, box_side, col);
-        }
-    }
-}
-
-void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col)
-{
-    int cell_w = canvas.px_w / col_cnt;
-    int cell_h = canvas.px_h / row_cnt;
-    for (int yy = 0; yy <= row_cnt; yy++) {
-        for (int xx = 0; xx <= col_cnt; xx++) {
-            int r = (cell_w / 2 > cell_h / 2) ? cell_h / 2 : cell_w / 2;
-            r     = lerp(r / 2, r, ((float)xx / col_cnt + (float)yy / row_cnt) / 2);
-            gfx_fill_circ(canvas,
-                xx * cell_w + r, yy * cell_h + r,
-                r, col);
-        }
-    }
-}
-
-void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
-{
-    gfx_fill_triangle(canvas,
-        80 / canvas.scale, 80 / canvas.scale,
-        320 / canvas.scale, 80 / canvas.scale,
-        200 / canvas.scale, 420 / canvas.scale,
-        COL(0xFF, 0x00, 0xFF, 0xFF));
-
-    gfx_fill_triangle(canvas,
-        100 / canvas.scale, 100 / canvas.scale,
-        250 / canvas.scale, 200 / canvas.scale,
-        120 / canvas.scale, 350 / canvas.scale,
-        COL(0x00, 0x00, 0xFF, 0xAA));
-
-    gfx_fill_triangle(canvas,
-        120 / canvas.scale, 150 / canvas.scale,
-        300 / canvas.scale, 220 / canvas.scale,
-        180 / canvas.scale, 380 / canvas.scale,
-        COL(0xFF, 0xFF, 0x00, 0x88));
-
-    gfx_draw_line(canvas, 0, 0, canvas.px_w - 1, 0, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, 0, canvas.px_w - 1, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, 0, canvas.px_h - 1, 0, 0, col);
-
-    gfx_draw_line(canvas, 0, 0, canvas.px_w / 4, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, 0, 3 * canvas.px_w / 4, canvas.px_h - 1, col);
-
-    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, 0, col);
-    gfx_draw_line(canvas, 0, canvas.px_h - 1, canvas.px_w - 1, 0, col);
-
-    gfx_draw_line(canvas, canvas.px_w / 2, canvas.px_h / 3, canvas.px_w / 2, canvas.px_h / 3, col);
 }
 
 #endif
