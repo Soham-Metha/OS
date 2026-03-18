@@ -40,7 +40,7 @@ CC     := $(NAT_CC)
 all: clean $(_ISO)
 
 run_all: all
-	@qemu-system-i386	-drive format=raw,file="$(_ISO)" -vga std
+	@qemu-system-i386 -enable-kvm -drive format=raw,file="$(_ISO)" -vga std
 
 $(_HAL): arch/native/boot.c arch/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
