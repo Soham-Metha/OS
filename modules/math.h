@@ -22,3 +22,28 @@ float fast_cos(float angle)
 
     return sin_table[idx];
 }
+
+float fast_tan(float angle)
+{
+    return fast_sin(angle)/fast_cos(angle);
+}
+
+float Q_rsqrt(float number)
+{
+    long i;
+    float x2, y;
+    const float threehalfs = 1.5F;
+
+    x2 = number * 0.5F;
+    y  = number;
+    i  = *(long*)&y;
+    i  = 0x5f3759df - (i >> 1);
+    y  = *(float*)&i;
+    y  = y * (threehalfs - (x2 * y * y));
+
+    return y;
+}
+
+float fast_sqrt(float x) {
+    return x * Q_rsqrt(x);
+}
