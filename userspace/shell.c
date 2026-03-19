@@ -14,7 +14,7 @@
 #include <common/event.h>
 #include <common/memmanager.h>
 #include <common/strings.h>
-#include <modules/graphics3d.h>
+#include <modules/gfx_tests.h>
 #include <modules/virex.h>
 // TODO: fix boundary violation
 #include <kernel/fs.h>
@@ -26,79 +26,6 @@ int screen_w         = { 0 };
 int screen_h         = { 0 };
 Window* graphics_win = { 0 };
 Window* shell_win    = { 0 };
-
-void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
-{
-    int row_cnt = canvas.px_h / box_side - 1;
-    int col_cnt = canvas.px_w / box_side - 1;
-    for (int yy = 0; yy <= row_cnt; yy++) {
-        for (int xx = 0; xx <= col_cnt; xx++) {
-            uint32 col = bg;
-            if ((xx + yy) % 2 == 0) {
-                col = fg;
-            }
-            gfx_fill_rect(canvas,
-                xx * box_side, yy * box_side,
-                box_side, box_side, col);
-        }
-    }
-}
-
-void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col)
-{
-    int cell_w = canvas.px_w / col_cnt;
-    int cell_h = canvas.px_h / row_cnt;
-    for (int yy = 0; yy <= row_cnt; yy++) {
-        for (int xx = 0; xx <= col_cnt; xx++) {
-            int r = (cell_w / 2 > cell_h / 2) ? cell_h / 2 : cell_w / 2;
-            r     = lerp(r / 2, r, ((float)xx / col_cnt + (float)yy / row_cnt) / 2);
-            gfx_fill_circ(canvas,
-                xx * cell_w + r, yy * cell_h + r,
-                r, col);
-        }
-    }
-}
-
-void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
-{
-    gfx_fill_triangle(canvas,
-        80 / canvas.scale, 80 / canvas.scale,
-        320 / canvas.scale, 80 / canvas.scale,
-        200 / canvas.scale, 420 / canvas.scale,
-        COL(0xFF, 0x00, 0xFF, 0xFF));
-
-    gfx_fill_triangle(canvas,
-        100 / canvas.scale, 100 / canvas.scale,
-        250 / canvas.scale, 200 / canvas.scale,
-        120 / canvas.scale, 350 / canvas.scale,
-        COL(0x00, 0x00, 0xFF, 0xAA));
-
-    gfx_fill_triangle(canvas,
-        120 / canvas.scale, 150 / canvas.scale,
-        300 / canvas.scale, 220 / canvas.scale,
-        180 / canvas.scale, 380 / canvas.scale,
-        COL(0xFF, 0xFF, 0x00, 0x88));
-
-    int xmin = 0;
-    int ymin = 0;
-
-    int xmax = canvas.px_w - 1;
-    int ymax = canvas.px_h - 1;
-
-    gfx_draw_line(canvas, xmin, ymin, xmax, ymin, col);
-    gfx_draw_line(canvas, xmax, ymin, xmax, ymax, col);
-    gfx_draw_line(canvas, xmax, ymax, xmin, ymax, col);
-    gfx_draw_line(canvas, xmin, ymax, xmin, ymin, col);
-
-    gfx_draw_line(canvas, xmin, ymin, xmax / 4, ymax, col);
-    gfx_draw_line(canvas, xmax, ymin, 3 * xmax / 4, ymax, col);
-
-    gfx_draw_line(canvas, xmax, ymax, xmin, ymin, col);
-    gfx_draw_line(canvas, xmin, ymax, xmax, ymin, col);
-
-    gfx_draw_line(canvas, (xmin + xmax) / 2, (ymin + ymax) / 3,
-        (xmin + xmax) / 2, (ymin + ymax) / 3, col);
-}
 
 void event_handle_loop(void)
 {
@@ -132,16 +59,18 @@ void graphics_test(Surface* s)
 
     GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmid, ymid);
     GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
-    GFX_Canvas sub_c2  = gfx_init_subcanvas(canvas, 0, ymid, xmax, ymid);
+    GFX_Canvas sub_c21  = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid);
+    GFX_Canvas sub_c22  = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid);
 
     gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
 
     gfx_3d_test(sub_c11);
-    gfx_pattern_checker(sub_c12,
+    gfx_3d_test2(sub_c12);
+    gfx_pattern_checker(sub_c21,
         47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     // gfx_pattern_circles(sub_c12,
     //     6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
-    gfx_pattern_shapes(sub_c2,
+    gfx_pattern_shapes(sub_c22,
         COL(0x22, 0xFF, 0x22, 0xFF));
     s->dirty = true;
 }
