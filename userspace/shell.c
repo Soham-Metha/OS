@@ -79,18 +79,25 @@ void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
         180 / canvas.scale, 380 / canvas.scale,
         COL(0xFF, 0xFF, 0x00, 0x88));
 
-    gfx_draw_line(canvas, 0, 0, canvas.px_w - 1, 0, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, 0, canvas.px_w - 1, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, 0, canvas.px_h - 1, 0, 0, col);
+    int xmin = 0;
+    int ymin = 0;
 
-    gfx_draw_line(canvas, 0, 0, canvas.px_w / 4, canvas.px_h - 1, col);
-    gfx_draw_line(canvas, canvas.px_w - 1, 0, 3 * canvas.px_w / 4, canvas.px_h - 1, col);
+    int xmax = canvas.px_w - 1;
+    int ymax = canvas.px_h - 1;
 
-    gfx_draw_line(canvas, canvas.px_w - 1, canvas.px_h - 1, 0, 0, col);
-    gfx_draw_line(canvas, 0, canvas.px_h - 1, canvas.px_w - 1, 0, col);
+    gfx_draw_line(canvas, xmin, ymin, xmax, ymin, col);
+    gfx_draw_line(canvas, xmax, ymin, xmax, ymax, col);
+    gfx_draw_line(canvas, xmax, ymax, xmin, ymax, col);
+    gfx_draw_line(canvas, xmin, ymax, xmin, ymin, col);
 
-    gfx_draw_line(canvas, canvas.px_w / 2, canvas.px_h / 3, canvas.px_w / 2, canvas.px_h / 3, col);
+    gfx_draw_line(canvas, xmin, ymin, xmax / 4, ymax, col);
+    gfx_draw_line(canvas, xmax, ymin, 3 * xmax / 4, ymax, col);
+
+    gfx_draw_line(canvas, xmax, ymax, xmin, ymin, col);
+    gfx_draw_line(canvas, xmin, ymax, xmax, ymin, col);
+
+    gfx_draw_line(canvas, (xmin + xmax) / 2, (ymin + ymax) / 3,
+        (xmin + xmax) / 2, (ymin + ymax) / 3, col);
 }
 
 void event_handle_loop(void)
@@ -116,22 +123,26 @@ void render_loop(void)
 
 void graphics_test(Surface* s)
 {
-    GFX_Canvas canvas = GFX_CANVAS(s->pixels, s->width, s->height, 4);
-    GFX_Canvas sub_c1 = gfx_init_subcanvas(canvas, canvas.px_w / 2, 0, canvas.px_w / 2, canvas.px_h / 2);
-    GFX_Canvas sub_c2 = gfx_init_subcanvas(canvas, 0, canvas.px_h / 2, canvas.px_w, canvas.px_h / 2);
-    GFX_Canvas sub_c3 = gfx_init_subcanvas(canvas, 0, 0, canvas.px_w / 2, canvas.px_h / 2);
-    gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
-    // gfx_fill(sub_c1, COL(0xFF, 0, 0, 0x88));
-    // gfx_fill(sub_c2, COL(0, 0xFF, 0, 0x88));
-    // gfx_fill(sub_c3, COL(0, 0, 0xFF, 0x88));
+    GFX_Canvas canvas  = GFX_CANVAS(s->pixels, s->width, s->height, 4);
 
-    gfx_pattern_checker(sub_c1,
+    int xmax           = canvas.px_w;
+    int ymax           = canvas.px_h;
+    int xmid           = xmax / 2;
+    int ymid           = ymax / 2;
+
+    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmid, ymid);
+    GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
+    GFX_Canvas sub_c2  = gfx_init_subcanvas(canvas, 0, ymid, xmax, ymid);
+
+    gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
+
+    gfx_3d_test(sub_c11);
+    gfx_pattern_checker(sub_c12,
         47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
-    // gfx_pattern_circles(sub_c2,
+    // gfx_pattern_circles(sub_c12,
     //     6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
     gfx_pattern_shapes(sub_c2,
         COL(0x22, 0xFF, 0x22, 0xFF));
-    gfx_3d_test(sub_c3);
     s->dirty = true;
 }
 
@@ -144,10 +155,9 @@ void kernel_init(void)
     wm_init(&wm, &comp);
 
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0, 0xFF));
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
     shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
            COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
-
 }
 
 void fs_init(void)
