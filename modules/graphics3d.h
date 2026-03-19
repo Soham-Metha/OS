@@ -71,11 +71,26 @@ void rotate_z(float* x, float* y, float angle)
     *y       = ny;
 }
 
+void rotate_fast(float* x, float* y, float sin, float cos)
+{
+    float nx = *x * cos - *y * sin;
+    float ny = *x * sin + *y * cos;
+
+    *x       = nx;
+    *y       = ny;
+}
+
 static float angle = 0;
 // TODO: switch over to matrix for cleaner operations
 void gfx_3d_test(GFX_Canvas canvas)
 {
     angle += 0.02f;
+    float s1        = fast_sin(angle * 0.7f);
+    float c1        = fast_cos(angle * 0.7f);
+    float s2        = fast_sin(angle);
+    float c2        = fast_cos(angle);
+    float s3        = fast_sin(angle * 0.5f);
+    float c3        = fast_cos(angle * 0.5f);
 
     int grid_count  = 5;
     float grid_pad  = 0.5f / grid_count;
@@ -85,21 +100,13 @@ void gfx_3d_test(GFX_Canvas canvas)
         for (int cy = 0; cy < grid_count; cy++) {
             for (int cx = 0; cx < grid_count; cx++) {
 
-                float x  = cx * grid_pad - grid_size / 2;
-                float y  = cy * grid_pad - grid_size / 2;
-                float z  = cz * grid_pad - grid_size / 2;
+                float x = cx * grid_pad - grid_size / 2;
+                float y = cy * grid_pad - grid_size / 2;
+                float z = cz * grid_pad - grid_size / 2;
 
-                float nx = (float)cx / (grid_count - 1);
-                float ny = (float)cy / (grid_count - 1);
-                float nz = (float)cz / (grid_count - 1);
-
-                uint8 r  = (uint8)(nx * 255);
-                uint8 g  = (uint8)(ny * 255);
-                uint8 b  = (uint8)(nz * 255);
-
-                rotate_z(&x, &y, angle * 0.7f);     // GPT suggested anim values
-                rotate_z(&y, &z, angle * 1.0f);
-                rotate_z(&x, &z, angle * 0.5f);
+                rotate_fast(&x, &y, s1, c1);     // GPT suggested anim values
+                rotate_fast(&y, &z, s2, c2);
+                rotate_fast(&x, &z, s3, c3);
 
                 z += 0.6f;     // move cube away from camera
 
@@ -109,6 +116,10 @@ void gfx_3d_test(GFX_Canvas canvas)
                 // normalize to screen
                 px       = (px + 1) / 2;
                 py       = (py + 1) / 2;
+
+                uint8 r = (uint8)(((float)cx / (grid_count - 1)) * 255);
+                uint8 g = (uint8)(((float)cy / (grid_count - 1)) * 255);
+                uint8 b = (uint8)(((float)cz / (grid_count - 1)) * 255);
 
                 gfx_fill_circ(canvas,
                     px * canvas.px_w,
