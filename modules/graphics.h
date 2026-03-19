@@ -21,11 +21,11 @@ typedef struct gfx_canvas {
         by     = ty;                \
     } while (0);
 
-#define swap(a, b) \
+#define swap(t, a, b) \
     do {           \
-        int t = a; \
+        t tmp = a; \
         a     = b; \
-        b     = t; \
+        b     = tmp; \
     } while (0);
 
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
@@ -40,6 +40,8 @@ void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
 void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col);
+void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
+void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -59,11 +61,11 @@ bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int*
 
     if      (w > 0)  { *x2 -= 1; }
     else if (w < 0)  { *x2 += 1; }
-    if  (*x2 < *x1)  swap(*x1, *x2);
+    if  (*x2 < *x1)  swap(int,*x1, *x2);
 
     if      (h > 0)  { *y2 -= 1; }
     else if (h < 0)  { *y2 += 1; }
-    if  (*y2 < *y1)  swap(*y1, *y2);
+    if  (*y2 < *y1)  swap(int,*y1, *y2);
 
     if (*x1 >= px_w || *x2 < 0) return false;
     if (*y1 >= px_h || *y2 < 0) return false;
@@ -183,6 +185,12 @@ inline void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 
 
 inline void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col)
 {
+    if (x1 > x2) {
+        int t = x1;
+        x1 = x2;
+        x2 = t;
+    }
+
     gfx_fill(gfx_init_subcanvas(canvas, x1, y, x2 - x1 + 1, 1), col);
 }
 
@@ -243,6 +251,20 @@ void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2
                 col);
         }
     }
+}
+
+void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col)
+{
+    if (y1 < y0)
+        swap_points(x0, y0, x1, y1);
+    if (y2 < y0)
+        swap_points(x0, y0, x2, y2);
+    if (y2 < y1)
+        swap_points(x1, y1, x2, y2);
+
+    gfx_draw_line(canvas, x0, y0, x1, y1, col);
+    gfx_draw_line(canvas, x1, y1, x2, y2, col);
+    gfx_draw_line(canvas, x0, y0, x2, y2, col);
 }
 
 void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
