@@ -10,9 +10,6 @@ body {
 
 canvas {
   display: block;
-  margin: auto;
-  padding: 10px;
-  background: black;
   cursor: none;
 }
 
