@@ -197,12 +197,12 @@ void gfx_3d_test2(GFX_Canvas canvas)
     static float angle2 = 0.05f;
     Tri3f mesh[]        = FISH_MESH;
     Point3f camera      = { .z = -15.0f };
-    Mat4f mProj         = chain_mul(2,
-                get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
-                get_viewport_matrix());
-    Mat4f mTrans        = get_trans_matrix(-camera.x, -camera.y, -camera.z);
-    Mat4f mRotZ         = get_rotZ_matrix(-angle2 * 0.0f);
-    Mat4f mRotY         = get_rotY_matrix(-angle2 * 1.0f);
+    Mat4f mProj         = matrix_chain(2,
+                matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+                matrix_viewport());
+    Mat4f mTrans        = matrix_trans(-camera.x, -camera.y, -camera.z);
+    Mat4f mRotZ         = matrix_rotZ(-angle2 * 0.0f);
+    Mat4f mRotY         = matrix_rotY(-angle2 * 1.0f);
 
     Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f))];
     int idx = 0;
@@ -210,7 +210,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
     for (int i = 0; i < (int)(sizeof(mesh) / sizeof(Tri3f)); i++) {
         Tri3f proj, trans;
 
-        Mat4f mTri = chain_mul(3,
+        Mat4f mTri = matrix_chain(3,
             tri_to_mat4(mesh[i]),
             mRotZ,
             mRotY);
@@ -229,7 +229,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             Point3f light  = { .z = -1 };
             float dp       = p3f_dot(normal, light);
 
-            mTri           = chain_mul(3, mTri, mTrans, mProj);
+            mTri           = matrix_chain(3, mTri, mTrans, mProj);
             proj           = mat4_to_tri(mTri);
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
@@ -273,11 +273,11 @@ void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
 void gfx_3d_test3(GFX_Canvas canvas)
 {
     Tri3f mesh[] = GUN_MESH;
-    Mat4f mProj  = chain_mul(2,
-         get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
-         get_viewport_matrix());
-    Mat4f mTrans = get_trans_matrix(-camera.x, -camera.y, -camera.z);
-    Mat4f mRotY  = get_rotY_matrix(angleY);
+    Mat4f mProj  = matrix_chain(2,
+         matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+         matrix_viewport());
+    Mat4f mTrans = matrix_trans(-camera.x, -camera.y, -camera.z);
+    Mat4f mRotY  = matrix_rotY(angleY);
 
     Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f))];
     int idx = 0;
@@ -288,8 +288,8 @@ void gfx_3d_test3(GFX_Canvas canvas)
         Point3f target = { .z = 1.0f };
         vLookDir       = p3f_mul_mat(target, mRotY);
         target         = p3f_add(camera, vLookDir);
-        Mat4f mCam     = get_pointed_matrix(camera, target, vUp);
-        mCam           = get_inv_matrix(mCam);
+        Mat4f mCam     = matrix_pointed(camera, target, vUp);
+        mCam           = matrix_inv(mCam);
 
         Mat4f mTri     = tri_to_mat4(mesh[i]);
         trans          = mat4_to_tri(mTri);
@@ -306,7 +306,7 @@ void gfx_3d_test3(GFX_Canvas canvas)
             Point3f light  = { .z = -1 };
             float dp       = p3f_dot(normal, light);
 
-            mTri           = chain_mul(4, mTri, mTrans, mCam, mProj);
+            mTri           = matrix_chain(4, mTri, mTrans, mCam, mProj);
             proj           = mat4_to_tri(mTri);
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
