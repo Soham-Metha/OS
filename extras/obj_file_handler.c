@@ -27,7 +27,7 @@ int norm_count = 0;
 
 int main()
 {
-    FILE* f = fopen("fish.obj", "r");
+    FILE* f = fopen("gun.obj", "r");
     if (!f) {
         perror("open failed");
         return 1;
