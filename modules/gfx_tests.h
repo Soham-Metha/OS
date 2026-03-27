@@ -199,8 +199,8 @@ void gfx_3d_test2(GFX_Canvas canvas)
     static float angle2 = 0.05f;
     Point3f camera      = { .z = -15.0f };
     Mat4f mProj         = chain_mul(2,
-        get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
-        get_viewport_matrix());
+                get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+                get_viewport_matrix());
     Mat4f mTrans        = get_trans_matrix(-camera.x, -camera.y, -camera.z);
     Mat4f mRotZ         = get_rotZ_matrix(-angle2 * 0.0f);
     Mat4f mRotY         = get_rotY_matrix(-angle2 * 1.0f);
@@ -218,31 +218,26 @@ void gfx_3d_test2(GFX_Canvas canvas)
         mesh[i]    = mat4_to_tri(mTri);
         trans      = mesh[i];
 
-        Point3f normal, l1, l2;
-        l1.x     = trans.vertex[1].x - trans.vertex[0].x;
-        l1.y     = trans.vertex[1].y - trans.vertex[0].y;
-        l1.z     = trans.vertex[1].z - trans.vertex[0].z;
+        Point3f normal, l1, l2, pCamRay;
+        l1      = p3f_sub(trans.vertex[1], trans.vertex[0]);
+        l2      = p3f_sub(trans.vertex[2], trans.vertex[0]);
+        normal  = p3f_cross(l1, l2);
 
-        l2.x     = trans.vertex[2].x - trans.vertex[0].x;
-        l2.y     = trans.vertex[2].y - trans.vertex[0].y;
-        l2.z     = trans.vertex[2].z - trans.vertex[0].z;
+        normal  = p3f_normalize(normal);
+        pCamRay = p3f_sub(trans.vertex[0], camera);
 
-        normal.x = l1.y * l2.z - l1.z * l2.y;
-        normal.y = l1.z * l2.x - l1.x * l2.z;
-        normal.z = l1.x * l2.y - l1.y * l2.x;
+        if (p3f_dot(normal, pCamRay) < 0) {
+            Point3f light  = { .z = -1 };
+            float dp       = p3f_dot(normal, light);
 
-        float t  = fast_sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-        normal.x /= t;
-        normal.y /= t;
-        normal.z /= t;
-        if (normal.x * (trans.vertex[0].x - camera.x) + normal.y * (trans.vertex[0].y - camera.y) + normal.z * (trans.vertex[0].z - camera.z) < 0) {
-            Point3f light = { 0, 0, -1 };
-            float dp      = normal.x * light.x + normal.y * light.y + normal.z * light.z;
+            mTri           = chain_mul(3, mTri, mTrans, mProj);
+            proj           = mat4_to_tri(mTri);
+            proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
+            proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
+            proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
 
-            mTri          = chain_mul(3, mTri, mTrans, mProj);
-            proj          = mat4_to_tri(mTri);
-            uint8 shade   = (uint8)(dp * 255);
-            proj.col      = COL(shade, shade, shade, 255);
+            uint8 shade    = (uint8)(dp * 255);
+            proj.col       = COL(shade, shade, shade, 255);
 
             insert(draw_queue, idx, proj);
             idx += 1;
@@ -255,11 +250,10 @@ void gfx_3d_test2(GFX_Canvas canvas)
             draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
             draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
             draw_queue[i].col);
-
         gfx_draw_triangle(canvas,
-            draw_queue[i].vertex[0].x, draw_queue[i].vertex[0].y,
-            draw_queue[i].vertex[1].x, draw_queue[i].vertex[1].y,
-            draw_queue[i].vertex[2].x, draw_queue[i].vertex[2].y,
+            draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
+            draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
+            draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
             0x000000FF);
     }
 }
