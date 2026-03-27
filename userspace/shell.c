@@ -66,7 +66,7 @@ void graphics_test(void)
     gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
 
     gfx_3d_test(sub_c11);
-    gfx_3d_test2(sub_c12);
+    gfx_3d_test3(sub_c12);
     gfx_pattern_checker(sub_c21,
         47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     // gfx_pattern_circles(sub_c12,
@@ -161,6 +161,25 @@ void shell_loop(void)
     p_yield();     // TODO: improve context switching logic to allow pre-emption
 }
 
+void gfx_io_loop()
+{
+    Result8 r = getch();
+    if RESULT_OK (r) {
+        char c = RESULT_VAL(r);
+        float tx = 0.0f, ty = 0.0f, ry = 0.0f, tz = 0.0f;
+        if      (c == '8') ty += 0.05f;
+        else if (c == '2') ty -= 0.05f;
+        else if (c == '4') tx -= 0.05f;
+        else if (c == '6') tx += 0.05f;
+        else if (c == 'w') tz += 0.05f;
+        else if (c == 's') tz -= 0.05f;
+        else if (c == 'a') ry -= 0.05f;
+        else if (c == 'd') ry += 0.05f;
+        gfx_3d_Cam_Move(tx,ty,tz,ry);
+    }
+    p_yield();
+}
+
 extern int main(void)
 {
     scheduler_init(kernel_init);
@@ -168,7 +187,8 @@ extern int main(void)
     create_task(shell_win_init);
     create_task(event_handle_loop);
     create_task(render_loop);
-    create_task(shell_loop);
+    // create_task(shell_loop);
     create_task(graphics_test);
+    create_task(gfx_io_loop);
     return 0;
 }
