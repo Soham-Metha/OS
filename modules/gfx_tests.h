@@ -2,8 +2,6 @@
 #include <extras/fish.c>
 #include <extras/gun.c>
 
-Tri3f mesh[] = FISH_MESH;
-
 void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
     int row_cnt = canvas.px_h / box_side - 1;
@@ -197,6 +195,7 @@ void gfx_3d_test(GFX_Canvas canvas)
 void gfx_3d_test2(GFX_Canvas canvas)
 {
     static float angle2 = 0.05f;
+    Tri3f mesh[]        = FISH_MESH;
     Point3f camera      = { .z = -15.0f };
     Mat4f mProj         = chain_mul(2,
                 get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
@@ -231,6 +230,83 @@ void gfx_3d_test2(GFX_Canvas canvas)
             float dp       = p3f_dot(normal, light);
 
             mTri           = chain_mul(3, mTri, mTrans, mProj);
+            proj           = mat4_to_tri(mTri);
+            proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
+            proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
+            proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
+
+            uint8 shade    = (uint8)(dp * 255);
+            proj.col       = COL(shade, shade, shade, 255);
+
+            insert(draw_queue, idx, proj);
+            idx += 1;
+        }
+    }
+
+    for (int i = 0; i < idx; i++) {
+        gfx_fill_triangle(canvas,
+            draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
+            draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
+            draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
+            draw_queue[i].col);
+        gfx_draw_triangle(canvas,
+            draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
+            draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
+            draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
+            0x000000FF);
+    }
+}
+
+static Point3f camera   = { .z = -5.0f };
+static Point3f vLookDir = { 0 };
+static float angleY     = 0.00f;
+
+void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
+{
+    camera.x += tx;
+    camera.y += ty;
+    angleY += ry;
+    Point3f fwd = p3f_mul(vLookDir, tz);
+    camera      = p3f_add(camera, fwd);
+}
+
+void gfx_3d_test3(GFX_Canvas canvas)
+{
+    Tri3f mesh[] = GUN_MESH;
+    Mat4f mProj  = chain_mul(2,
+         get_proj_matrix(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+         get_viewport_matrix());
+    Mat4f mTrans = get_trans_matrix(-camera.x, -camera.y, -camera.z);
+    Mat4f mRotY  = get_rotY_matrix(angleY);
+
+    Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f))];
+    int idx = 0;
+
+    for (int i = 0; i < (int)(sizeof(mesh) / sizeof(Tri3f)); i++) {
+        Tri3f proj, trans;
+        Point3f vUp    = { .y = 1 };
+        Point3f target = { .z = 1.0f };
+        vLookDir       = p3f_mul_mat(target, mRotY);
+        target         = p3f_add(camera, vLookDir);
+        Mat4f mCam     = get_pointed_matrix(camera, target, vUp);
+        mCam           = get_inv_matrix(mCam);
+
+        Mat4f mTri     = tri_to_mat4(mesh[i]);
+        trans          = mat4_to_tri(mTri);
+
+        Point3f normal, l1, l2, pCamRay;
+        l1      = p3f_sub(trans.vertex[1], trans.vertex[0]);
+        l2      = p3f_sub(trans.vertex[2], trans.vertex[0]);
+        normal  = p3f_cross(l1, l2);
+
+        normal  = p3f_normalize(normal);
+        pCamRay = p3f_sub(trans.vertex[0], camera);
+
+        if (p3f_dot(normal, pCamRay) < 0) {
+            Point3f light  = { .z = -1 };
+            float dp       = p3f_dot(normal, light);
+
+            mTri           = chain_mul(4, mTri, mTrans, mCam, mProj);
             proj           = mat4_to_tri(mTri);
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
