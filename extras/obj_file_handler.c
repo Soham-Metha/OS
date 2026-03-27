@@ -28,7 +28,7 @@ int trin_count = 0;
 
 int main()
 {
-    FILE* f = fopen("gun.obj", "r");
+    FILE* f = fopen("tea.obj", "r");
     if (!f) {
         perror("open failed");
         return 1;
@@ -36,7 +36,7 @@ int main()
 
     char line[MAX_LINE];
 
-    printf("#define GUN_MESH {   \\\n");
+    printf("#define TEA_MESH {   \\\n");
 
     while (fgets(line, sizeof(line), f)) {
 
