@@ -122,6 +122,16 @@ Point3f p3f_normalize(Point3f a)
     };
 }
 
+Point3f p3f_mul_mat(Point3f i, Mat4f m)
+{
+    return (Point3f){
+        .x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + i.w * m.m[3][0],
+        .y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + i.w * m.m[3][1],
+        .z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + i.w * m.m[3][2],
+        .w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + i.w * m.m[3][3],
+    };
+}
+
 void gfx_3d_draw_line(GFX_Canvas canvas, int x1, int y1, int z1, int x2, int y2, int z2, uint32 col)
 {
     if (z1 <= 0 || z2 <= 0)
@@ -199,8 +209,6 @@ Tri3f mat4_to_tri(Mat4f m)
 
 Mat4f mat_mul(Mat4f A, Mat4f B)
 {
-    (void)A;
-    (void)B;
     Mat4f R = { 0 };
 
     for (int r = 0; r < 4; r++) {
@@ -322,6 +330,61 @@ Mat4f get_rotZ_matrix(float angle)
         .m[1][1] = c,
         .m[2][2] = 1,
         .m[3][3] = 1,
+    };
+}
+
+Mat4f get_pointed_matrix(Point3f pos, Point3f tar, Point3f up)
+{
+    Point3f next_forward, next_up, next_right;
+    next_forward = p3f_sub(tar, pos);
+    next_forward = p3f_normalize(next_forward);
+
+    Point3f b    = p3f_mul(next_forward, p3f_dot(next_forward, up));
+    next_up      = p3f_sub(up, b);
+    next_up      = p3f_normalize(next_up);
+
+    next_right   = p3f_cross(next_up, next_forward);
+
+    return (Mat4f) {
+        .m[0][0] = next_right.x,     // vector pointing to camera 'x'
+        .m[0][1] = next_right.y,
+        .m[0][2] = next_right.z,
+
+        .m[1][0] = next_up.x,     // vector pointing to camera 'y'
+        .m[1][1] = next_up.y,
+        .m[1][2] = next_up.z,
+
+        .m[2][0] = next_forward.x,     // vector pointing to camera 'z'
+        .m[2][1] = next_forward.y,
+        .m[2][2] = next_forward.z,
+
+        .m[3][0] = pos.x,     // translation as needed!
+        .m[3][1] = pos.y,
+        .m[3][2] = pos.z,
+    };
+}
+
+// NOTE: only for translation/rotation
+Mat4f get_inv_matrix(Mat4f a)
+{
+    return (Mat4f) {
+        .m[0][0] = a.m[0][0],
+        .m[0][1] = a.m[1][0],
+        .m[0][2] = a.m[2][0],
+
+        .m[1][0] = a.m[0][1],
+        .m[1][1] = a.m[1][1],
+        .m[1][2] = a.m[2][1],
+
+        .m[2][0] = a.m[0][2],
+        .m[2][1] = a.m[1][2],
+        .m[2][2] = a.m[2][2],
+
+        .m[3][0] = -(a.m[3][0] * a.m[0][0] + a.m[3][1] * a.m[0][1] + a.m[3][2] * a.m[0][2]),
+        .m[3][1] = -(a.m[3][0] * a.m[1][0] + a.m[3][1] * a.m[1][1] + a.m[3][2] * a.m[1][2]),
+        .m[3][2] = -(a.m[3][0] * a.m[2][0] + a.m[3][1] * a.m[2][1] + a.m[3][2] * a.m[2][2]),
+
+        .m[3][3] = 1.0f,
     };
 }
 
