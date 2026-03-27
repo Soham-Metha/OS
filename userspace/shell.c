@@ -66,7 +66,7 @@ void graphics_test(void)
     gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
 
     gfx_3d_test(sub_c11);
-    gfx_3d_test3(sub_c12);
+    gfx_3d_test2(sub_c12);
     gfx_pattern_checker(sub_c21,
         47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     // gfx_pattern_circles(sub_c12,
