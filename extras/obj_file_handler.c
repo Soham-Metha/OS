@@ -6,7 +6,7 @@
 #define MAX_LINE 256
 
 typedef struct {
-    float x, y, z;
+    float x, y, z, w;
 } Point3f;
 
 typedef struct {
@@ -19,6 +19,7 @@ Point3f norms[MAX_VERTS];
 
 int vert_count = 0;
 int norm_count = 0;
+int trin_count = 0;
 
 /**
  * Simple script to convert Obj files into static tables for 3d graphics!
@@ -35,7 +36,7 @@ int main()
 
     char line[MAX_LINE];
 
-    printf("Tri3f mesh[] = {\n");
+    printf("#define GUN_MESH {   \\\n");
 
     while (fgets(line, sizeof(line), f)) {
 
@@ -96,20 +97,30 @@ int main()
 
             // Print triangle
             printf(
-                "    { { { %f, %f, %f }, { %f, %f, %f }, { %f, %f, %f } }, "
-                "{ { %f, %f, %f }, { %f, %f, %f }, { %f, %f, %f } }, 0},\n",
-
+                "    [%d] = { .vertex = {"
+                "{ .x=%f, .y=%f, .z=%f, .w=1.0f },"
+                "{ .x=%f, .y=%f, .z=%f, .w=1.0f },"
+                "{ .x=%f, .y=%f, .z=%f, .w=1.0f }"
+                "},"
+                // "    .normal = {"
+                // "{ .x=%f, .y=%f, .z=%f, .w=1.0f },"
+                // "{ .x=%f, .y=%f, .z=%f, .w=1.0f },"
+                // "{ .x=%f, .y=%f, .z=%f, .w=1.0f },"
+                // "},"
+                "},\\\n",
+                trin_count,
                 p[0].x, p[0].y, p[0].z,
                 p[1].x, p[1].y, p[1].z,
-                p[2].x, p[2].y, p[2].z,
-
-                n[0].x, n[0].y, n[0].z,
-                n[1].x, n[1].y, n[1].z,
-                n[2].x, n[2].y, n[2].z);
+                p[2].x, p[2].y, p[2].z
+                // n[0].x, n[0].y, n[0].z,
+                // n[1].x, n[1].y, n[1].z,
+                // n[2].x, n[2].y, n[2].z
+            );
+            trin_count += 1;
         }
     }
 
-    printf("};\n");
+    printf("}\n");
 
     fclose(f);
     return 0;
