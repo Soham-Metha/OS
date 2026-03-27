@@ -48,9 +48,10 @@ void render_loop(void)
     p_yield();
 }
 
-void graphics_test(Surface* s)
+void graphics_test(void)
 {
-    GFX_Canvas canvas  = GFX_CANVAS(s->pixels, s->width, s->height, 4);
+    Surface* s         = &graphics_win->surface;
+    GFX_Canvas canvas  = GFX_CANVAS(s->pixels, s->width, s->height, 1);
 
     int xmax           = canvas.px_w;
     int ymax           = canvas.px_h;
@@ -59,8 +60,8 @@ void graphics_test(Surface* s)
 
     GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmid, ymid);
     GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
-    GFX_Canvas sub_c21  = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid);
-    GFX_Canvas sub_c22  = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid);
+    GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid);
+    GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid);
 
     gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
 
@@ -73,6 +74,7 @@ void graphics_test(Surface* s)
     gfx_pattern_shapes(sub_c22,
         COL(0x22, 0xFF, 0x22, 0xFF));
     s->dirty = true;
+    p_yield();
 }
 
 void kernel_init(void)
@@ -122,7 +124,7 @@ void shell_win_init(void)
 {
     for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
         putch('-');
-    print_str("Shell v0.1\n");
+    printf("Shell v0.1 (%dx%d)\n", screen_w, screen_h);
     for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
         putch('-');
 
@@ -156,7 +158,6 @@ void shell_loop(void)
         const char* str = (const char*)RESULT_VAL(r);
         shell_handler(STR(str));
     }
-    graphics_test(&graphics_win->surface);
     p_yield();     // TODO: improve context switching logic to allow pre-emption
 }
 
@@ -168,5 +169,6 @@ extern int main(void)
     create_task(event_handle_loop);
     create_task(render_loop);
     create_task(shell_loop);
+    create_task(graphics_test);
     return 0;
 }
