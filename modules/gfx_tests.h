@@ -272,51 +272,109 @@ void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
 
 void gfx_3d_test3(GFX_Canvas canvas)
 {
-    Tri3f mesh[] = GUN_MESH;
+    Tri3f mesh[] = FISH_MESH;
     Mat4f mProj  = matrix_chain(2,
          matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
          matrix_viewport());
-    Mat4f mTrans = matrix_trans(-camera.x, -camera.y, -camera.z);
+    Mat4f mTrans = matrix_trans(0, 0, 5.0f);
     Mat4f mRotY  = matrix_rotY(angleY);
 
-    Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f))];
-    int idx = 0;
+    Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f)) + 1];
+    int idx        = 0;
+
+    Point3f vUp    = { .y = 1 };
+    Point3f target = { .z = 1.0f };
+
+    vLookDir       = p3f_mul_mat(target, mRotY);
+    target         = p3f_add(camera, vLookDir);
+
+    Mat4f mCam     = matrix_pointed(camera, target, vUp);
+    mCam           = matrix_inv(mCam);
 
     for (int i = 0; i < (int)(sizeof(mesh) / sizeof(Tri3f)); i++) {
         Tri3f proj, trans;
-        Point3f vUp    = { .y = 1 };
-        Point3f target = { .z = 1.0f };
-        vLookDir       = p3f_mul_mat(target, mRotY);
-        target         = p3f_add(camera, vLookDir);
-        Mat4f mCam     = matrix_pointed(camera, target, vUp);
-        mCam           = matrix_inv(mCam);
 
-        Mat4f mTri     = tri_to_mat4(mesh[i]);
-        trans          = mat4_to_tri(mTri);
+        // Transform to view space
+        Mat4f mTri = matrix_chain(2,
+            tri_to_mat4(mesh[i]),
+            mCam);
+
+        trans      = mat4_to_tri(mTri);
 
         Point3f normal, l1, l2, pCamRay;
+        // Compute normal
         l1      = p3f_sub(trans.vertex[1], trans.vertex[0]);
         l2      = p3f_sub(trans.vertex[2], trans.vertex[0]);
-        normal  = p3f_cross(l1, l2);
-
-        normal  = p3f_normalize(normal);
+        normal  = p3f_normalize(p3f_cross(l1, l2));
         pCamRay = p3f_sub(trans.vertex[0], camera);
 
-        if (p3f_dot(normal, pCamRay) < 0) {
-            Point3f light  = { .z = -1 };
-            float dp       = p3f_dot(normal, light);
+        if (p3f_dot(normal, pCamRay) >= 0)
+            continue;
 
-            mTri           = matrix_chain(4, mTri, mTrans, mCam, mProj);
+        Point3f light = { .z = -1 };
+        float dp      = p3f_dot(normal, light);
+        uint8 shade   = (uint8)(dp * 255);
+        trans.col     = COL(shade, shade, shade, 255);
+
+        // Clipping (view space)
+        Tri3f clipped[2];
+        uint8 clip_cnt = tri_clip(
+            (Point3f) { .z = 0.1f },
+            (Point3f) { .z = 1.0f },
+            trans,
+            &clipped[0],
+            &clipped[1]);
+
+        for (uint8 j = 0; j < clip_cnt; j++) {
+
+            // Projection and Viewport
+            mTri           = matrix_chain(3, tri_to_mat4(clipped[j]), mTrans, mProj);
             proj           = mat4_to_tri(mTri);
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
             proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
 
-            uint8 shade    = (uint8)(dp * 255);
-            proj.col       = COL(shade, shade, shade, 255);
+            proj.col       = clipped[j].col;
 
-            insert(draw_queue, idx, proj);
-            idx += 1;
+            Tri3f tri_q[8];
+            int q_count      = 0;
+            tri_q[q_count++] = proj;
+
+            for (int p = 0; p < 4; p++) {
+                Tri3f new_q[8];
+                int new_q_cnt = 0;
+
+                for (int ii = 0; ii < q_count; ii++) {
+                    Tri3f clip[2];
+                    int n = 0;
+
+                    switch (p) {
+                    case 0:
+                        n = tri_clip((Point3f) { .y = 0 }, (Point3f) { .y = +1 }, tri_q[ii], &clip[0], &clip[1]);
+                        break;
+                    case 1:
+                        n = tri_clip((Point3f) { .y = 1 }, (Point3f) { .y = -1 }, tri_q[ii], &clip[0], &clip[1]);
+                        break;
+                    case 2:
+                        n = tri_clip((Point3f) { .x = 0 }, (Point3f) { .x = +1 }, tri_q[ii], &clip[0], &clip[1]);
+                        break;
+                    case 3:
+                        n = tri_clip((Point3f) { .x = 1 }, (Point3f) { .x = -1 }, tri_q[ii], &clip[0], &clip[1]);
+                        break;
+                    }
+
+                    for (int k = 0; k < n; k++)
+                        new_q[new_q_cnt++] = clip[k];
+                }
+
+                memcpy(tri_q, new_q, sizeof(Tri3f) * new_q_cnt);
+                q_count = new_q_cnt;
+            }
+
+            for (int i = 0; i < q_count; i++) {
+                insert(draw_queue, idx, tri_q[i]);
+                idx += 1;
+            }
         }
     }
 
