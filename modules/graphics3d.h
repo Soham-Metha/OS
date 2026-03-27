@@ -7,6 +7,7 @@ typedef struct {
     float x;
     float y;
     float z;
+    float w;
 } Point3f;
 
 typedef struct {
@@ -24,11 +25,15 @@ void gfx_3d_draw_point(GFX_Canvas canvas, int x, int y, int z, int r, uint32 col
 void gfx_3d_draw_line(GFX_Canvas canvas, int x1, int y1, int z1, int x2, int y2, int z2, uint32 col);
 void gfx_3d_draw_cube(GFX_Canvas canvas, int x1, int y1, int z1, int x2, int y2, int z2, uint32 col);
 Mat4f tri_to_mat4(Tri3f t);
+Point3f p3f_sub(Point3f a, Point3f b);
+
 Tri3f mat4_to_tri(Mat4f m);
 Mat4f mat_mul(Mat4f A, Mat4f B);
 Mat4f chain_mul(int count, ...);
+
 Mat4f get_proj_matrix(float z_min, float z_max, float fov, int w, int h);
 Mat4f get_viewport_matrix();
+
 Mat4f get_trans_matrix(float x, float y, float z);
 Mat4f get_scale_matrix(float x, float y, float z);
 Mat4f get_rotX_matrix(float angle);
@@ -50,6 +55,71 @@ void gfx_3d_draw_point(GFX_Canvas canvas, int x, int y, int z, int r, uint32 col
     int sy = (y * SCALE_CONST) / z;
 
     gfx_fill_circ(canvas, sx, sy, r, col);
+}
+
+float p3f_dot(Point3f p1, Point3f p2)
+{
+    return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
+}
+
+Point3f p3f_add(Point3f a, Point3f b)
+{
+    return (Point3f) {
+        .x = a.x + b.x,
+        .y = a.y + b.y,
+        .z = a.z + b.z,
+    };
+}
+
+Point3f p3f_sub(Point3f a, Point3f b)
+{
+    return (Point3f) {
+        .x = a.x - b.x,
+        .y = a.y - b.y,
+        .z = a.z - b.z,
+    };
+}
+
+Point3f p3f_mul(Point3f a, float b)
+{
+    return (Point3f) {
+        .x = a.x * b,
+        .y = a.y * b,
+        .z = a.z * b,
+    };
+}
+
+Point3f p3f_div(Point3f a, float b)
+{
+    return (Point3f) {
+        .x = a.x / b,
+        .y = a.y / b,
+        .z = a.z / b,
+    };
+}
+
+Point3f p3f_cross(Point3f a, Point3f b)
+{
+    return (Point3f) {
+        .x = a.y * b.z - a.z * b.y,
+        .y = a.z * b.x - a.x * b.z,
+        .z = a.x * b.y - a.y * b.x,
+    };
+}
+
+float p3f_length(Point3f a)
+{
+    return fast_sqrt(p3f_dot(a, a));
+}
+
+Point3f p3f_normalize(Point3f a)
+{
+    float len = p3f_length(a);
+    return (Point3f) {
+        .x = a.x / len,
+        .y = a.y / len,
+        .z = a.z / len,
+    };
 }
 
 void gfx_3d_draw_line(GFX_Canvas canvas, int x1, int y1, int z1, int x2, int y2, int z2, uint32 col)
@@ -90,21 +160,25 @@ void gfx_3d_draw_cube(GFX_Canvas canvas, int x1, int y1, int z1, int x2, int y2,
 Mat4f tri_to_mat4(Tri3f t)
 {
     return (Mat4f) {
+        // P1
         .m[0][0] = t.vertex[0].x,
         .m[0][1] = t.vertex[0].y,
         .m[0][2] = t.vertex[0].z,
+        .m[0][3] = t.vertex[0].w,
+        // P2
         .m[1][0] = t.vertex[1].x,
         .m[1][1] = t.vertex[1].y,
         .m[1][2] = t.vertex[1].z,
+        .m[1][3] = t.vertex[1].w,
+        // P3
         .m[2][0] = t.vertex[2].x,
         .m[2][1] = t.vertex[2].y,
         .m[2][2] = t.vertex[2].z,
+        .m[2][3] = t.vertex[2].w,
+        // Dummy
         .m[3][0] = 0.0f,
         .m[3][1] = 0.0f,
         .m[3][2] = 0.0f,
-        .m[0][3] = 1.0f,
-        .m[1][3] = 1.0f,
-        .m[2][3] = 1.0f,
         .m[3][3] = 1.0f,
     };
 }
@@ -114,17 +188,10 @@ Tri3f mat4_to_tri(Mat4f m)
     Tri3f t;
 
     for (int i = 0; i < 3; i++) {
-        float w = m.m[i][3];
-
-        if (w != 0.0f) {
-            t.vertex[i].x = m.m[i][0] / w;
-            t.vertex[i].y = m.m[i][1] / w;
-            t.vertex[i].z = m.m[i][2] / w;
-        } else {
-            t.vertex[i].x = m.m[i][0];
-            t.vertex[i].y = m.m[i][1];
-            t.vertex[i].z = m.m[i][2];
-        }
+        t.vertex[i].x = m.m[i][0];
+        t.vertex[i].y = m.m[i][1];
+        t.vertex[i].z = m.m[i][2];
+        t.vertex[i].w = m.m[i][3];
     }
 
     return t;
@@ -162,11 +229,6 @@ Mat4f chain_mul(int count, ...)
 
     va_end(args);
     return result;
-}
-
-float pDot3f(Point3f p1, Point3f p2)
-{
-    return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
 }
 
 Mat4f get_proj_matrix(float z_min, float z_max, float fov, int w, int h)
