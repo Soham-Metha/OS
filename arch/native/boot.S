@@ -122,4 +122,4 @@ flush:
     RET
 
 .section .bss
-    .lcomm  stackSpace,     8192
+    .lcomm  stackSpace,     524288
