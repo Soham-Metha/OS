@@ -49,11 +49,11 @@ void wm_render(WindowManager* wm);
 
 void wm_init(WindowManager* wm, Compositor* c)
 {
-    wm->count        = 0;
-    wm->focused      = -1;
-    wm->mx           = 0;
-    wm->my           = 0;
-    wm->compositor   = c;
+    wm->count      = 0;
+    wm->focused    = -1;
+    wm->mx         = 0;
+    wm->my         = 0;
+    wm->compositor = c;
 
     for (int i = 0; i < WM_MAX_WINDOWS; i++) {
         wm->windows[i].visible = false;
@@ -66,12 +66,14 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     if (wm->count >= WM_MAX_WINDOWS)
         return 0;
 
-    Window* win          = &wm->windows[wm->count++];
+    Window* win     = &wm->windows[wm->count++];
+    ResultPtr space = region_alloc(&win->arena, w * h * sizeof(uint32));
+    try(RESULT_OK(space), "out of space!", "");
     win->surface.x       = x;
     win->surface.y       = y;
     win->surface.width   = w;
     win->surface.height  = h;
-    win->surface.pixels  = region_alloc(&win->arena, w * h * sizeof(uint32));
+    win->surface.pixels  = (uint32*)RESULT_VAL(space);
     win->surface.visible = true;
     win->surface.dirty   = true;
     win->visible         = true;
@@ -81,6 +83,8 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     wm_focus_window(wm, win);
 
     return win;
+ret_err:
+    return (Window*)0;
 }
 
 void wm_focus_window(WindowManager* wm, Window* win)
@@ -160,7 +164,7 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
                 newy - wm->windows[i].surface.y,
                 wm->windows[i].term.fg,
                 wm->windows[i].term.bg);
-            wm_focus_window(wm,&wm->windows[i]);
+            wm_focus_window(wm, &wm->windows[i]);
             cursor_win = i;
             return;
         }
