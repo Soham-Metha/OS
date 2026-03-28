@@ -11,7 +11,7 @@ typedef VM_Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
 typedef struct
 {
     InternalVmCall VmCallI[INTERNAL_VMCALLS_CAPACITY];
-    uint64 internalVmCallsDefined;
+    uint32 internalVmCallsDefined;
 } VmCalls;
 
 typedef struct {
@@ -28,7 +28,7 @@ typedef struct {
 #define $inst ->prog.instructions
 #define $inst_cnt ->prog.instruction_count
 
-#define $stack_top ->cpu.registers.reg[REG_SP].u64
+#define $stack_top ->cpu.registers.reg[REG_SP].u32
 #define $reg ->cpu.registers.reg
 
 #define $vm_call ->vmCalls.VmCallI
@@ -73,7 +73,7 @@ bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
 
     Sasm_Metadata meta = exec->meta;
 
-    // uint64 n      = fread(&meta, sizeof(meta), 1, f);
+    // uint32 n      = fread(&meta, sizeof(meta), 1, f);
     // if (n < 1) {
     //     printf( "ERROR: Could not read meta data from file `%s`\n",
     //         filePath);
@@ -91,17 +91,17 @@ bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
 
     try(meta.prog_size <= MAX_PROGRAM_CAPACITY,
         "ERROR: program section is too big. The file contains %" PRIu64 " program instruction. But the capacity is %" PRIu64 "\n",
-        meta.prog_size, (u64)MAX_PROGRAM_CAPACITY);
+        meta.prog_size, (u32)MAX_PROGRAM_CAPACITY);
 
     try(meta.mem_capacity <= MAX_MEMORY_CAPACITY,
         "ERROR: memory section is too big. The file wants %" PRIu64 " bytes. But the capacity is %" PRIu64 " bytes\n",
-        meta.mem_capacity, (u64)MAX_MEMORY_CAPACITY);
+        meta.mem_capacity, (u32)MAX_MEMORY_CAPACITY);
 
     try(meta.mem_size <= meta.mem_capacity,
         "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
         meta.mem_size, meta.mem_capacity);
 
-    vm $reg[REG_NX].u64 = meta.entry;
+    vm $reg[REG_NX].u32 = meta.entry;
     // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
     vm->prog            = exec->prog;
     try(vm->prog.instruction_count == meta.prog_size, "ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
@@ -143,8 +143,8 @@ ret_err:
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count    = cpu->registers.QT.u64;
+    MemoryAddr addr = cpu->registers.L0.u32;
+    uint32 count    = cpu->registers.QT.u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -154,7 +154,7 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    for (uint64 i = 0; i < count; i += 1) {
+    for (uint32 i = 0; i < count; i += 1) {
         if (mem->memory[addr + i] == '\\') {
             i += 1;
             if (i >= count)
@@ -178,7 +178,7 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
 {
 
-    cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u64);
+    cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u32);
 
     return ERR_OK;
 }
@@ -192,19 +192,19 @@ VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %lf\n", cpu->registers.L1.f64);
+    printf(" %lf\n", cpu->registers.L1.f32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %" PRId64 "", cpu->registers.L2.i64);
+    printf(" %" PRId64 "", cpu->registers.L2.i32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %" PRIu64 "", cpu->registers.L3.u64);
+    printf(" %" PRIu64 "", cpu->registers.L3.u32);
     return ERR_OK;
 }
 
@@ -216,8 +216,8 @@ VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count    = cpu->registers.QT.u64;
+    MemoryAddr addr = cpu->registers.L0.u32;
+    uint32 count    = cpu->registers.QT.u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -227,7 +227,7 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    for (uint64 i = 0; i < count; ++i) {
+    for (uint32 i = 0; i < count; ++i) {
         printf(" %02X ", mem->memory[addr + i]);
         if (i % 16 == 15) {
             printf("\n ");
@@ -240,8 +240,8 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u64;
-    uint64 count    = cpu->registers.QT.u64;
+    MemoryAddr addr = cpu->registers.L0.u32;
+    uint32 count    = cpu->registers.QT.u32;
 
     char* buffer    = cpu->registers.RF.ptr;
 
@@ -288,14 +288,14 @@ ret_err:
         if (vm $stack_top < 1) {                       \
             return ERR_STACK_UNDERFLOW;                \
         }                                              \
-        const MemoryAddr addr = stack_pop(vm).u64;     \
+        const MemoryAddr addr = stack_pop(vm).u32;     \
         if (addr >= MAX_MEMORY_CAPACITY) {             \
             return ERR_ILLEGAL_MEMORY_ACCESS;          \
         }                                              \
         type tmp;                                      \
         memcpy(&tmp, &vm $memory[addr], sizeof(type)); \
         stack_push(vm, quadwordFrom##out(tmp));        \
-        vm $reg[REG_NX].u64++;                         \
+        vm $reg[REG_NX].u32++;                         \
     }
 
 #define WRITE_OP(type, size)                              \
@@ -303,19 +303,19 @@ ret_err:
         if (vm $stack_top < 2) {                          \
             return ERR_STACK_UNDERFLOW;                   \
         }                                                 \
-        const type value      = stack_pop(vm).u64;        \
-        const MemoryAddr addr = stack_pop(vm).u64;        \
+        const type value      = stack_pop(vm).u32;        \
+        const MemoryAddr addr = stack_pop(vm).u32;        \
         if (addr >= MAX_MEMORY_CAPACITY - size) {         \
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
         }                                                 \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \
-        vm $reg[REG_NX].u64++;                            \
+        vm $reg[REG_NX].u32++;                            \
     }
 
 #define ARITH_OP(reg, in, op)  \
     {                          \
         reg = reg op in;       \
-        vm $reg[REG_NX].u64++; \
+        vm $reg[REG_NX].u32++; \
     }
 
 #define BINARY_OP(in, out, op)                          \
@@ -327,13 +327,13 @@ ret_err:
         in opr1      = stack_pop(vm).in;                \
         QuadWord res = quadwordFrom##out(opr1 op opr2); \
         stack_push(vm, res);                            \
-        vm $reg[REG_NX].u64++;                          \
+        vm $reg[REG_NX].u32++;                          \
     }
 
 #define CAST_OP(r1, r2, src, dst, cast) \
     {                                   \
         r1.dst = cast r2.src;           \
-        vm $reg[REG_NX].u64++;          \
+        vm $reg[REG_NX].u32++;          \
     }
 
 #define STACK_CAST(src, dst, cast)                  \
@@ -341,30 +341,30 @@ ret_err:
         src opr      = stack_pop(vm).src;           \
         QuadWord res = quadwordFrom##dst(cast opr); \
         stack_push(vm, res);                        \
-        vm $reg[REG_NX].u64++;                      \
+        vm $reg[REG_NX].u32++;                      \
     }
 
 VM_Error executeInst(Vm* vm)
 {
-    if (vm $reg[REG_NX].u64 >= vm $inst_cnt) {
-        printf("error tring to access instruction at '%" PRIu64 "', but there are only '%" PRIu64 "' instructions", vm $reg[REG_NX].u64, vm $inst_cnt);
+    if (vm $reg[REG_NX].u32 >= vm $inst_cnt) {
+        printf("error tring to access instruction at '%" PRIu64 "', but there are only '%" PRIu64 "' instructions", vm $reg[REG_NX].u32, vm $inst_cnt);
         return ERR_ILLEGAL_INST_ACCESS;
     }
 
-    Instruction inst = vm $inst[vm $reg[REG_NX].u64];
+    Instruction inst = vm $inst[vm $reg[REG_NX].u32];
     // register value dereferencing
-    if (inst.opr1IsReg && inst.operand.u64 > REG_COUNT) {
-        inst.operand.u64 = vm $reg[inst.operand.u64 % REG_COUNT].u64;
+    if (inst.opr1IsReg && inst.operand.u32 > REG_COUNT) {
+        inst.operand.u32 = vm $reg[inst.operand.u32 % REG_COUNT].u32;
     }
-    if (inst.opr2IsReg && inst.operand2.u64 > REG_COUNT) {
-        inst.operand2.u64 = vm $reg[inst.operand2.u64 % REG_COUNT].u64;
+    if (inst.opr2IsReg && inst.operand2.u32 > REG_COUNT) {
+        inst.operand2.u32 = vm $reg[inst.operand2.u32 % REG_COUNT].u32;
     }
 
     // printf("\nenter : %d %s", inst.type, OpcodeDetailsLUT[inst.type].name);
     switch (inst.type) {
 
     case INST_DONOP:
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_RETVL:
@@ -376,17 +376,17 @@ VM_Error executeInst(Vm* vm)
         break;
 
     case INST_INVOK:
-        if (inst.operand.u64 > vm->vmCalls.internalVmCallsDefined)
+        if (inst.operand.u32 > vm->vmCalls.internalVmCallsDefined)
             return ERR_ILLEGAL_OPERAND;
 
-        if (!vm $vm_call[inst.operand.u64])
+        if (!vm $vm_call[inst.operand.u32])
             return ERR_NULL_CALL;
 
-        const VM_Error err = vm $vm_call[inst.operand.u64](&vm->cpu, &vm->mem, &vm->arena);
+        const VM_Error err = vm $vm_call[inst.operand.u32](&vm->cpu, &vm->mem, &vm->arena);
         if (err != ERR_OK)
             return err;
 
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_GETR: /* fallthrough */
@@ -394,21 +394,21 @@ VM_Error executeInst(Vm* vm)
         if (vm $stack_top >= STACK_CAPACITY)
             return ERR_STACK_OVERFLOW;
 
-        stack_push(vm, vm $reg[inst.operand.u64]);
-        vm $reg[REG_NX].u64++;
+        stack_push(vm, vm $reg[inst.operand.u32]);
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_SETR:
-        vm $reg[inst.operand2.u64].u64 = inst.operand.u64;
-        vm $reg[REG_NX].u64++;
+        vm $reg[inst.operand2.u32].u32 = inst.operand.u32;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_SPOPR:
         if (vm $stack_top < 1)
             return ERR_STACK_UNDERFLOW;
 
-        vm $reg[inst.operand.u64] = stack_pop(vm);
-        vm $reg[REG_NX].u64++;
+        vm $reg[inst.operand.u32] = stack_pop(vm);
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_PUSH:
@@ -416,20 +416,20 @@ VM_Error executeInst(Vm* vm)
             return ERR_STACK_OVERFLOW;
         }
         stack_push(vm, inst.operand);
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_SPOP:
         if (vm $stack_top < 1) {
             return ERR_STACK_UNDERFLOW;
         }
-        vm $reg[REG_QT].u64 = stack_pop(vm).u64;
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_QT].u32 = stack_pop(vm).u32;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_COPY:
-        vm $reg[inst.operand.u64].u64 = vm $reg[inst.operand2.u64].u64;
-        vm $reg[REG_NX].u64++;
+        vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_DUPS:
@@ -437,58 +437,58 @@ VM_Error executeInst(Vm* vm)
             return ERR_STACK_OVERFLOW;
         }
 
-        if (vm $stack_top <= inst.operand.u64) {
+        if (vm $stack_top <= inst.operand.u32) {
             return ERR_STACK_UNDERFLOW;
         }
 
-        stack_push(vm, vm $stack[vm $stack_top - 1 - inst.operand.u64]);
-        vm $reg[REG_NX].u64++;
+        stack_push(vm, vm $stack[vm $stack_top - 1 - inst.operand.u32]);
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_SWAP:
-        if (inst.operand.u64 >= vm $stack_top) {
+        if (inst.operand.u32 >= vm $stack_top) {
             return ERR_STACK_UNDERFLOW;
         }
 
-        const u64 a  = vm $stack_top - 1;
-        const u64 b  = vm $stack_top - 1 - inst.operand.u64;
+        const u32 a  = vm $stack_top - 1;
+        const u32 b  = vm $stack_top - 1 - inst.operand.u32;
 
         QuadWord tmp = vm $stack[a];
         vm $stack[a] = vm $stack[b];
         vm $stack[b] = tmp;
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_JMPU:
-        vm $reg[REG_NX].u64 = inst.operand.u64;
+        vm $reg[REG_NX].u32 = inst.operand.u32;
         break;
 
     case INST_JMPC:
         if (vm $stack_top < 1)
             return ERR_STACK_UNDERFLOW;
 
-        if (stack_pop(vm).u64 > 0)
-            vm $reg[REG_NX].u64 = inst.operand.u64;
+        if (stack_pop(vm).u32 > 0)
+            vm $reg[REG_NX].u32 = inst.operand.u32;
         else
-            vm $reg[REG_NX].u64++;
+            vm $reg[REG_NX].u32++;
 
         break;
 
     case INST_LOOP:
-        if (vm $reg[inst.operand2.u64].u64 > 0) {
-            vm $reg[REG_NX].u64 = inst.operand.u64;
+        if (vm $reg[inst.operand2.u32].u32 > 0) {
+            vm $reg[REG_NX].u32 = inst.operand.u32;
         } else {
-            vm $reg[REG_NX].u64++;
+            vm $reg[REG_NX].u32++;
         }
-        vm $reg[inst.operand2.u64].u64 -= 1;
+        vm $reg[inst.operand2.u32].u32 -= 1;
         break;
 
     case INST_CALL:
         if (vm $stack_top >= STACK_CAPACITY)
             return ERR_STACK_OVERFLOW;
 
-        stack_push(vm, quadwordFromU64(vm $reg[REG_NX].u64 + 1));
-        vm $reg[REG_NX].u64 = inst.operand.u64;
+        stack_push(vm, quadwordFromU64(vm $reg[REG_NX].u32 + 1));
+        vm $reg[REG_NX].u32 = inst.operand.u32;
         break;
 
     case INST_RET:
@@ -496,7 +496,7 @@ VM_Error executeInst(Vm* vm)
             return ERR_STACK_UNDERFLOW;
         }
 
-        vm $reg[REG_NX].u64 = stack_pop(vm).u64;
+        vm $reg[REG_NX].u32 = stack_pop(vm).u32;
         break;
 
     case INST_NOT:
@@ -504,11 +504,11 @@ VM_Error executeInst(Vm* vm)
             return ERR_STACK_UNDERFLOW;
         }
         {
-            u64 val = stack_pop(vm).u64;
+            u32 val = stack_pop(vm).u32;
             val     = !val;
             stack_push(vm, quadwordFromU64(val));
         }
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_NOTB:
@@ -517,203 +517,203 @@ VM_Error executeInst(Vm* vm)
         }
 
         {
-            u64 val = stack_pop(vm).u64;
+            u32 val = stack_pop(vm).u32;
             val     = ~val;
             stack_push(vm, quadwordFromU64(val));
         }
-        vm $reg[REG_NX].u64++;
+        vm $reg[REG_NX].u32++;
         break;
 
     case INST_ADDI:
-        // ARITH_OP(vm $reg[REG_L2].i64, inst.operand.i64, +);
-        BINARY_OP(i64, I64, +);
+        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, +);
+        BINARY_OP(i32, I64, +);
         break;
 
     case INST_SUBI:
-        // ARITH_OP(vm $reg[REG_L2].i64, inst.operand.i64, -);
-        BINARY_OP(i64, I64, -);
+        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, -);
+        BINARY_OP(i32, I64, -);
         break;
 
     case INST_MULI:
-        // ARITH_OP(vm $reg[REG_L2].i64, inst.operand.i64, *);
-        BINARY_OP(i64, I64, *);
+        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, *);
+        BINARY_OP(i32, I64, *);
         break;
 
     case INST_DIVI:
-        if (vm $stack[vm $stack_top - 1].i64 == 0)
+        if (vm $stack[vm $stack_top - 1].i32 == 0)
             return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L2].i64, inst.operand.i64, /);
-        BINARY_OP(i64, I64, /);
+        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, /);
+        BINARY_OP(i32, I64, /);
         break;
 
     case INST_MODI:
-        if (inst.operand.i64 == 0)
+        if (inst.operand.i32 == 0)
             return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L2].i64, inst.operand.i64, %);
-        BINARY_OP(i64, I64, %);
+        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, %);
+        BINARY_OP(i32, I64, %);
         break;
 
     case INST_ADDU:
-        // ARITH_OP(vm $reg[REG_L3].u64, inst.operand.u64, +);
-        BINARY_OP(u64, U64, +);
+        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, +);
+        BINARY_OP(u32, U64, +);
         break;
 
     case INST_SUBU:
-        // ARITH_OP(vm $reg[REG_L3].u64, inst.operand.u64, -);
-        BINARY_OP(u64, U64, -);
+        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, -);
+        BINARY_OP(u32, U64, -);
         break;
 
     case INST_MULU:
-        // ARITH_OP(vm $reg[REG_L3].u64, inst.operand.u64, +);
-        BINARY_OP(u64, U64, *);
+        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, +);
+        BINARY_OP(u32, U64, *);
         break;
 
     case INST_DIVU:
-        if (inst.operand.u64 == 0)
+        if (inst.operand.u32 == 0)
             return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L3].u64, inst.operand.u64, /);
-        BINARY_OP(u64, U64, /);
+        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, /);
+        BINARY_OP(u32, U64, /);
         break;
 
     case INST_MODU:
-        if (inst.operand.u64 == 0)
+        if (inst.operand.u32 == 0)
             return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L3].u64, inst.operand.u64, %);
-        BINARY_OP(u64, U64, %);
+        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, %);
+        BINARY_OP(u32, U64, %);
         break;
 
     case INST_ADDF:
-        // ARITH_OP(vm $reg[REG_L1].f64, inst.operand.f64, +);
-        BINARY_OP(f64, F64, +);
+        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, +);
+        BINARY_OP(f32, F64, +);
         break;
 
     case INST_SUBF:
-        // ARITH_OP(vm $reg[REG_L1].f64, inst.operand.f64, -);
-        BINARY_OP(f64, F64, -);
+        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, -);
+        BINARY_OP(f32, F64, -);
         break;
 
     case INST_MULF:
-        // ARITH_OP(vm $reg[REG_L1].f64, inst.operand.f64, *);
-        BINARY_OP(f64, F64, *);
+        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, *);
+        BINARY_OP(f32, F64, *);
         break;
 
     case INST_DIVF:
-        if (inst.operand.f64 == 0.0)
+        if (inst.operand.f32 == 0.0)
             return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L1].f64, inst.operand.f64, /);
-        BINARY_OP(f64, F64, /);
+        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, /);
+        BINARY_OP(f32, F64, /);
         break;
 
     case INST_ANDB:
-        BINARY_OP(u64, U64, &);
+        BINARY_OP(u32, U64, &);
         break;
 
     case INST_EQI:
-        BINARY_OP(i64, U64, ==);
+        BINARY_OP(i32, U64, ==);
         break;
 
     case INST_GEI:
-        BINARY_OP(i64, U64, >=);
+        BINARY_OP(i32, U64, >=);
         break;
 
     case INST_GTI:
-        BINARY_OP(i64, U64, >);
+        BINARY_OP(i32, U64, >);
         break;
 
     case INST_LEI:
-        BINARY_OP(i64, U64, <=);
+        BINARY_OP(i32, U64, <=);
         break;
 
     case INST_LTI:
-        BINARY_OP(i64, U64, <);
+        BINARY_OP(i32, U64, <);
         break;
 
     case INST_NEI:
-        BINARY_OP(i64, U64, !=);
+        BINARY_OP(i32, U64, !=);
         break;
 
     case INST_EQU:
-        BINARY_OP(u64, U64, ==);
+        BINARY_OP(u32, U64, ==);
         break;
 
     case INST_GEU:
-        BINARY_OP(u64, U64, >=);
+        BINARY_OP(u32, U64, >=);
         break;
 
     case INST_GTU:
-        BINARY_OP(u64, U64, >);
+        BINARY_OP(u32, U64, >);
         break;
 
     case INST_LEU:
-        BINARY_OP(u64, U64, <=);
+        BINARY_OP(u32, U64, <=);
         break;
 
     case INST_LTU:
-        BINARY_OP(u64, U64, <);
+        BINARY_OP(u32, U64, <);
         break;
 
     case INST_NEU:
-        BINARY_OP(u64, U64, !=);
+        BINARY_OP(u32, U64, !=);
         break;
 
     case INST_EQF:
-        BINARY_OP(f64, U64, ==);
+        BINARY_OP(f32, U64, ==);
         break;
 
     case INST_GEF:
-        BINARY_OP(f64, U64, >=);
+        BINARY_OP(f32, U64, >=);
         break;
 
     case INST_GTF:
-        BINARY_OP(f64, U64, >);
+        BINARY_OP(f32, U64, >);
         break;
 
     case INST_LEF:
-        BINARY_OP(f64, U64, <=);
+        BINARY_OP(f32, U64, <=);
         break;
 
     case INST_LTF:
-        BINARY_OP(f64, U64, <);
+        BINARY_OP(f32, U64, <);
         break;
 
     case INST_NEF:
-        BINARY_OP(f64, U64, !=);
+        BINARY_OP(f32, U64, !=);
         break;
 
     case INST_ORB:
-        BINARY_OP(u64, U64, |);
+        BINARY_OP(u32, U64, |);
         break;
 
     case INST_XOR:
-        BINARY_OP(u64, U64, ^);
+        BINARY_OP(u32, U64, ^);
         break;
 
     case INST_SHR:
-        BINARY_OP(u64, U64, >>);
+        BINARY_OP(u32, U64, >>);
         break;
 
     case INST_SHL:
-        BINARY_OP(u64, U64, <<);
+        BINARY_OP(u32, U64, <<);
         break;
 
     case INST_I2F:
         // CAST_OP(vm $reg[REG_L1], vm $reg[REG_L2], i64, f64, (f64));
-        STACK_CAST(i64, F64, (f64));
+        STACK_CAST(i32, F64, (f32));
         break;
 
     case INST_U2F:
         // CAST_OP(vm $reg[REG_L1], vm $reg[REG_L3], u64, f64, (f64));
-        STACK_CAST(u64, F64, (f64));
+        STACK_CAST(u32, F64, (f32));
         break;
 
     case INST_F2I:
         // CAST_OP(vm $reg[REG_L2], vm $reg[REG_L1], f64, i64, (i64));
-        STACK_CAST(f64, I64, (f64));
+        STACK_CAST(f32, I64, (f32));
         break;
 
     case INST_F2U:
         // CAST_OP(vm $reg[REG_L3], vm $reg[REG_L1], f64, u64, (u64)(i64));
-        STACK_CAST(f64, U64, (u64)(i64));
+        STACK_CAST(f32, U64, (u32)(i32));
         break;
 
     case INST_READ1U:
@@ -729,7 +729,7 @@ VM_Error executeInst(Vm* vm)
         break;
 
     case INST_READ8U:
-        READ_OP(u64, U64);
+        READ_OP(u32, U64);
         break;
 
     case INST_READ1I:
@@ -761,7 +761,7 @@ VM_Error executeInst(Vm* vm)
         break;
 
     case INST_WRITE8:
-        WRITE_OP(u64, 7);
+        WRITE_OP(u32, 7);
         break;
 
     case NUMBER_OF_INSTS:
@@ -807,7 +807,6 @@ bool virex_test(void)
                           "\n    INVOK    7"
                           "\n    RET"
                           "\n%end";
-
     String_View sv_prog = STR(prog);
     printf("\nTest Program:");
     printf("\n-------------");
