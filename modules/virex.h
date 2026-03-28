@@ -177,8 +177,7 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
 {
-
-    cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u32);
+    // cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u32);
 
     return ERR_OK;
 }
@@ -347,7 +346,7 @@ ret_err:
 VM_Error executeInst(Vm* vm)
 {
     if (vm $reg[REG_NX].u32 >= vm $inst_cnt) {
-        printf("error tring to access instruction at '%" PRIu64 "', but there are only '%" PRIu64 "' instructions", vm $reg[REG_NX].u32, vm $inst_cnt);
+        printf("error tring to access instruction at '%d', but there are only '%d' instructions", vm $reg[REG_NX].u32, vm $inst_cnt);
         return ERR_ILLEGAL_INST_ACCESS;
     }
 
@@ -783,36 +782,39 @@ ret_err:
     return false;
 }
 
+const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
+                       "\n%entry      main                             ; ENTRY POINT"
+                       "\n"
+                       "\nmain:"
+                       "\nsay_hello:                                   ; GLOBAL 'say_hello'"
+                       "\n%scope                                       ; ENCAPSULATION"
+                       "\n"
+                       "\n    SETR    2           ref([L2])               ; iteration count"
+                       "\nsay_hello:                                   ; LOCAL 'say_hello'"
+                       "\n    SETR    hello       ref([L0])               ; ptr to string start"
+                       "\n    SETR    len(hello)  ref([QT])               ; length of string"
+                       "\n    CALL    print                               ; expects above 2 arguments"
+                       "\n    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
+                       "\n"
+                       "\n%end"
+                       "\nSHUTS"
+                       "\n"
+                       "\nprint:"
+                       "\n%scope"
+                       "\n    INVOK    7"
+                       "\n    RET"
+                       "\n%end";
+
+Sasm_Executable exec = { 0 };
+
 bool virex_test(void)
 {
-    const char* prog    = "\n%bind       hello       \"\\n Hello, World\""
-                          "\n%entry      main                             ; ENTRY POINT"
-                          "\n"
-                          "\nmain:"
-                          "\nsay_hello:                                   ; GLOBAL 'say_hello'"
-                          "\n%scope                                       ; ENCAPSULATION"
-                          "\n"
-                          "\n    SETR    2           ref([L2])               ; iteration count"
-                          "\nsay_hello:                                   ; LOCAL 'say_hello'"
-                          "\n    SETR    hello       ref([L0])               ; ptr to string start"
-                          "\n    SETR    len(hello)  ref([QT])               ; length of string"
-                          "\n    CALL    print                               ; expects above 2 arguments"
-                          "\n    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
-                          "\n"
-                          "\n%end"
-                          "\nSHUTS"
-                          "\n"
-                          "\nprint:"
-                          "\n%scope"
-                          "\n    INVOK    7"
-                          "\n    RET"
-                          "\n%end";
     String_View sv_prog = STR(prog);
     printf("\nTest Program:");
     printf("\n-------------");
     printf("\n%s", sv_prog.data);
     printf("\n-------------");
-    Sasm_Executable exec = sasm_assemble(sv_prog);
+    sasm_assemble(&exec, sv_prog);
     printf("\nOutput:");
     printf("\n-------------");
     return virex_run(&exec, -1);

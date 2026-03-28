@@ -575,7 +575,7 @@ typedef struct Sasm_Executable {
  * Expects the entire program loaded into a String_View and returns the Executable.
  * Note: File Handling Not Done Here!
  */
-Sasm_Executable sasm_assemble(String_View input_prog);
+void sasm_assemble(Sasm_Executable* exec, String_View input_prog);
 
 #endif
 
@@ -600,7 +600,7 @@ OpcodeDetails getOpcodeDetails(Opcode type);
 void setFlag(Meta f, CPU* cpu, bool state);
 bool getFlag(Meta f, const CPU* cpu);
 
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
+void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm);
 bool sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
 bool sasm_resolve_operands(Sasm_Context* sasm);
 bool sasm_resolve_entry_point(Sasm_Context* sasm);
@@ -926,7 +926,7 @@ uint32 getFunCallArgCnt(FuncallArg* args)
     return result;
 }
 
-EvalResult resultOK(QuadWord value, BindingType type)
+inline EvalResult resultOK(QuadWord value, BindingType type)
 {
     return (EvalResult) {
         .status = EVAL_STATUS_OK,
@@ -935,7 +935,7 @@ EvalResult resultOK(QuadWord value, BindingType type)
     };
 }
 
-EvalResult resultUnresolved(Binding* unresolvedBinding)
+inline EvalResult resultUnresolved(Binding* unresolvedBinding)
 {
     return (EvalResult) {
         .status            = EVAL_STATUS_DEFERRED,
@@ -1081,9 +1081,12 @@ Expr parseExprFromStr(Arena* arena, String_View source, FileLocation location)
 
 void sasm_scope_push(Sasm_Context* sasm)
 {
-    Scope* scope    = (Scope*)region_alloc(&sasm->arena, sizeof(*sasm->scope));
+    ResultPtr space = region_alloc(&sasm->arena, sizeof(Scope));
+    try(RESULT_OK(space), "out of space!", "");
+    Scope* scope    = (Scope*)RESULT_VAL(space);
     scope->previous = sasm->scope;
     sasm->scope     = scope;
+ret_err:;
 }
 
 void sasm_scope_pop(Sasm_Context* sasm)
@@ -1215,9 +1218,9 @@ ret_err:
     return false;
 }
 
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
+void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm)
 {
-    Sasm_Executable res = (Sasm_Executable) {
+    *exec = (Sasm_Executable) {
         .meta = {
                  .magic        = FILE_MAGIC,
                  .version      = FILE_VERSION,
@@ -1232,27 +1235,27 @@ Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
     };
 
     for (uint32 i = 0; i < sasm->mem_size; i++) {
-        res.memory[i] = sasm->memory[i];
+        exec->memory[i] = sasm->memory[i];
     }
 
     for (DataEntry i = 0; i < sasm->prog.instruction_count; i++) {
-        res.prog.instructions[i] = sasm->prog.instructions[i];
+        exec->prog.instructions[i] = sasm->prog.instructions[i];
     }
-
-    return res;
 }
 
-Sasm_Executable sasm_assemble(String_View input_prog)
+void sasm_assemble(Sasm_Executable* exec, String_View input_prog)
 {
-    Sasm_Context *sasm = kmalloc(sizeof(Sasm_Context));
+    Sasm_Context* sasm = kmalloc(sizeof(Sasm_Context));
     sasm_translate_root_file(sasm, input_prog);
-    return sasm_generate_executable(sasm);
+    sasm_generate_executable(exec, sasm);
 }
 
 bool sasm_codeblock_push(Arena* arena, CodeBlock* list, Stmt statement)
 {
     try(list, "got null ptr!", "");
-    StmtNode* stmtNode  = region_alloc(arena, sizeof(StmtNode));
+    ResultPtr space = region_alloc(arena, sizeof(StmtNode));
+    try(RESULT_OK(space), "out of space!", "");
+    StmtNode* stmtNode  = (StmtNode*)RESULT_VAL(space);
     stmtNode->statement = statement;
 
     if (list->end == NULL) {
@@ -1264,6 +1267,7 @@ bool sasm_codeblock_push(Arena* arena, CodeBlock* list, Stmt statement)
         list->end->next = stmtNode;
         list->end       = stmtNode;
     }
+    list->end->next = NULL;
     return true;
 ret_err:
     return false;
@@ -1379,6 +1383,8 @@ ret_err:
 CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
 {
     CodeBlock result = { 0 };
+    result.begin     = NULL;
+    result.end       = NULL;
 
     Line line        = { 0 };
     while (fetchCachedLineFromSasmLexer(lineInterpreter, &line)) {
@@ -1620,8 +1626,10 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
 
         Token next = { 0 };
         if (fetchCachedSasmTokenFromSasmTokenizer(tokenizer, &next, location) && next.type == TOKEN_TYPE_OPEN_PAREN) {
+            ResultPtr space = region_alloc(arena, sizeof(Funcall));
+            try(RESULT_OK(space), "out of space!", "");
             result.type                = EXPR_FUNCALL;
-            result.value.funcall       = region_alloc(arena, sizeof(Funcall));
+            result.value.funcall       = (Funcall*)RESULT_VAL(space);
             result.value.funcall->name = token.text;
             result.value.funcall->args = parseFuncallArgs(arena, tokenizer, location);
         } else {
@@ -1969,7 +1977,6 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
         case STMT_BLOCK:     // Currently unused!
             try(translateSasmStatementChain(sasm, statement.value.block), "Unable to bind!", "");
             break;
-
         case STMT_SCOPE:
         case STMT_INST:
             break;
@@ -1986,7 +1993,7 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
         case STMT_LABEL:
             {
                 Binding* binding = sasm_binding_resolve(sasm, statement.value.label.name);
-                try(binding != NULL, "binding not found", "");
+                try(binding != NULL, "binding not found: %s", statement.value.label.name.data);
                 try(binding->status == BIND_STATUS_DEFERRED, "binding already defined!", "");
 
                 binding->status    = BIND_STATUS_EVALUATED;
@@ -2026,7 +2033,6 @@ bool translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
     }
 
     CodeBlock inputFileBlock = sasm_line_parse_codeblock(&sasm->arena, &SasmLexer);
-
     return translateSasmStatementChain(sasm, inputFileBlock.begin);
 ret_err:
     return false;
@@ -2179,7 +2185,9 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
     FuncallArg* last  = NULL;
 
     do {
-        FuncallArg* arg = region_alloc(arena, sizeof(FuncallArg));
+        ResultPtr space = region_alloc(arena, sizeof(FuncallArg));
+        try(RESULT_OK(space), "out of space!", "");
+        FuncallArg* arg = (FuncallArg*)RESULT_VAL(space);
         arg->value      = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         if (first == NULL) {
