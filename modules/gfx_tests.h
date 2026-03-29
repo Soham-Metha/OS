@@ -1,5 +1,6 @@
 #include "graphics3d.h"
 #include <examples/fish.c>
+#include <examples/fish_tex.c>
 #include <examples/gun.c>
 #include <examples/pika.c>
 #include <examples/tea.c>
@@ -214,55 +215,67 @@ void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
 void gfx_3d_test2(GFX_Canvas canvas)
 {
     angle2 += 0.05f;
-    static Tri3f mesh[] = FISH_MESH;
-    Mat4f mProj         = matrix_chain(2,
-                matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
-                matrix_viewport());
-    Mat4f mTrans        = matrix_trans(0, 0, 15.0f);
-    Mat4f mRotYCam      = matrix_rotY(angleY);
-    Mat4f mRotZ         = matrix_rotZ(-angle2 * 0.5f);
-    Mat4f mRotY         = matrix_rotY(-angle2 * 1.0f);
+    FISH_PX;
+    static GFX_Canvas tex   = FISH_CANVAS;
+    static Tri3f mesh[]     = FISH_MESH;
+    static Point3f light    = { .z = -1 };
+
+    static bool initialized = false;
+    static Mat4f mTransProjView;
+    if (!initialized) {
+        // Fixed operations
+        // move object away from camera before render
+        // project 3d co ords into 2d co ords
+        // view port transforms to get it into 0-1 range
+        mTransProjView = matrix_chain(3,
+            matrix_trans(0, 0, 15.0f),
+            matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+            matrix_viewport());
+        initialized    = true;
+    }
 
     static Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f)) * 2];
-    int idx        = 0;
+    int idx      = 0;
 
-    Point3f vUp    = { .y = 1 };
-    Point3f target = { .z = 1.0f };
+    vLookDir     = p3f_mul_mat((Point3f) { .z = 1.0f }, matrix_rotY(angleY));
 
-    vLookDir       = p3f_mul_mat(target, mRotYCam);
-    target         = p3f_add(camera, vLookDir);
+    // Dynamic operations
+    // the rotation angle changes each frame
+    // camera position may change based on user input
+    Mat4f mWorld = matrix_chain(3,
+        matrix_rotZ(-angle2 * 0.5f),
+        matrix_rotY(-angle2 * 1.0f),
+        matrix_inv(matrix_pointed(
+            camera,
+            p3f_add(camera, vLookDir),
+            (Point3f) { .y = 1 })));
 
-    Mat4f mCam     = matrix_pointed(camera, target, vUp);
-    mCam           = matrix_inv(mCam);
-
+    // TODO: switch from a per-face loop to a per-vertex loop?
+    // TODO: since vertices may be shared, would improve performance?
     for (int i = 0; i < (int)(sizeof(mesh) / sizeof(Tri3f)); i++) {
-        Tri3f proj, trans;
+        Tri3f trans = {
+            .vertex[0]  = p3f_mul_mat(mesh[i].vertex[0], mWorld),
+            .vertex[1]  = p3f_mul_mat(mesh[i].vertex[1], mWorld),
+            .vertex[2]  = p3f_mul_mat(mesh[i].vertex[2], mWorld),
+            .texture[0] = mesh[i].texture[0],
+            .texture[1] = mesh[i].texture[1],
+            .texture[2] = mesh[i].texture[2],
+        };
 
-        // Transform to view space
-        Mat4f mTri = matrix_chain(4,
-            tri_to_mat4(mesh[i]),
-            mRotZ,
-            mRotY,
-            mCam);
-
-        trans      = mat4_to_tri(mTri);
-
-        Point3f normal, l1, l2, pCamRay;
-        // Compute normal
-        l1      = p3f_sub(trans.vertex[1], trans.vertex[0]);
-        l2      = p3f_sub(trans.vertex[2], trans.vertex[0]);
-        normal  = p3f_normalize(p3f_cross(l1, l2));
-        pCamRay = p3f_sub(trans.vertex[0], camera);
+        Point3f pCamRay = p3f_sub(trans.vertex[0], camera);
+        Point3f normal  = p3f_normalize(
+             p3f_cross(
+                 p3f_sub(trans.vertex[1], trans.vertex[0]),
+                 p3f_sub(trans.vertex[2], trans.vertex[0])));
 
         if (p3f_dot(normal, pCamRay) >= 0)
             continue;
 
-        Point3f light = { .z = -1 };
-        float dp      = p3f_dot(normal, light);
-        uint8 shade   = (uint8)(dp * 255);
-        trans.col     = COL(shade, shade, shade, 255);
+        float dp = p3f_dot(normal, light);
+        if (dp > 1.0f) dp = 1.0f;
+        if (dp < 0.1f) dp = 0.1f;
+        trans.shade = dp;
 
-        // Clipping (view space)
         Tri3f clipped[2];
         uint8 clip_cnt = tri_clip(
             (Point3f) { .z = 0.1f },
@@ -273,14 +286,19 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
         for (uint8 j = 0; j < clip_cnt; j++) {
 
-            // Projection and Viewport
-            mTri           = matrix_chain(3, tri_to_mat4(clipped[j]), mTrans, mProj);
-            proj           = mat4_to_tri(mTri);
+            // Translate, Project and Viewport
+            Tri3f proj = {
+                .shade      = clipped[j].shade,
+                .texture[0] = clipped[j].texture[0],
+                .texture[1] = clipped[j].texture[1],
+                .texture[2] = clipped[j].texture[2],
+                .vertex[0]  = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
+                .vertex[1]  = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
+                .vertex[2]  = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
+            };
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
             proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
-
-            proj.col       = clipped[j].col;
 
             Tri3f tri_q[8];
             int q_count      = 0;
@@ -295,18 +313,10 @@ void gfx_3d_test2(GFX_Canvas canvas)
                     int n = 0;
 
                     switch (p) {
-                    case 0:
-                        n = tri_clip((Point3f) { .y = 0 }, (Point3f) { .y = +1 }, tri_q[ii], &clip[0], &clip[1]);
-                        break;
-                    case 1:
-                        n = tri_clip((Point3f) { .y = 1 }, (Point3f) { .y = -1 }, tri_q[ii], &clip[0], &clip[1]);
-                        break;
-                    case 2:
-                        n = tri_clip((Point3f) { .x = 0 }, (Point3f) { .x = +1 }, tri_q[ii], &clip[0], &clip[1]);
-                        break;
-                    case 3:
-                        n = tri_clip((Point3f) { .x = 1 }, (Point3f) { .x = -1 }, tri_q[ii], &clip[0], &clip[1]);
-                        break;
+                    case 0: n = tri_clip((Point3f) { .y = 0 }, (Point3f) { .y = +1 }, tri_q[ii], &clip[0], &clip[1]); break;
+                    case 1: n = tri_clip((Point3f) { .y = 1 }, (Point3f) { .y = -1 }, tri_q[ii], &clip[0], &clip[1]); break;
+                    case 2: n = tri_clip((Point3f) { .x = 0 }, (Point3f) { .x = +1 }, tri_q[ii], &clip[0], &clip[1]); break;
+                    case 3: n = tri_clip((Point3f) { .x = 1 }, (Point3f) { .x = -1 }, tri_q[ii], &clip[0], &clip[1]); break;
                     }
 
                     for (int k = 0; k < n; k++)
@@ -325,11 +335,19 @@ void gfx_3d_test2(GFX_Canvas canvas)
     }
 
     for (int i = 0; i < idx; i++) {
-        gfx_fill_triangle(canvas,
+        // uint8 shade255 = draw_queue[i].shade * 255;
+        // uint32 col     = COL(shade255, shade255, shade255, 0xFF);
+        // gfx_fill_triangle(canvas,
+        //     draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
+        //     draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
+        //     draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
+        //     col);
+        gfx_fill_textured_triangle(canvas,
+            tex, draw_queue[i].texture,
             draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
             draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
             draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
-            draw_queue[i].col);
+            draw_queue[i].shade);
         gfx_draw_triangle(canvas,
             draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
             draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
@@ -340,5 +358,5 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
 void gfx_testt(GFX_Canvas canvas)
 {
-    gfx_apply_texture(canvas, text);
+    gfx_fill_textured(canvas, text);
 }
