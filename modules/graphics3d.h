@@ -303,7 +303,8 @@ Mat4f matrix_chain(int count, ...)
 Mat4f matrix_project(float z_min, float z_max, float fov, int w, int h)
 {
     float aspect_ratio = (float)h / w;
-    float fov_tan      = 1.0f / fast_tan(fov);
+    float fov_rad = fov * (PI / 180.0f);
+    float fov_tan = 1.0f / fast_tan(fov_rad * 0.5f);
     return (Mat4f) {
         .m[0][0] = aspect_ratio * fov_tan,
         .m[1][1] = fov_tan,

@@ -1,4 +1,5 @@
 #define TABLE_SIZE 1024
+#define PI 3.1415926f
 #define TWO_PI 6.2831852f
 #define INV_TWO_PI (TABLE_SIZE / TWO_PI)
 
