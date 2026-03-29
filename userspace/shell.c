@@ -58,22 +58,22 @@ void graphics_test(void)
     int xmid           = xmax / 2;
     int ymid           = ymax / 2;
 
-    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmid, ymid);
-    GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
+    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid);
+    // GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
     GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid);
     GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid);
 
-    gfx_fill(canvas, COL(0x11, 0x11, 0x11, 0xFF));
+    gfx_fill(canvas, COL(0x00, 0x00, 0x00, 0xFF));
 
-    gfx_3d_test(sub_c11);
-    gfx_3d_test2(sub_c12);
-    gfx_pattern_checker(sub_c21,
-        47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+    gfx_3d_test(sub_c21);
+    gfx_testt(sub_c11);
+    gfx_3d_test2(sub_c11);
+    // gfx_pattern_checker(sub_c21,
+    //     47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     // gfx_pattern_circles(sub_c12,
     //     6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
-    // gfx_pattern_shapes(sub_c22,
-    //     COL(0x22, 0xFF, 0x22, 0xFF));
-    gfx_testt(sub_c22);
+    gfx_pattern_shapes(sub_c22,
+        COL(0x22, 0xFF, 0x22, 0xFF));
     s->dirty = true;
     p_yield();
 }
@@ -172,8 +172,8 @@ void gfx_io_loop()
         else if (c == '2') ty -= 0.05f;
         else if (c == '4') tx -= 0.05f;
         else if (c == '6') tx += 0.05f;
-        else if (c == 'w') tz += 0.05f;
-        else if (c == 's') tz -= 0.05f;
+        else if (c == 'w') tz += 0.5f;
+        else if (c == 's') tz -= 0.5f;
         else if (c == 'a') ry -= 0.05f;
         else if (c == 'd') ry += 0.05f;
         gfx_3d_Cam_Move(tx,ty,tz,ry);
