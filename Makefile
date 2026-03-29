@@ -59,7 +59,7 @@ else
 CC     := emcc
 LD     := emcc
 CFLAGS += -matomics -mbulk-memory 
-LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=9MB -s STANDALONE_WASM=1 -Wl,--shared-memory
+LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=15MB -s STANDALONE_WASM=1 -Wl,--shared-memory
 LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 endif
