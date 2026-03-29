@@ -1,12 +1,31 @@
 #include "graphics3d.h"
-#include <examples/fish.c>
-#include <examples/fish_tex.c>
-#include <examples/gun.c>
-#include <examples/pika.c>
-#include <examples/tea.c>
+#include <examples/img_ex.c>
+#include <examples/space.c>
+#include <examples/space_tex.c>
 
-PIKA_TEST;
-static GFX_Canvas text = PIKA_CANVAS;
+// Examples available:
+// ---- | ------------ | PX_PIKA   | CANVAS_PIKA   | 256x256
+// ---- | ------------ | PX_BOY    | CANVAS_BOY    | 512x512
+// ---- | ------------ | PX_CASTLE | CANVAS_CASTLE | 512x512
+// ---- | ------------ | PX_MARIO  | CANVAS_MARIO  | 512x512
+// ---- | ------------ | PX_SKY    | CANVAS_SKY    | 512x512
+// ---- | ------------ | PX_SKY2   | CANVAS_SKY2   | 512x512
+// ---- | ------------ | PX_SKY3   | CANVAS_SKY3   | 512x512
+// ---- | ------------ | PX_METR   | CANVAS_METR   | 512x512
+// ---- | ------------ | PX_CYBER  | CANVAS_CYBER  | 512x512
+//  286 | MESH_GUN     | --------- | ------------- | -------
+//  387 | MESH_FISH    | PX_FISH   | CANVAS_FISH   | 256x256
+//  391 | MESH_CLOCK   | PX_CLOCK  | CANVAS_CLOCK  | 256x256
+// 1613 | MESH_SHIP2   | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 2009 | MESH_PLANET1 | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 3375 | MESH_SHIP1   | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 5589 | MESH_ASTRO1  | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 5845 | MESH_MECH2   | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 6257 | MESH_ASTRO2  | PX_SPACE  | CANVAS_SPACE  | 512x512
+// 6319 | MESH_TEA     | --------- | ------------- | -------
+
+PX_SKY2;
+static GFX_Canvas text = CANVAS_SKY2;
 
 void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
@@ -215,9 +234,9 @@ void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
 void gfx_3d_test2(GFX_Canvas canvas)
 {
     angle2 += 0.05f;
-    FISH_PX;
-    static GFX_Canvas tex   = FISH_CANVAS;
-    static Tri3f mesh[]     = FISH_MESH;
+    PX_SPACE;
+    static GFX_Canvas tex   = CANVAS_SPACE;
+    static Tri3f mesh[]     = MESH_SHIP2;
     static Point3f light    = { .z = -1 };
 
     static bool initialized = false;
@@ -228,8 +247,8 @@ void gfx_3d_test2(GFX_Canvas canvas)
         // project 3d co ords into 2d co ords
         // view port transforms to get it into 0-1 range
         mTransProjView = matrix_chain(3,
-            matrix_trans(0, 0, 15.0f),
-            matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+            matrix_trans(0, 0, 1.0f),
+            matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
         initialized    = true;
     }
@@ -278,7 +297,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
         Tri3f clipped[2];
         uint8 clip_cnt = tri_clip(
-            (Point3f) { .z = 0.1f },
+            (Point3f) { .z = 0.01f },
             (Point3f) { .z = 1.0f },
             trans,
             &clipped[0],
