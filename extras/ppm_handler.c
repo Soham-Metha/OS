@@ -7,7 +7,8 @@ typedef unsigned int uint32;
 
 int main()
 {
-    FILE* f = fopen("fish_tex.ppm", "rb");     // IMPORTANT: binary mode
+    FILE* f          = fopen("metr.ppm", "rb");
+    const char* name = "METR";
     if (!f) {
         perror("open failed");
         return 1;
@@ -24,7 +25,7 @@ int main()
     fscanf(f, "%d", &maxval);
     fgetc(f);
 
-    printf("#define FISH_PX static uint32 img_px[%d] = { \\\n", w * h);
+    printf("#define PX_%s static uint32 img_px[%d] = { \\\n", name, w * h);
 
     for (int i = 0; i < w * h; i++) {
         unsigned char rgb[3];
@@ -56,7 +57,7 @@ int main()
 
     printf("}\n\n");
 
-    printf("#define FISH_CANVAS { \\\n");
+    printf("#define CANVAS_%s { \\\n", name);
     printf("    .px = img_px,");
     printf("    .px_w = %d,", w);
     printf("    .px_h = %d,", h);
