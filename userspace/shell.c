@@ -71,8 +71,9 @@ void graphics_test(void)
         47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
     // gfx_pattern_circles(sub_c12,
     //     6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
-    gfx_pattern_shapes(sub_c22,
-        COL(0x22, 0xFF, 0x22, 0xFF));
+    // gfx_pattern_shapes(sub_c22,
+    //     COL(0x22, 0xFF, 0x22, 0xFF));
+    gfx_testt(sub_c22);
     s->dirty = true;
     p_yield();
 }

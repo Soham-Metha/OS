@@ -50,15 +50,20 @@ typedef struct
 
 GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h, float scale);
 GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h);
+
 uint32 gfx_lerp_color(uint32 a, uint32 b, int mode);
-void gfx_fill(GFX_Canvas canvas, uint32 col);
 bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col);
+
+void gfx_fill(GFX_Canvas canvas, uint32 col);
 void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
 void gfx_fill_rect(GFX_Canvas canvas, int x, int y, int w, int h, uint32 col);
-void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 col);
 void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
+
+void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
+
+void gfx_apply_texture(GFX_Canvas dest, GFX_Canvas src);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -302,6 +307,18 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
             d = d + 4 * x + 6;
         }
         x += 1;
+    }
+}
+
+void gfx_apply_texture(GFX_Canvas dest, GFX_Canvas src)
+{
+    for (int y = 0; y < dest.px_h; y++) {
+        for (int x = 0; x < dest.px_w; x++) {
+            int nx     = x * src.px_w / dest.px_w;
+            int ny     = y * src.px_h / dest.px_h;
+            uint32 col = src.px[ny * src.px_stride + nx];
+            gfx_put_pixel(dest, x, y, col);
+        }
     }
 }
 

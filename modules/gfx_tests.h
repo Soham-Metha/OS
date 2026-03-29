@@ -1,7 +1,11 @@
 #include "graphics3d.h"
 #include <examples/fish.c>
 #include <examples/gun.c>
+#include <examples/pika.c>
 #include <examples/tea.c>
+
+PIKA_TEST;
+static GFX_Canvas text = PIKA_CANVAS;
 
 void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
@@ -332,4 +336,9 @@ void gfx_3d_test2(GFX_Canvas canvas)
             draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
             0x000000FF);
     }
+}
+
+void gfx_testt(GFX_Canvas canvas)
+{
+    gfx_apply_texture(canvas, text);
 }
