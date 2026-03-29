@@ -18,14 +18,32 @@ typedef struct {
 } Point3f;
 
 typedef struct {
+    float u;
+    float v;
+} Point2f;
+
+typedef struct {
     Point3f vertex[3];
-    uint32 col;
+    Point2f texture[3];
+    float shade;
 } Tri3f;
 
 typedef struct
 {
     float m[4][4];
 } Mat4f;
+
+enum {
+    COL_A,
+    COL_B,
+    COL_G,
+    COL_R,
+};
+
+typedef union Color {
+    uint32 as_u32;
+    uint8 as_[4];
+} Color;
 
 #define GFX_CANVAS(p, w, h, s) gfx_init_canvas(p, w, h, s)
 #define swap_points(ax, ay, bx, by) \
@@ -63,7 +81,9 @@ void gfx_fill_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2
 void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col);
 void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
 
-void gfx_apply_texture(GFX_Canvas dest, GFX_Canvas src);
+void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src);
+void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float u2, float v2, float shade);
+void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float shade);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -135,18 +155,6 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h)
 
 uint32 gfx_lerp_color(uint32 a, uint32 b, int mode)
 {
-    enum {
-        COL_A,
-        COL_B,
-        COL_G,
-        COL_R,
-    };
-
-    typedef union Color {
-        uint32 as_u32;
-        uint8 as_[4];
-    } Color;
-
     Color c1 = (Color) { .as_u32 = a };
     Color c2 = (Color) { .as_u32 = b };
     if (c2.as_[COL_A] == 0xFF)
@@ -310,15 +318,100 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
     }
 }
 
-void gfx_apply_texture(GFX_Canvas dest, GFX_Canvas src)
+void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src)
 {
     for (int y = 0; y < dest.px_h; y++) {
+        int ny = y * src.px_h / dest.px_h;
         for (int x = 0; x < dest.px_w; x++) {
             int nx     = x * src.px_w / dest.px_w;
-            int ny     = y * src.px_h / dest.px_h;
             uint32 col = src.px[ny * src.px_stride + nx];
             gfx_put_pixel(dest, x, y, col);
         }
+    }
+}
+
+// TODO: improvements to data structs, add Point2i/Point3i, better swap functions etc
+// TODO: textured circ & rect
+void gfx_fill_textured_triangle(
+    GFX_Canvas dest, GFX_Canvas src,
+    Point2f tex[3],
+    int x0, int y0, int x1, int y1, int x2, int y2,
+    float shade)
+{
+    if (y1 < y0) {
+        swap_points(x0, y0, x1, y1);
+        swap(Point2f, tex[0], tex[1]);
+    }
+    if (y2 < y0) {
+        swap_points(x0, y0, x2, y2);
+        swap(Point2f, tex[0], tex[2]);
+    }
+    if (y2 < y1) {
+        swap_points(x1, y1, x2, y2);
+        swap(Point2f, tex[1], tex[2]);
+    }
+
+    for (int i = 0; i < y2 - y0; i++) {
+        float t1 = (float)i / (float)(y2 - y0);
+        if ((i > y1 - y0) || (y1 == y0)) {
+            float t2 = (float)(i - (y1 - y0)) / (float)(y2 - y1);
+
+            gfx_fill_textured_rowspan(dest, src,
+                y0 + i,
+                lerp(x0, x2, t1),
+                lerp(x1, x2, t2),
+                lerp(tex[0].u, tex[2].u, t1),
+                lerp(tex[0].v, tex[2].v, t1),
+                lerp(tex[1].u, tex[2].u, t2),
+                lerp(tex[1].v, tex[2].v, t2),
+                shade);
+        } else {
+            float t2 = (float)i / (float)(y1 - y0);
+
+            gfx_fill_textured_rowspan(dest, src,
+                y0 + i,
+                lerp(x0, x2, t1),
+                lerp(x0, x1, t2),
+                lerp(tex[0].u, tex[2].u, t1),
+                lerp(tex[0].v, tex[2].v, t1),
+                lerp(tex[0].u, tex[1].u, t2),
+                lerp(tex[0].v, tex[1].v, t2),
+                shade);
+        }
+    }
+}
+
+inline void gfx_fill_textured_rowspan(
+    GFX_Canvas dest, GFX_Canvas src,
+    int y,
+    int x1, int x2,
+    float u1, float v1,
+    float u2, float v2,
+    float shade)
+{
+    if (x1 > x2) {
+        swap(int, x1, x2);
+        swap(float, u1, u2);
+        swap(float, v1, v2);
+    }
+
+    if (x2 < 0 || x1 >= dest.px_w) return;
+
+    if (x1 < 0)         x1 = 0;
+    if (x2 > dest.px_w) x2 = dest.px_w;
+
+    for (int x = 0; x < (x2 - x1 + 1); x++) {
+        float t   = (float)(x) / (float)(x2 - x1);
+
+        int nx    = (int)(lerp(u1, u2, t) * (src.px_w));
+        int ny    = (int)(lerp(v1, v2, t) * (src.px_h));
+
+        Color col      = { .as_u32 = src.px[ny * src.px_stride + nx] };
+        col.as_[COL_R] = shade * col.as_[COL_R];
+        col.as_[COL_G] = shade * col.as_[COL_G];
+        col.as_[COL_B] = shade * col.as_[COL_B];
+
+        gfx_put_pixel(dest, x1 + x, y, col.as_u32);
     }
 }
 
