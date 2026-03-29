@@ -8,7 +8,7 @@ float p3f_dot(Point3f a, Point3f b);
 Point3f p3f_cross(Point3f a, Point3f b);
 Point3f p3f_normalize(Point3f a);
 Point3f p3f_mul_mat(Point3f i, Mat4f m);
-Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end);
+Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end, float* t);
 uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3f* out_tri2);
 
 Point3f p3f_add(Point3f a, Point3f b);
@@ -111,17 +111,17 @@ Point3f p3f_mul_mat(Point3f i, Mat4f m)
     };
 }
 
-Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end)
+Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end, float* t)
 {
     plane_n       = p3f_normalize(plane_n);
     float d_plane = p3f_dot(plane_n, plane_p);
     float d_a     = p3f_dot(line_start, plane_n);
     float d_b     = p3f_dot(line_end, plane_n);
 
-    float t       = (d_plane - d_a) / (d_b - d_a);
+    *t            = (d_plane - d_a) / (d_b - d_a);
     // simple lerp
     Point3f line  = p3f_sub(line_end, line_start);     // B-A
-    line          = p3f_mul(line, t);                  // (B-A)*t
+    line          = p3f_mul(line, *t);                 // (B-A)*t
     return p3f_add(line_start, line);                  // A + (B-A)*t
 }
 
@@ -133,23 +133,34 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
 #define DIST(p) (p3f_dot(plane_n, (p)) - plane_d)
     Point3f* inside[3];
     Point3f* outside[3];
+    Point2f* inside_tex[3];
+    Point2f* outside_tex[3];
     uint8 ins_cnt = 0;
     uint8 out_cnt = 0;
 
-    if (0 <= DIST(in.vertex[0]))
-        inside[ins_cnt++] = &in.vertex[0];
-    else
-        outside[out_cnt++] = &in.vertex[0];
+    if (0 <= DIST(in.vertex[0])) {
+        inside[ins_cnt]       = &in.vertex[0];
+        inside_tex[ins_cnt++] = &in.texture[0];
+    } else {
+        outside[out_cnt]       = &in.vertex[0];
+        outside_tex[out_cnt++] = &in.texture[0];
+    }
 
-    if (0 <= DIST(in.vertex[1]))
-        inside[ins_cnt++] = &in.vertex[1];
-    else
-        outside[out_cnt++] = &in.vertex[1];
+    if (0 <= DIST(in.vertex[1])) {
+        inside[ins_cnt]       = &in.vertex[1];
+        inside_tex[ins_cnt++] = &in.texture[1];
+    } else {
+        outside[out_cnt]       = &in.vertex[1];
+        outside_tex[out_cnt++] = &in.texture[1];
+    }
 
-    if (0 <= DIST(in.vertex[2]))
-        inside[ins_cnt++] = &in.vertex[2];
-    else
-        outside[out_cnt++] = &in.vertex[2];
+    if (0 <= DIST(in.vertex[2])) {
+        inside[ins_cnt]       = &in.vertex[2];
+        inside_tex[ins_cnt++] = &in.texture[2];
+    } else {
+        outside[out_cnt]       = &in.vertex[2];
+        outside_tex[out_cnt++] = &in.texture[2];
+    }
 
     if (ins_cnt == 0) {
         return 0;
@@ -160,31 +171,58 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
     }
 
     if (ins_cnt == 1 && out_cnt == 2) {
-        Point3f new_p_1 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[0]);
-        Point3f new_p_2 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[1]);
-        *out_tri1       = (Tri3f) {
-                  .col       = in.col,
-                  .vertex[0] = *inside[0],
-                  .vertex[1] = new_p_1,
-                  .vertex[2] = new_p_2,
+        float t1, t2;
+        Point3f new_p_1 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[0], &t1);
+        Point3f new_p_2 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[1], &t2);
+        Point2f new_t_1 = (Point2f) {
+            .u = lerp(inside_tex[0]->u, outside_tex[0]->u, t1),
+            .v = lerp(inside_tex[0]->v, outside_tex[0]->v, t1),
+        };
+        Point2f new_t_2 = (Point2f) {
+            .u = lerp(inside_tex[0]->u, outside_tex[1]->u, t2),
+            .v = lerp(inside_tex[0]->v, outside_tex[1]->v, t2),
+        };
+        *out_tri1 = (Tri3f) {
+            .shade        = in.shade,
+            .vertex[0]  = *inside[0],
+            .vertex[1]  = new_p_1,
+            .vertex[2]  = new_p_2,
+            .texture[0] = *inside_tex[0],
+            .texture[1] = new_t_1,
+            .texture[2] = new_t_2,
         };
         return 1;
     }
 
     if (ins_cnt == 2 && out_cnt == 1) {
-        Point3f new_p_1 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[0]);
-        Point3f new_p_2 = p3f_intersect_plane(plane_p, plane_n, *inside[1], *outside[0]);
+        float t1, t2;
+        Point3f new_p_1 = p3f_intersect_plane(plane_p, plane_n, *inside[0], *outside[0], &t1);
+        Point3f new_p_2 = p3f_intersect_plane(plane_p, plane_n, *inside[1], *outside[0], &t2);
+        Point2f new_t_1 = (Point2f) {
+            .u = lerp(inside_tex[0]->u, outside_tex[0]->u, t1),
+            .v = lerp(inside_tex[0]->v, outside_tex[0]->v, t1),
+        };
+        Point2f new_t_2 = (Point2f) {
+            .u = lerp(inside_tex[1]->u, outside_tex[0]->u, t2),
+            .v = lerp(inside_tex[1]->v, outside_tex[0]->v, t2),
+        };
         *out_tri1       = (Tri3f) {
-                  .col       = in.col,
+                  .shade       = in.shade,
                   .vertex[0] = *inside[0],
                   .vertex[1] = *inside[1],
                   .vertex[2] = new_p_1,
+                  .texture[0] = *inside_tex[0],
+                  .texture[1] = *inside_tex[1],
+                  .texture[2] = new_t_1,
         };
         *out_tri2 = (Tri3f) {
-            .col       = in.col,
+            .shade       = in.shade,
             .vertex[0] = *inside[1],
             .vertex[1] = new_p_1,
             .vertex[2] = new_p_2,
+            .texture[0] = *inside_tex[1],
+            .texture[1] = new_t_1,
+            .texture[2] = new_t_2,
         };
         return 2;
     }
