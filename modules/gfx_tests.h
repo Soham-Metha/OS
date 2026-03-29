@@ -1,7 +1,7 @@
 #include "graphics3d.h"
-#include <extras/fish.c>
-#include <extras/gun.c>
-#include <extras/tea.c>
+#include <examples/fish.c>
+#include <examples/gun.c>
+#include <examples/tea.c>
 
 void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
@@ -210,14 +210,14 @@ void gfx_3d_Cam_Move(float tx, float ty, float tz, float ry)
 void gfx_3d_test2(GFX_Canvas canvas)
 {
     angle2 += 0.05f;
-    static Tri3f mesh[]   = FISH_MESH;
-    Mat4f mProj    = matrix_chain(2,
-           matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
-           matrix_viewport());
-    Mat4f mTrans   = matrix_trans(0, 0, 15.0f);
-    Mat4f mRotYCam = matrix_rotY(angleY);
-    Mat4f mRotZ    = matrix_rotZ(-angle2 * 0.5f);
-    Mat4f mRotY    = matrix_rotY(-angle2 * 1.0f);
+    static Tri3f mesh[] = FISH_MESH;
+    Mat4f mProj         = matrix_chain(2,
+                matrix_project(0.1f, 1000.0f, -120.0f, canvas.px_w, canvas.px_h),
+                matrix_viewport());
+    Mat4f mTrans        = matrix_trans(0, 0, 15.0f);
+    Mat4f mRotYCam      = matrix_rotY(angleY);
+    Mat4f mRotZ         = matrix_rotZ(-angle2 * 0.5f);
+    Mat4f mRotY         = matrix_rotY(-angle2 * 1.0f);
 
     static Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f)) * 2];
     int idx        = 0;
