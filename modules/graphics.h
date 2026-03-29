@@ -10,6 +10,23 @@ typedef struct gfx_canvas {
     float scale;
 } GFX_Canvas;
 
+typedef struct {
+    float x;
+    float y;
+    float z;
+    float w;
+} Point3f;
+
+typedef struct {
+    Point3f vertex[3];
+    uint32 col;
+} Tri3f;
+
+typedef struct
+{
+    float m[4][4];
+} Mat4f;
+
 #define GFX_CANVAS(p, w, h, s) gfx_init_canvas(p, w, h, s)
 #define swap_points(ax, ay, bx, by) \
     do {                            \
@@ -22,10 +39,10 @@ typedef struct gfx_canvas {
     } while (0);
 
 #define swap(t, a, b) \
-    do {           \
-        t tmp = a; \
-        a     = b; \
-        b     = tmp; \
+    do {              \
+        t tmp = a;    \
+        a     = b;    \
+        b     = tmp;  \
     } while (0);
 
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
@@ -187,8 +204,8 @@ inline void gfx_fill_rowspan(GFX_Canvas canvas, int y, int x1, int x2, uint32 co
 {
     if (x1 > x2) {
         int t = x1;
-        x1 = x2;
-        x2 = t;
+        x1    = x2;
+        x2    = t;
     }
 
     gfx_fill(gfx_init_subcanvas(canvas, x1, y, x2 - x1 + 1, 1), col);

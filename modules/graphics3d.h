@@ -3,24 +3,6 @@
 #include "graphics.h"
 #include "math.h"
 
-typedef struct {
-    float x;
-    float y;
-    float z;
-    float w;
-} Point3f;
-
-typedef struct {
-    Point3f vertex[3];
-    Point3f normal[3];
-    uint32 col;
-} Tri3f;
-
-typedef struct
-{
-    float m[4][4];
-} Mat4f;
-
 float p3f_len(Point3f a);
 float p3f_dot(Point3f a, Point3f b);
 Point3f p3f_cross(Point3f a, Point3f b);
