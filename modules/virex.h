@@ -807,6 +807,26 @@ const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
 
 Sasm_Executable exec = { 0 };
 
+Instruction hello_[] = {
+    [0] = { .type = INST_SETR,  .operand.u32 = 2,  .operand2.u32 = 8 },
+    [1] = { .type = INST_SETR,  .operand.u32 = 0,  .operand2.u32 = 6 },
+    [2] = { .type = INST_SETR,  .operand.u32 = 16, .operand2.u32 = 16},
+    [3] = { .type = INST_CALL,  .operand.u32 = 6,  .operand2.u32 = 0 },
+    [4] = { .type = INST_LOOP,  .operand.u32 = 1,  .operand2.u32 = 8 },
+    [5] = { .type = INST_SHUTS, .operand.u32 = 0,  .operand2.u32 = 0 },
+    [6] = { .type = INST_INVOK, .operand.u32 = 7,  .operand2.u32 = 0 },
+    [7] = { .type = INST_RET,   .operand.u32 = 0,  .operand2.u32 = 0 },
+};
+
+void virex_test_sm(Sasm_Context* ctx)
+{
+    (void)pushStringToMemory(ctx, STR("\n Hello, World!"));
+    ctx->entry = ctx->prog.instruction_count;
+    for (int i = 0; i < 8; i++) {
+        ctx->prog.instructions[ctx->prog.instruction_count++] = hello_[i];
+    }
+}
+
 bool virex_test(void)
 {
     String_View sv_prog = STR(prog);
@@ -814,7 +834,11 @@ bool virex_test(void)
     printf("\n-------------");
     printf("\n%s", sv_prog.data);
     printf("\n-------------");
-    sasm_assemble(&exec, sv_prog);
+    Sasm_Context* sasm = kmalloc(sizeof(Sasm_Context));
+    virex_test_sm(sasm);
+    sasm_generate_executable(&exec, sasm);
+    // TODO: get sasm assembler working in native
+    // sasm_assemble(&exec, sv_prog);
     printf("\nOutput:");
     printf("\n-------------");
     return virex_run(&exec, -1);
