@@ -83,8 +83,8 @@ void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col
 void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
 
 void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src);
-void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float w1, float u2, float v2, float w2, float shade);
-void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float shade);
+void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float w1, float u2, float v2, float w2, float* depth_buff, float shade);
+void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float* depth_buff, float shade);
 
 #endif
 #ifdef IMPL_GRAPHICS_1
@@ -338,6 +338,7 @@ void gfx_fill_textured_triangle(
     GFX_Canvas dest, GFX_Canvas src,
     Point2f tex[3],
     int x0, int y0, int x1, int y1, int x2, int y2,
+    float* depth_buff,
     float shade)
 {
     if (y1 < y0) {
@@ -368,6 +369,7 @@ void gfx_fill_textured_triangle(
                 lerp(tex[1].u, tex[2].u, t2),
                 lerp(tex[1].v, tex[2].v, t2),
                 lerp(tex[1].w, tex[2].w, t2),
+                depth_buff,
                 shade);
         } else {
             float t2 = (float)i / (float)(y1 - y0);
@@ -382,6 +384,7 @@ void gfx_fill_textured_triangle(
                 lerp(tex[0].u, tex[1].u, t2),
                 lerp(tex[0].v, tex[1].v, t2),
                 lerp(tex[0].w, tex[1].w, t2),
+                depth_buff,
                 shade);
         }
     }
@@ -393,6 +396,7 @@ inline void gfx_fill_textured_rowspan(
     int x1, int x2,
     float u1, float v1, float w1,
     float u2, float v2, float w2,
+    float* depth_buff,
     float shade)
 {
     if (x1 > x2) {
@@ -414,13 +418,18 @@ inline void gfx_fill_textured_rowspan(
 
         int nx = (int)(lerp(u1, u2, t) / w * src.px_w);
         int ny = (int)(lerp(v1, v2, t) / w * src.px_h);
+        int sx = x1 + x;
+        int sy = y;
 
         Color col      = { .as_u32 = src.px[ny * src.px_stride + nx] };
         col.as_[COL_R] = shade * col.as_[COL_R];
         col.as_[COL_G] = shade * col.as_[COL_G];
         col.as_[COL_B] = shade * col.as_[COL_B];
 
-        gfx_put_pixel(dest, x1 + x, y, col.as_u32);
+        if (w > depth_buff[sy * dest.px_stride + sx]) {
+            gfx_put_pixel(dest, sx, sy, col.as_u32);
+            depth_buff[sy * dest.px_stride + sx] = w;
+        }
     }
 }
 

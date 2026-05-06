@@ -242,6 +242,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
     static bool initialized = false;
     static Mat4f mTransProjView;
+    static float *depth_buff;
     if (!initialized) {
         // Fixed operations
         // move object away from camera before render
@@ -251,11 +252,10 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_trans(0, 0, 1.0f),
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
+
+        depth_buff = kmalloc(canvas.px_w*canvas.px_h);
         initialized    = true;
     }
-
-    static Tri3f draw_queue[(int)(sizeof(mesh) / sizeof(Tri3f)) * 2];
-    int idx      = 0;
 
     vLookDir     = p3f_mul_mat((Point3f) { .z = 1.0f }, matrix_rotY(angleY));
 
@@ -269,6 +269,11 @@ void gfx_3d_test2(GFX_Canvas canvas)
             camera,
             p3f_add(camera, vLookDir),
             (Point3f) { .y = 1 })));
+
+    for(int idx = 0; idx < canvas.px_w*canvas.px_h; idx++)
+    {
+        depth_buff[idx] = 0.0f;
+    }
 
     // TODO: switch from a per-face loop to a per-vertex loop?
     // TODO: since vertices may be shared, would improve performance?
@@ -355,32 +360,17 @@ void gfx_3d_test2(GFX_Canvas canvas)
             }
 
             for (int i = 0; i < q_count; i++) {
-                insert(draw_queue, idx, tri_q[i]);
-                idx += 1;
+                gfx_fill_textured_triangle(canvas,
+                    tex, tri_q[i].texture,
+                    tri_q[i].vertex[0].x * canvas.px_w, tri_q[i].vertex[0].y * canvas.px_h,
+                    tri_q[i].vertex[1].x * canvas.px_w, tri_q[i].vertex[1].y * canvas.px_h,
+                    tri_q[i].vertex[2].x * canvas.px_w, tri_q[i].vertex[2].y * canvas.px_h,
+                    depth_buff,
+                    tri_q[i].shade);
             }
         }
     }
 
-    for (int i = 0; i < idx; i++) {
-        // uint8 shade255 = draw_queue[i].shade * 255;
-        // uint32 col     = COL(shade255, shade255, shade255, 0xFF);
-        // gfx_fill_triangle(canvas,
-        //     draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
-        //     draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
-        //     draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
-        //     col);
-        gfx_fill_textured_triangle(canvas,
-            tex, draw_queue[i].texture,
-            draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
-            draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
-            draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
-            draw_queue[i].shade);
-        gfx_draw_triangle(canvas,
-            draw_queue[i].vertex[0].x * canvas.px_w, draw_queue[i].vertex[0].y * canvas.px_h,
-            draw_queue[i].vertex[1].x * canvas.px_w, draw_queue[i].vertex[1].y * canvas.px_h,
-            draw_queue[i].vertex[2].x * canvas.px_w, draw_queue[i].vertex[2].y * canvas.px_h,
-            0x000000FF);
-    }
 }
 
 void gfx_testt(GFX_Canvas canvas)
