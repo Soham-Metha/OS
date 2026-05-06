@@ -2,6 +2,8 @@
 
 ## Changelogs
 
+- [26.03.30](https://github.com/Soham-Metha/OS/tree/5f3a8f650ea961abb726735a6cd8fee48713e6e4) add texturing, bug fixing, code cleanup, add more examples, hardcode the binary for VM example
+- [26.03.29](https://github.com/Soham-Metha/OS/tree/ec71a63abda0e944bcc6a074d6454275f28360bb) move all examples from extras to examples dir, add script to process PPM images.
 - [26.03.28](https://github.com/Soham-Metha/OS/tree/308a67df73b2af49669ca8f5465669207655bc32) add clipping to GFX3D, render a teapot, get GFX working on native(increase native stack size), virex no longer hangs on native.
 - [26.03.27](https://github.com/Soham-Metha/OS/tree/00c0e9b1bb97100dc3bc061bdcde3a24634f2814) switch native to 1920x1080, add gun 3d model, and Point3f operations, reorganize GFX3D code, add camera movements
 - [26.03.19](https://github.com/Soham-Metha/OS/tree/d9dc5b1d6750d50ee2133c2b0769ae9445c8f786) add sqrt/tan and matrix operations,chained matrix multiplication, initial 3D pipeline using triangles and 3D mesh, by following javidx9's game engine tutorial, add fish 3D model
@@ -19,13 +21,13 @@
 - [26.02.01](https://github.com/Soham-Metha/OS/tree/3b46c6b7cd4d15d1ec1772754bb162218de23f7b) Create a result impelmentation and arena(region based memory manager)
 - [26.01.31](https://github.com/Soham-Metha/OS/tree/e07fa7b6faa71c20c692c3a5c2d07718719f8a4e) Add var args and printf
 - [26.01.30](https://github.com/Soham-Metha/OS/tree/fb050e70ff4b9f81b0a492744957dacdef0ff0c9) Mouse and cursor support for web, break web on mobile
-- [26.01.29](https://github.com/Soham-Metha/OS/tree/f187d1285b05bebaca7fb747ecdf3650fa2e8516) Mouse IRQ for native, cursor draw, files re-organization to better seperate kernel and userspace( ... with a few exceptions )
-- [26.01.28](https://github.com/Soham-Metha/OS/tree/6af5e854da971e58c0e4e3cd1adf38eddb4a6b59) add yield and exit syscalls, create "tasks", io lib, and simple shell app, try web workers for context switching in web.
+- [26.01.29](https://github.com/Soham-Metha/OS/tree/f187d1285b05bebaca7fb747ecdf3650fa2e8516) Mouse IRQ for native, cursor draw, files re-organization to better seperate kernel and userspace( ... with a few violations)
+- [26.01.28](https://github.com/Soham-Metha/OS/tree/6af5e854da971e58c0e4e3cd1adf38eddb4a6b59) add yield and exit syscalls, create "tasks", io lib, and simple shell app, try web workers for context switching in web(discontinued).
 - [26.01.27](https://github.com/Soham-Metha/OS/tree/268dda240b9d32f83cf06f1d142313b4526dc5b8) add keyboard and timer interrupt support to native arch, initial implementation of a non-preemptive scheduler, simple shell app that echoes input.
 - [26.01.26](https://github.com/Soham-Metha/OS/tree/c7c386c6697781bc3a38c6529d54c256df8c5185): add native arch support
 - [26.01.25](https://github.com/Soham-Metha/OS/tree/b15f1f034a9d9c451c437d2e280ef9091d63d98b): add event handling, continue fixing boundary violations
-- [26.01.24](https://github.com/Soham-Metha/OS/tree/a07f27ea88a680184bbc3a081f5337c17dda49cf): create simple malloc, window manager, compositor, surfaces, start kernel render loop, start fixing boundary violations
+- [26.01.24](https://github.com/Soham-Metha/OS/tree/a07f27ea88a680184bbc3a081f5337c17dda49cf): create simple malloc, window manager, compositor, surfaces, start kernel render loop, start fixing boundary violations. Initial WM/Compositor/Surfaces implemented by taking help of AI.
 - [26.01.23](https://github.com/Soham-Metha/OS/tree/7f9406a464f8bf972c9ed653e2e9d5d4a992fab8): Switch from text to graphics mode, implementing font renderer, terminals, add support for mobile phone keyboards
-- [26.01.22](https://github.com/Soham-Metha/OS/tree/6d98e2f280fb3d7899e58401265e213068c2c3c1): Added keyboard interrupts (for browser), tty input buffer, removed all dependencies (stdio, etc etc), switch website from textarea to canvas
-- [26.01.19](https://github.com/Soham-Metha/OS/tree/4fea8d49ac7a90ee7eea3851c46921642d54cde5): Followed Dr. Birch's osdev tutorial 1.
+- [26.01.22](https://github.com/Soham-Metha/OS/tree/6d98e2f280fb3d7899e58401265e213068c2c3c1): Added keyboard interrupts (for browser), ring-buffer, removed all dependencies (stdio, etc etc), switch website from textarea to canvas
+- [26.01.19](https://github.com/Soham-Metha/OS/tree/4fea8d49ac7a90ee7eea3851c46921642d54cde5): very simple web-based shell & project dir, with linux-based dependencies. Followed Dr. Birch's osdev tutorial 1.
 - [26.01.18](https://github.com/Soham-Metha/OS/tree/fb9704466cca8777cd1382515cf607e6dc9bf741): Initial Commit
