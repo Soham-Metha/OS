@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
     float u;
     float v;
+    float w;
 } Point2f;
 
 typedef struct {
@@ -82,7 +83,7 @@ void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col
 void gfx_draw_triangle(GFX_Canvas canvas, int x0, int y0, int x1, int y1, int x2, int y2, uint32 col);
 
 void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src);
-void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float u2, float v2, float shade);
+void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float w1, float u2, float v2, float w2, float shade);
 void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float shade);
 
 #endif
@@ -332,6 +333,7 @@ void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src)
 
 // TODO: improvements to data structs, add Point2i/Point3i, better swap functions etc
 // TODO: textured circ & rect
+// TODO: switch 'lerp's with 'step's
 void gfx_fill_textured_triangle(
     GFX_Canvas dest, GFX_Canvas src,
     Point2f tex[3],
@@ -362,8 +364,10 @@ void gfx_fill_textured_triangle(
                 lerp(x1, x2, t2),
                 lerp(tex[0].u, tex[2].u, t1),
                 lerp(tex[0].v, tex[2].v, t1),
+                lerp(tex[0].w, tex[2].w, t1),
                 lerp(tex[1].u, tex[2].u, t2),
                 lerp(tex[1].v, tex[2].v, t2),
+                lerp(tex[1].w, tex[2].w, t2),
                 shade);
         } else {
             float t2 = (float)i / (float)(y1 - y0);
@@ -374,8 +378,10 @@ void gfx_fill_textured_triangle(
                 lerp(x0, x1, t2),
                 lerp(tex[0].u, tex[2].u, t1),
                 lerp(tex[0].v, tex[2].v, t1),
+                lerp(tex[0].w, tex[2].w, t1),
                 lerp(tex[0].u, tex[1].u, t2),
                 lerp(tex[0].v, tex[1].v, t2),
+                lerp(tex[0].w, tex[1].w, t2),
                 shade);
         }
     }
@@ -385,14 +391,15 @@ inline void gfx_fill_textured_rowspan(
     GFX_Canvas dest, GFX_Canvas src,
     int y,
     int x1, int x2,
-    float u1, float v1,
-    float u2, float v2,
+    float u1, float v1, float w1,
+    float u2, float v2, float w2,
     float shade)
 {
     if (x1 > x2) {
         swap(int, x1, x2);
         swap(float, u1, u2);
         swap(float, v1, v2);
+        swap(float, w1, w2);
     }
 
     if (x2 < 0 || x1 >= dest.px_w) return;
@@ -400,11 +407,13 @@ inline void gfx_fill_textured_rowspan(
     if (x1 < 0)         x1 = 0;
     if (x2 > dest.px_w) x2 = dest.px_w;
 
-    for (int x = 0; x < (x2 - x1 + 1); x++) {
+    for (int x = 0; x < (x2 - x1); x++) {
         float t   = (float)(x) / (float)(x2 - x1);
 
-        int nx    = (int)(lerp(u1, u2, t) * (src.px_w));
-        int ny    = (int)(lerp(v1, v2, t) * (src.px_h));
+        float w = lerp(w1, w2, t);
+
+        int nx = (int)(lerp(u1, u2, t) / w * src.px_w);
+        int ny = (int)(lerp(v1, v2, t) / w * src.px_h);
 
         Color col      = { .as_u32 = src.px[ny * src.px_stride + nx] };
         col.as_[COL_R] = shade * col.as_[COL_R];

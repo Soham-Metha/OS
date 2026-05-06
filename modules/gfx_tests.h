@@ -2,6 +2,7 @@
 #include <examples/img_ex.c>
 #include <examples/space.c>
 #include <examples/space_tex.c>
+#include <examples/fish.c>
 
 // Examples available:
 // ---- | ------------ | PX_PIKA   | CANVAS_PIKA   | 256x256
@@ -308,13 +309,20 @@ void gfx_3d_test2(GFX_Canvas canvas)
             // Translate, Project and Viewport
             Tri3f proj = {
                 .shade      = clipped[j].shade,
-                .texture[0] = clipped[j].texture[0],
-                .texture[1] = clipped[j].texture[1],
-                .texture[2] = clipped[j].texture[2],
                 .vertex[0]  = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
                 .vertex[1]  = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
                 .vertex[2]  = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
             };
+
+            proj.texture[0] = p2f_div(clipped[j].texture[0], proj.vertex[0].w);
+            proj.texture[1] = p2f_div(clipped[j].texture[1], proj.vertex[1].w);
+            proj.texture[2] = p2f_div(clipped[j].texture[2], proj.vertex[2].w);
+
+            proj.texture[0].w = 1.0f / proj.vertex[0].w;
+            proj.texture[1].w = 1.0f / proj.vertex[1].w;
+            proj.texture[2].w = 1.0f / proj.vertex[2].w;
+
+            // TODO: should p3f/p2f propogate w? currently they dont
             proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
             proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
             proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);

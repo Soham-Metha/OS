@@ -11,6 +11,7 @@ Point3f p3f_mul_mat(Point3f i, Mat4f m);
 Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end, float* t);
 uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3f* out_tri2);
 
+Point2f p2f_div(Point2f a, float b);
 Point3f p3f_add(Point3f a, Point3f b);
 Point3f p3f_sub(Point3f a, Point3f b);
 Point3f p3f_mul(Point3f a, float b);
@@ -44,6 +45,14 @@ float p3f_dot(Point3f a, Point3f b)
 float p3f_len(Point3f a)
 {
     return fast_sqrt(p3f_dot(a, a));
+}
+
+Point2f p2f_div(Point2f a, float b)
+{
+    return (Point2f) {
+        .u = a.u / b,
+        .v = a.v / b,
+    };
 }
 
 Point3f p3f_add(Point3f a, Point3f b)
@@ -177,10 +186,12 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
         Point2f new_t_1 = (Point2f) {
             .u = lerp(inside_tex[0]->u, outside_tex[0]->u, t1),
             .v = lerp(inside_tex[0]->v, outside_tex[0]->v, t1),
+            .w = lerp(inside_tex[0]->w, outside_tex[0]->w, t1),
         };
         Point2f new_t_2 = (Point2f) {
             .u = lerp(inside_tex[0]->u, outside_tex[1]->u, t2),
             .v = lerp(inside_tex[0]->v, outside_tex[1]->v, t2),
+            .w = lerp(inside_tex[0]->w, outside_tex[1]->w, t2),
         };
         *out_tri1 = (Tri3f) {
             .shade        = in.shade,
@@ -201,10 +212,12 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
         Point2f new_t_1 = (Point2f) {
             .u = lerp(inside_tex[0]->u, outside_tex[0]->u, t1),
             .v = lerp(inside_tex[0]->v, outside_tex[0]->v, t1),
+            .w = lerp(inside_tex[0]->w, outside_tex[0]->w, t1),
         };
         Point2f new_t_2 = (Point2f) {
             .u = lerp(inside_tex[1]->u, outside_tex[0]->u, t2),
             .v = lerp(inside_tex[1]->v, outside_tex[0]->v, t2),
+            .w = lerp(inside_tex[1]->w, outside_tex[0]->w, t2),
         };
         *out_tri1       = (Tri3f) {
                   .shade       = in.shade,
