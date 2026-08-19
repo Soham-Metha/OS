@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "graphics3d.h"
+#include "graphics.h"
 #include "examples/generated/fish.c"
 #include "examples/generated/img_ex.c"
 #include "examples/generated/space.c"
