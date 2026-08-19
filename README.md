@@ -1,5 +1,269 @@
 # webOS
 
+```
+                    ┌─────────────────────────┐
+                    │       apps/             │
+                    │     Shell, etc.         │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │        osapi/           │
+                    │ OS-specific glue / APIs │
+                    └────────────┬────────────┘
+                                 │
+              ┌──────────────────┴──────────────────┐
+              │                                     │
+   ┌──────────▼──────────┐               ┌──────────▼──────────┐
+   │      common/        │               │      kernel/        │
+   │  Standalone libs    │               │   OS implementation │
+   │                     │               │                     │
+   │ gfx                 │               │ (glues common libs) │
+   │ VIREX/SASM          │<─────────────>│ interrupts          │
+   │ strings             │               │ filesystem          │
+   │ memory utilities    │               │ heap                │
+   │ events              │               │ scheduler           │
+   └─────────────────────┘               └──────────┬──────────┘
+                                                    │
+                                requires primitives │
+                                 ┌──────────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │          hal/           │
+                    │ Native / Browser        │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │       Platform          │
+                    │ x86 / Browser / WASM    │
+                    └─────────────────────────┘
+```
+
+```
+.
+├── build/                              # Generated build artifacts
+│   ├── OS/                             # Native bootable OS image contents
+│   │   └── boot/
+│   │       └── grub/
+│   │           └── grub.cfg            # GRUB bootloader configuration
+│   ├── os.iso                          # Bootable native OS ISO
+│   └── shell.wasm                      # Browser/WASM build of the OS shell
+│
+├── src/                                # OS source tree
+│   │
+│   ├── apps/                           # User-space applications
+│   │   ├── shell.c                     # Main shell application
+│   │   └── shell.h
+│   │
+│   ├── common/                         # Standalone, reusable libraries
+│   │   │                               # Designed to be usable independently
+│   │   │                               # of the OS; the OS supplies required
+│   │   │                               # platform primitives (malloc, memcpy, etc.)
+│   │   │
+│   │   ├── gfx/                        # Standalone graphics library
+│   │   │   ├── graphics.h              # 2D/3D graphics primitives and Canvas
+│   │   │   ├── gfx_tests.h             # Graphics library tests/examples
+│   │   │   ├── examples/               # Graphics library demonstration assets
+│   │   │   │   ├── generated/          # Generated C representations of assets
+│   │   │   │   ├── images/              # Source image assets for examples
+│   │   │   │   └── models/              # 3D models and textures
+│   │   │   └── scripts/                 # Host-side graphics asset utilities
+│   │   │       ├── obj_file_handler.c   # OBJ processing/conversion
+│   │   │       └── ppm_handler.c        # PPM image processing/conversion
+│   │   │
+│   │   ├── virex/                       # Standalone VIREX execution library
+│   │   │   ├── virex.h                  # VIREX virtual execution environment
+│   │   │   └── sasm.h                   # SASM instruction set / VM implementation
+│   │   │
+│   │   ├── errors.h                     # Errors and simple exception handling
+│   │   ├── event.h
+│   │   ├── memmanager.h                 # Region-based memory management/Arena
+│   │   ├── strings.h                    # string-view
+│   │   └── types.h                      # Primitive types and "result" definition
+│   │
+│   ├── drivers/                         # Hardware/device drivers
+│   │   ├── keyboard.h                   # Keyboard scancodes
+│   │   └── tty.h                        # Ring-buffer
+│   │
+│   ├── hal/                             # Hardware/platform abstraction
+│   │   ├── hal.h                        # Common HAL interface
+│   │   │
+│   │   ├── browser/                     # Browser/WASM specific implementation
+│   │   └── native/                      # Native x86 specific implementation
+│   │
+│   ├── kernel/                          # OS-specific kernel implementation
+│   │   ├── fs/                          # Kernel filesystem subsystem
+│   │   │   ├── disk.h                   # Disk/block-device interface
+│   │   │   └── fs.h                     # Filesystem implementation/API
+│   │   │
+│   │   ├── heap.h                       # Kernel heap / allocation implementation
+│   │   ├── interrupt.c
+│   │   ├── interrupt.h
+│   │   ├── kernel.c
+│   │   ├── kernel.h
+│   │   └── scheduler.h
+│   │
+│   ├── osapi/                           # OS-specific interfaces
+│   │   │
+│   │   ├── gfx/                         # OS graphics stack built on common/gfx
+│   │   │   ├── compositor.h             # Compositor; operates on "Surface"s
+│   │   │   ├── event.c                  # Event handling impl, dependant on wm.h for mouse rendering
+│   │   │   ├── font.h                   # Font rendering built on "Surface"
+│   │   │   ├── terminal.h               # Char-level abstraction over "Surface"
+│   │   │   └── wm.h                     # manage terminal windows
+│   │   │
+│   │   ├── io.h                         # putch/printf/getch/get_line impl
+│   │   ├── osapi.c
+│   │   └── osapi.h                      # syscalls
+│   │
+│   └── platform/                        # Platform-specific build/runtime glue
+│       ├── browser/                     # Browser platform integration
+│       │   ├── hal.js                   # JavaScript ↔ WASM platform bridge
+│       │   └── style.css                # Browser UI styling
+│       │
+│       └── native/                     # Native platform integration
+│           └── native.ld                # x86 kernel linker script
+│
+├── tools/
+│   └── emsdk_install.sh                # Emscripten SDK installation helper
+│
+├── index.html                          # Browser entry point for WASM OS
+├── Makefile
+├── README.md
+└── LICENSE                             # GPLv3 license
+```
+
+## Refactoring TODOs
+
+### Common libraries
+
+* [ ] **GFX**
+
+  * [ ] Make `common/gfx` completely OS-independent
+  * [x] Keep `graphics.h` / `gfx_tests.h` free of OS includes
+  * [ ] Define a clean host/backend interface for rendering output
+  * [x] Decouple `Canvas` from HAL-specific `put_pixel`
+  * [ ] Ensure GFX can theoretically be compiled/used outside webOS
+
+* [ ] **VIREX / SASM**
+
+  * [ ] Keep `common/virex` completely OS-independent
+  * [x] Remove remaining OS-specific dependencies
+  * [x] Keep required host functions (`printf`) as externally provided functions
+  * [ ] Verify VIREX/SASM can be embedded independently of the OS
+
+* [ ] **Event system**
+
+  * [ ] Move event implementation fully into `common`
+  * [ ] Remove `event.c -> wm.h` dependency
+  * [ ] Define generic event types/queues/dispatching independently of WM
+  * [ ] Make event system usable by both VIREX and WM
+  * [x] Separate **event generation** from **event consumption**
+  * [x] Eventually make interrupts/keyboard/input feed events rather than directly calling WM logic
+
+* [ ] **Existing common utilities**
+
+  * [x] Review `strings`
+  * [ ] Review `memmanager`
+  * [x] Review `errors`
+  * [x] Review `types`
+  * [ ] Identify any remaining OS dependencies
+  * [ ] Keep expanding `common` only when a component has a genuinely reusable boundary
+
+---
+
+### GFX / WM architecture
+
+* [x] Keep **GFX primitives as an independent library**
+* [ ] Keep **WM / compositor as OS-side code**
+* [ ] Clarify ownership/lifetime of `Surface`
+* [x] Fix the `Surface` ↔ `Canvas` ↔ HAL boundary
+* [x] Decide how a GFX `Canvas` ultimately reaches the display backend
+* [x] Prevent GFX from depending directly on HAL
+* [x] Make compositor depend on GFX, not the reverse
+* [ ] Keep `font.h` / `terminal.h` / WM-specific functionality above the GFX library
+
+---
+
+### Event / input architecture
+
+* [ ] Remove direct interrupt → WM coupling
+* [ ] Remove direct interrupt → refresh/render logic
+* [ ] Make keyboard/input handlers produce generic events
+* [x] Make the event system the intermediary between input and consumers
+* [ ] Allow WM to consume relevant events
+* [ ] Allow VIREX/application code to consume relevant events
+* [ ] Define a clean event propagation/dispatch model
+* [ ] Eventually support something conceptually like:
+
+  ```text
+  Hardware
+      ↓
+  Interrupt
+      ↓
+  Driver
+      ↓
+  Event System
+      ├──→ WM
+      └──→ VIREX / Application
+  ```
+
+---
+
+### Scheduler / execution
+
+* [ ] Keep scheduler as **kernel functionality**
+* [ ] Do **not** model VIREX as a scheduler job
+* [ ] Refactor current C-function-based scheduler
+* [ ] Fix process/function yield semantics
+* [ ] Fix exit/lifetime handling
+* [ ] Establish a proper execution/process abstraction
+* [ ] Only then decide how VIREX execution maps onto scheduler entities
+
+---
+
+### OSAPI
+
+* [ ] Review everything currently under `osapi/`
+* [ ] Separate genuine OS interfaces from reusable library functionality
+* [ ] Keep OS-specific interfaces in `osapi`
+* [x] Avoid making common libraries depend on `osapi`
+
+---
+
+### Kernel / HAL / Drivers
+
+* [ ] Keep interrupts in the kernel
+* [ ] Keep scheduler in the kernel
+* [ ] Keep filesystem in the kernel/OS
+* [ ] Keep drivers outside `common`
+* [ ] Keep HAL outside `common`
+* [ ] Make HAL provide platform-specific implementations rather than being called directly by reusable libraries
+* [ ] Clean up `interrupt.c` dependencies
+* [ ] Make interrupt handling feed the new event mechanism
+
+---
+
+### Dependency cleanup
+
+* [ ] Audit **every `#include`** after the moves
+* [ ] Identify dependencies going *up* the architecture
+* [x] Remove `common → OS` dependencies
+* [x] Remove `GFX → HAL` dependencies
+* [ ] Remove `Event → WM` dependencies
+* [x] Remove `VIREX/SASM → OSAPI` dependencies
+* [x] Ensure common libraries only depend on their own code + explicitly provided host functions
+* [ ] Update Makefile paths/dependencies after all moves
+* [ ] Verify both native and WASM builds after each major move
+
+### Final architectural target
+
+* [ ] **Common = reusable libraries**
+* [ ] **Kernel = OS core**
+* [ ] **HAL/drivers = platform integration**
+* [ ] **OSAPI = OS-facing interfaces**
+* [ ] **Apps = consumers**
+* [ ] **Glue code = connects the above without becoming another monolithic subsystem**
+
 ## Changelogs
 
 - [26.03.30](https://github.com/Soham-Metha/OS/tree/5f3a8f650ea961abb726735a6cd8fee48713e6e4) add texturing, bug fixing, code cleanup, add more examples, hardcode the binary for VM example
