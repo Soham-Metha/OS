@@ -47,7 +47,7 @@ void resume(Task_State ts);
 #ifdef IMPL_SCHEDULER_1
 #undef IMPL_SCHEDULER_1
 
-#include <common/heap.h>
+#include "heap.h"
 
 Task* current   = (Task*)0;
 Task* run_queue = (Task*)0;
@@ -101,7 +101,7 @@ void enque_runque(Task* t)
 
 void create_task(func f)
 {
-    Task* t    = (Task*)kmalloc(sizeof(Task));
+    Task* t    = (Task*)malloc(sizeof(Task)); // TODO: shouldn't use malloc here
     t->t_id    = next_pid++;
     t->t_state = TASK_READY;
     t->entry   = f;

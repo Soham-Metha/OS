@@ -18,10 +18,10 @@
 #ifndef KMALLOC_1
 #define KMALLOC_1
 
-#include "types.h"
+#include <common/types.h>
 #define KHEAP_SIZE (10 * 1024 * 1024)
 
-void* kmalloc(uint64 size);
+void* malloc(uint64 size);
 void* memset(void* buf, char c, uint32 n);
 void* memcpy(void* dst, const void* src, uint32 n);
 
@@ -32,7 +32,7 @@ void* memcpy(void* dst, const void* src, uint32 n);
 static uint8 kheap[KHEAP_SIZE];
 static uint64 heap_offset = 0;
 
-void* kmalloc(uint64 size)
+void* malloc(uint64 size)
 {
     if (size == 0)
         return 0;

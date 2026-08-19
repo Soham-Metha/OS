@@ -270,7 +270,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
 
-        depth_buff = kmalloc(canvas.px_w*canvas.px_h);
+        depth_buff = malloc(canvas.px_w*canvas.px_h); // TODO: shouldn't use malloc here
         initialized    = true;
     }
 

@@ -18,7 +18,6 @@
 #ifndef UTILS_MEM_MANAGER_1
 #define UTILS_MEM_MANAGER_1
 
-#include "heap.h"
 #include "panic.h"
 #include "strings.h"
 #include "types.h"
@@ -51,6 +50,10 @@ void arena_free(Arena* arena);
 #ifdef MEM_MANAGER_IMPL
 #undef MEM_MANAGER_IMPL
 
+void* malloc(uint64 size);
+void* memset(void* buf, char c, uint32 n);
+void* memcpy(void* dst, const void* src, uint32 n);
+
 Region* unused = (Region*)0;
 
 Region* region_create(uint64 capacity)
@@ -63,7 +66,7 @@ Region* region_create(uint64 capacity)
     }
 
     const uint64 partSize = sizeof(Region) + capacity;
-    Region* part          = (Region*)kmalloc(partSize);
+    Region* part          = (Region*)malloc(partSize);
     memset(part, 0, partSize);
     part->capacity = capacity;
     return part;

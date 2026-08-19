@@ -95,7 +95,7 @@ void fs_show(filesystem* fs, bool showbm);
 #define IMPL_DISK_API_1
 #include "disk.h"
 #include <common/errors.h>
-#include <common/heap.h>
+#include <kernel/heap.h>
 
 #define setbit_(b, p) (b | (1 << (p)))
 #define unsetbit_(b, p) (b & ~(1 << (p)))
@@ -127,7 +127,7 @@ bitmap* bitmap_create(filesystem* fs, bool scan)
     uint16 blocks = fs->bd->blk_cnt;
     uint16 bytes  = (blocks + 7) >> 3;
 
-    bitmap* bm    = (bitmap*)kmalloc(bytes);
+    bitmap* bm    = (bitmap*)malloc(bytes);  // TODO: shouldn't use malloc here
     if (!bm)
         return 0;
 
@@ -170,7 +170,7 @@ ResultPtr inode_lookup(filesystem* fs, uintPtr idx)
     if (!blk_read(fs->bd, disk_block, &bl.data))
         return ErrPtr(ERR_BAD_IO);
 
-    Inode* ino = (Inode*)kmalloc(sizeof(Inode));
+    Inode* ino = (Inode*)malloc(sizeof(Inode));  // TODO: shouldn't use malloc here
     memcpy(ino, &bl.inodes[inode_idx], sizeof(Inode));
     return OkPtr((uintPtr)ino);
 }
@@ -272,7 +272,7 @@ ResultPtr fs_format(BlockDevice* bd, bootsector* mbr)
     }
 
     uint16 size    = sizeof(filesystem);
-    filesystem* fs = (filesystem*)kmalloc(size);
+    filesystem* fs = (filesystem*)malloc(size);  // TODO: shouldn't use malloc here
     if (!fs)
         return ErrPtr(ERR_BAD_IO);
     memset(fs, 0, size);

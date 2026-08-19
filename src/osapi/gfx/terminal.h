@@ -42,7 +42,7 @@ void terminal_init(Terminal* t, Surface* s, int row_count, int col_count, uint32
 
 #define IMPL_FONT_1
 #include "font.h"
-#include <common/heap.h>
+#include <kernel/heap.h>
 
 void terminal_draw_cursor(Terminal* t)
 {

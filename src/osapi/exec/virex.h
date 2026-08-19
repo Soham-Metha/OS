@@ -790,7 +790,7 @@ VM_Error executeInst(Vm* vm)
 
 bool virex_run(Sasm_Executable* exec, int lim)
 {
-    Vm* vm = kmalloc(sizeof(Vm));
+    Vm* vm = malloc(sizeof(Vm)); // TODO: shouldn't use malloc here
     try(loadStandardCallsIntoVm(vm), "Unable to load vm calls", "");
     try(loadProgramIntoVm(vm, exec), "Unable to load program", "");
     try(executeProgram(vm, 0, lim), "Unable to exec prog", "");
@@ -851,7 +851,7 @@ bool virex_test(void)
     printf("\n-------------");
     printf("\n%s", sv_prog.data);
     printf("\n-------------");
-    Sasm_Context* sasm = kmalloc(sizeof(Sasm_Context));
+    Sasm_Context* sasm = malloc(sizeof(Sasm_Context)); // TODO: shouldn't use malloc here
     virex_test_sm(sasm);
     sasm_generate_executable(&exec, sasm);
     // TODO: get sasm assembler working in native

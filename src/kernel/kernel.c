@@ -18,10 +18,10 @@
 #define IMPL_ERRORS_1
 #define IMPL_KMALLOC_1
 #define IMPL_TTY_1
+#include "heap.h"
 #include "kernel.h"
 #include "scheduler.h"
 #include <common/errors.h>
-#include <common/heap.h>
 #include <common/types.h>
 #include <drivers/tty.h>
 

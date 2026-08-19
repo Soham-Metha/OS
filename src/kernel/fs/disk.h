@@ -20,8 +20,8 @@
 #ifndef DISK_API_1
 #define DISK_API_1
 
-#include <common/heap.h>
 #include <common/types.h>
+#include <kernel/heap.h>
 
 #define BLOCK_SIZE 512
 
@@ -98,8 +98,8 @@ BlockDevice disk_init(disk_type dt, uint32 blk_cnt)
     switch (dt) {
     case DISK_RAMDISK:
         {
-            uint8* disk_data = (uint8*)kmalloc(64 * BLOCK_SIZE);
-            RamDisk* rd_ctx  = (RamDisk*)kmalloc(sizeof(RamDisk));
+            uint8* disk_data = (uint8*)malloc(64 * BLOCK_SIZE); // TODO: shouldn't use malloc here
+            RamDisk* rd_ctx  = (RamDisk*)malloc(sizeof(RamDisk));  // TODO: shouldn't use malloc here
             rd_ctx->data     = disk_data;
             rd_ctx->blocks   = blk_cnt;
             return (BlockDevice) {
