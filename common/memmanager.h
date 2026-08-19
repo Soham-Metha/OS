@@ -2,6 +2,7 @@
 #define UTILS_MEM_MANAGER_1
 
 #include "heap.h"
+#include "panic.h"
 #include "strings.h"
 #include "types.h"
 
@@ -23,7 +24,7 @@ struct Arena {
     Region* last;
 };
 
-void* region_alloc(Arena* arena, uint64 size);
+ResultPtr region_alloc(Arena* arena, uint64 size);
 const char* arena_sv_to_cstr(Arena* arena, String_View str);
 String_View arena_cstr_concat(Arena* arena, const char* a, const char* b);
 void arena_clear(Arena* arena);
@@ -46,21 +47,21 @@ Region* region_create(uint64 capacity)
 
     const uint64 partSize = sizeof(Region) + capacity;
     Region* part          = (Region*)kmalloc(partSize);
-    // memset(part, 0, partSize);
-    part->capacity        = capacity;
+    memset(part, 0, partSize);
+    part->capacity = capacity;
     return part;
 }
 
-char* arena_insert_or_expand(Arena* arena, Region* cur, uint64 size, uint64 addr_offset_mask)
+ResultPtr arena_insert_or_expand(Arena* arena, Region* cur, uint64 size, uint64 addr_offset_mask)
 {
     uintPtr next_addr         = (uintPtr)(cur->buffer + cur->size);
     uintPtr next_aligned_addr = (next_addr + addr_offset_mask) & ~addr_offset_mask;
     uint64 real_size          = (next_aligned_addr - next_addr) + size;
 
     if (cur->size + real_size <= cur->capacity) {
-        // memset((char*)next_addr, 0, real_size);
+        memset((char*)next_addr, 0, real_size);
         cur->size += real_size;
-        return (char*)next_addr;
+        return OkPtr(next_aligned_addr);
     }
 
     if (cur->next) {
@@ -77,7 +78,7 @@ char* arena_insert_or_expand(Arena* arena, Region* cur, uint64 size, uint64 addr
     return arena_insert_or_expand(arena, cur->next, size, addr_offset_mask);
 }
 
-void* region_alloc_aligned(Arena* arena, uint64 size, uint64 alignment)
+ResultPtr region_alloc_aligned(Arena* arena, uint64 size, uint64 alignment)
 {
     if (arena->last == (Region*)0 && arena->first == (Region*)0) {
         Region* part = region_create(MAX(size, REGION_DEFAULT_CAPACITY));
@@ -87,38 +88,49 @@ void* region_alloc_aligned(Arena* arena, uint64 size, uint64 alignment)
     }
 
     if (size == 0) {
-        return arena->last->buffer + arena->last->size;
+        return OkPtr((uintPtr)(arena->last->buffer + arena->last->size));
     }
 
-    // assert((alignment & (alignment - 1)) == 0, "alignment not a power of 2");
+    try((alignment & (alignment - 1)) == 0, "alignment not a power of 2", "");
 
     return arena_insert_or_expand(arena, arena->first, size, alignment - 1);
+ret_err:
+    return ErrPtr(0);
 }
 
-void* region_alloc(Arena* arena, uint64 size)
+ResultPtr region_alloc(Arena* arena, uint64 size)
 {
     return region_alloc_aligned(arena, size, sizeof(void*));
 }
 
 const char* arena_sv_to_cstr(Arena* arena, String_View str)
 {
-    char* cstr = (char*)region_alloc(arena, str.len + 1);
+    ResultPtr space = region_alloc(arena, str.len + 1);
+    try(RESULT_OK(space), "out of space!", "");
+    char* cstr = (char*)RESULT_VAL(space);
     memcpy(cstr, str.data, str.len);
     cstr[str.len] = '\0';
     return cstr;
+ret_err:
+    return "";
 }
 
 String_View arena_cstr_concat(Arena* arena, const char* a, const char* b)
 {
     const uint64 aLen = strlen(a);
     const uint64 bLen = strlen(b);
-    char* buf         = (char*)region_alloc(arena, aLen + bLen);
+
+    ResultPtr space   = region_alloc(arena, aLen + bLen);
+    try(RESULT_OK(space), "out of space!", "");
+    char* buf = (char*)RESULT_VAL(space);
     memcpy(buf, a, aLen);
     memcpy(buf + aLen, b, bLen);
     return (String_View) {
         .len  = aLen + bLen,
         .data = buf
     };
+ret_err:
+    return (String_View) { 0 };
 }
 
 void arena_clear(Arena* arena)

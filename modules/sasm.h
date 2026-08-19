@@ -20,18 +20,18 @@ typedef uint8 Byte;
 typedef uint16 Word;
 typedef uint32 DoubleWord;
 
-typedef uint64 DataEntry;
-typedef uint64 InstAddr;
-typedef uint64 MemoryAddr;
-typedef uint64 StackAddr;
-typedef uint32 u64;
-typedef int32 i64;
-typedef float f64;
+typedef uint32 DataEntry;
+typedef uint32 InstAddr;
+typedef uint32 MemoryAddr;
+typedef uint32 StackAddr;
+typedef uint32 u32;
+typedef int32 i32;
+typedef float f32;
 
 typedef union {
-    uint32 u64;
-    int32 i64;
-    float f64;
+    uint32 u32;
+    int32 i32;
+    float f32;
     void* ptr;
 } QuadWord;
 
@@ -365,12 +365,12 @@ struct Memory {
 
 union ExprValue {
     String_View binding;
-    u64 lit_int;
+    u32 lit_int;
     double lit_float;
     char lit_char;
     String_View lit_str;
     Funcall* funcall;
-    u64 reg_id;
+    u32 reg_id;
 };
 
 struct Expr {
@@ -494,7 +494,7 @@ struct Binding {
 
 struct StringLength {
     InstAddr addr;
-    u64 len;
+    u32 len;
 };
 
 struct EvalResult {
@@ -508,7 +508,7 @@ struct Scope {
     Scope* previous;
 
     Binding bindings[BINDINGS_CAPACITY];
-    uint64 bindingsCnt;
+    uint32 bindingsCnt;
 };
 
 struct UnresolvedOperand {
@@ -527,10 +527,10 @@ struct DeferredEntry {
 struct Sasm_Context {
     Scope* scope;
     Binding bindings[BINDINGS_CAPACITY];
-    uint64 bindingCount;
+    uint32 bindingCount;
 
     UnresolvedOperand symbols[LABELS_CAPACITY];
-    uint64 symbolsCount;
+    uint32 symbolsCount;
 
     DeferredEntry deferredEntry;
 
@@ -541,19 +541,19 @@ struct Sasm_Context {
     FileLocation entryLocation;
 
     StringLength stringLens[STRING_LENGTHS_CAPACITY];
-    uint64 strLensCnt;
+    uint32 strLensCnt;
 
     Byte memory[MAX_MEMORY_CAPACITY];
-    uint64 mem_size;
-    uint64 mem_capacity;
+    uint32 mem_size;
+    uint32 mem_capacity;
 
     Arena arena;
 
-    uint64 includeLevel;
+    uint32 includeLevel;
     FileLocation includeLocation;
 
     String_View includePaths[INCLUDE_PATHS_CAPACITY];
-    uint64 includePathsCnt;
+    uint32 includePathsCnt;
 };
 
 struct Sasm_Metadata {
@@ -575,7 +575,7 @@ typedef struct Sasm_Executable {
  * Expects the entire program loaded into a String_View and returns the Executable.
  * Note: File Handling Not Done Here!
  */
-Sasm_Executable sasm_assemble(String_View input_prog);
+void sasm_assemble(Sasm_Executable* exec, String_View input_prog);
 
 #endif
 
@@ -584,9 +584,9 @@ Sasm_Executable sasm_assemble(String_View input_prog);
 #ifdef IMPL_KERN_SASM_1
 #undef IMPL_KERN_SASM_1
 
-QuadWord quadwordFromU64(uint64 u64);
-QuadWord quadwordFromI64(int64 i64);
-QuadWord quadwordFromF64(double f64);
+QuadWord quadwordFromU64(u32 u64);
+QuadWord quadwordFromI64(i32 i64);
+QuadWord quadwordFromF64(f32 f64);
 QuadWord quadwordFromPtr(void* ptr);
 
 const char* getNameOfError(const VM_Error*);
@@ -600,7 +600,7 @@ OpcodeDetails getOpcodeDetails(Opcode type);
 void setFlag(Meta f, CPU* cpu, bool state);
 bool getFlag(Meta f, const CPU* cpu);
 
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm);
+void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm);
 bool sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
 bool sasm_resolve_operands(Sasm_Context* sasm);
 bool sasm_resolve_entry_point(Sasm_Context* sasm);
@@ -774,7 +774,7 @@ inline bool getFlag(Meta f, const CPU* cpu)
         memset(sasm, 0, sizeof(*sasm));
         FILE* f       = openFile(filePath, "rb");
         Sasm_Metadata meta = { 0 };
-        uint64 n      = fread(&meta, sizeof(meta), 1, f);
+        uint32 n      = fread(&meta, sizeof(meta), 1, f);
 
         if (n < 1) {
             fileErrorDispWithExit("Could not read meta data from file", filePath);
@@ -877,7 +877,7 @@ const char* getRegName(RegID type)
 
 Binding* resolveBindingLocalScope(Scope* scope, String_View name)
 {
-    for (uint64 i = 0; i < scope->bindingsCnt; ++i) {
+    for (uint32 i = 0; i < scope->bindingsCnt; ++i) {
         if (sv_compare(scope->bindings[i].name, name)) {
             return &scope->bindings[i];
         }
@@ -904,7 +904,7 @@ const char* getNameOfBindType(BindingType type)
 
 bool getStrLenByAddr(Sasm_Context* sasm, InstAddr addr, QuadWord* length)
 {
-    for (uint64 i = 0; i < sasm->strLensCnt; ++i) {
+    for (uint32 i = 0; i < sasm->strLensCnt; ++i) {
         if (sasm->stringLens[i].addr == addr) {
             if (length) {
                 *length = quadwordFromU64(sasm->stringLens[i].len);
@@ -916,9 +916,9 @@ bool getStrLenByAddr(Sasm_Context* sasm, InstAddr addr, QuadWord* length)
     return false;
 }
 
-uint64 getFunCallArgCnt(FuncallArg* args)
+uint32 getFunCallArgCnt(FuncallArg* args)
 {
-    uint64 result = 0;
+    uint32 result = 0;
     while (args != NULL) {
         result += 1;
         args = args->next;
@@ -926,7 +926,7 @@ uint64 getFunCallArgCnt(FuncallArg* args)
     return result;
 }
 
-EvalResult resultOK(QuadWord value, BindingType type)
+inline EvalResult resultOK(QuadWord value, BindingType type)
 {
     return (EvalResult) {
         .status = EVAL_STATUS_OK,
@@ -935,7 +935,7 @@ EvalResult resultOK(QuadWord value, BindingType type)
     };
 }
 
-EvalResult resultUnresolved(Binding* unresolvedBinding)
+inline EvalResult resultUnresolved(Binding* unresolvedBinding)
 {
     return (EvalResult) {
         .status            = EVAL_STATUS_DEFERRED,
@@ -1081,9 +1081,12 @@ Expr parseExprFromStr(Arena* arena, String_View source, FileLocation location)
 
 void sasm_scope_push(Sasm_Context* sasm)
 {
-    Scope* scope    = (Scope*)region_alloc(&sasm->arena, sizeof(*sasm->scope));
+    ResultPtr space = region_alloc(&sasm->arena, sizeof(Scope));
+    try(RESULT_OK(space), "out of space!", "");
+    Scope* scope    = (Scope*)RESULT_VAL(space);
     scope->previous = sasm->scope;
     sasm->scope     = scope;
+ret_err:;
 }
 
 void sasm_scope_pop(Sasm_Context* sasm)
@@ -1097,7 +1100,7 @@ bool sasm_resolve_operands(Sasm_Context* sasm)
 {
     Scope* savedScope = sasm->scope;
 
-    for (uint64 i = 0; i < sasm->symbolsCount; ++i) {
+    for (uint32 i = 0; i < sasm->symbolsCount; ++i) {
         try((sasm->symbols[i].scope), "invalid operand scope!", "");
         sasm->scope           = sasm->symbols[i].scope;
 
@@ -1192,7 +1195,7 @@ bool sasm_resolve_entry_point(Sasm_Context* sasm)
     EvalResult result = sasm_binding_eval(sasm, binding);
     try(result.status == EVAL_STATUS_OK, "Unable to resolve entry point!", "");
 
-    sasm->entry         = result.value.u64;
+    sasm->entry         = result.value.u32;
     sasm->hasEntry      = true;
     sasm->entryLocation = sasm->deferredEntry.location;
 
@@ -1215,9 +1218,9 @@ ret_err:
     return false;
 }
 
-Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
+void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm)
 {
-    Sasm_Executable res = (Sasm_Executable) {
+    *exec = (Sasm_Executable) {
         .meta = {
                  .magic        = FILE_MAGIC,
                  .version      = FILE_VERSION,
@@ -1231,28 +1234,28 @@ Sasm_Executable sasm_generate_executable(Sasm_Context* sasm)
                  }
     };
 
-    for (uint64 i = 0; i < sasm->mem_size; i++) {
-        res.memory[i] = sasm->memory[i];
+    for (uint32 i = 0; i < sasm->mem_size; i++) {
+        exec->memory[i] = sasm->memory[i];
     }
 
     for (DataEntry i = 0; i < sasm->prog.instruction_count; i++) {
-        res.prog.instructions[i] = sasm->prog.instructions[i];
+        exec->prog.instructions[i] = sasm->prog.instructions[i];
     }
-
-    return res;
 }
 
-Sasm_Executable sasm_assemble(String_View input_prog)
+void sasm_assemble(Sasm_Executable* exec, String_View input_prog)
 {
-    Sasm_Context *sasm = kmalloc(sizeof(Sasm_Context));
+    Sasm_Context* sasm = kmalloc(sizeof(Sasm_Context));
     sasm_translate_root_file(sasm, input_prog);
-    return sasm_generate_executable(sasm);
+    sasm_generate_executable(exec, sasm);
 }
 
 bool sasm_codeblock_push(Arena* arena, CodeBlock* list, Stmt statement)
 {
     try(list, "got null ptr!", "");
-    StmtNode* stmtNode  = region_alloc(arena, sizeof(StmtNode));
+    ResultPtr space = region_alloc(arena, sizeof(StmtNode));
+    try(RESULT_OK(space), "out of space!", "");
+    StmtNode* stmtNode  = (StmtNode*)RESULT_VAL(space);
     stmtNode->statement = statement;
 
     if (list->end == NULL) {
@@ -1264,6 +1267,7 @@ bool sasm_codeblock_push(Arena* arena, CodeBlock* list, Stmt statement)
         list->end->next = stmtNode;
         list->end       = stmtNode;
     }
+    list->end->next = NULL;
     return true;
 ret_err:
     return false;
@@ -1379,6 +1383,8 @@ ret_err:
 CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
 {
     CodeBlock result = { 0 };
+    result.begin     = NULL;
+    result.end       = NULL;
 
     Line line        = { 0 };
     while (fetchCachedLineFromSasmLexer(lineInterpreter, &line)) {
@@ -1549,15 +1555,15 @@ static Expr parseNumFromSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocat
 
         if (sv_starts_with(text, STR("0x"))) {
             result.value.lit_int = strtoull(cstr, &endptr, 16);
-            try((uint64)(endptr - cstr) == text.len, FLFmt ": ERROR: `%.*s` is not a hex literal\n",
+            try((uint32)(endptr - cstr) == text.len, FLFmt ": ERROR: `%.*s` is not a hex literal\n",
                 FLArg(location), Str_Fmt(text));
 
             result.type = EXPR_LIT_INT;
         } else {
             result.value.lit_int = strtoull(cstr, &endptr, 10);
-            if ((uint64)(endptr - cstr) != text.len) {
+            if ((uint32)(endptr - cstr) != text.len) {
                 result.value.lit_float = strtod(cstr, &endptr);
-                if ((uint64)(endptr - cstr) != text.len) {
+                if ((uint32)(endptr - cstr) != text.len) {
                     printf(FLFmt ": ERROR: `%.*s` is not a number literal\n",
                         FLArg(location), Str_Fmt(text));
                 } else {
@@ -1620,8 +1626,10 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
 
         Token next = { 0 };
         if (fetchCachedSasmTokenFromSasmTokenizer(tokenizer, &next, location) && next.type == TOKEN_TYPE_OPEN_PAREN) {
+            ResultPtr space = region_alloc(arena, sizeof(Funcall));
+            try(RESULT_OK(space), "out of space!", "");
             result.type                = EXPR_FUNCALL;
-            result.value.funcall       = region_alloc(arena, sizeof(Funcall));
+            result.value.funcall       = (Funcall*)RESULT_VAL(space);
             result.value.funcall->name = token.text;
             result.value.funcall->args = parseFuncallArgs(arena, tokenizer, location);
         } else {
@@ -1648,37 +1656,37 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         case 'H':
             try(str.data[1] <= '1', FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
-            result.value.reg_id = (uint64)(REG_H0 + str.data[1] - '0');
+            result.value.reg_id = (uint32)(REG_H0 + str.data[1] - '0');
             break;
         case 'I':
             try(str.data[1] <= '1', FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
-            result.value.reg_id = (uint64)(REG_I0 + str.data[1] - '0');
+            result.value.reg_id = (uint32)(REG_I0 + str.data[1] - '0');
             break;
         case 'L':
             try(str.data[1] <= '3', FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
-            result.value.reg_id = (uint64)(REG_L0 + str.data[1] - '0');
+            result.value.reg_id = (uint32)(REG_L0 + str.data[1] - '0');
             break;
         case 'P':
             try(str.data[1] <= '3', FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
-            result.value.reg_id = (uint64)(REG_P0 + str.data[1] - '0');
+            result.value.reg_id = (uint32)(REG_P0 + str.data[1] - '0');
             break;
         case 'J':
-            result.value.reg_id = (uint64)REG_JS;
+            result.value.reg_id = (uint32)REG_JS;
             break;
         case 'K':
-            result.value.reg_id = (uint64)REG_KC;
+            result.value.reg_id = (uint32)REG_KC;
             break;
         case 'O':
-            result.value.reg_id = (uint64)REG_OP;
+            result.value.reg_id = (uint32)REG_OP;
             break;
         case 'Q':
-            result.value.reg_id = (uint64)REG_QT;
+            result.value.reg_id = (uint32)REG_QT;
             break;
         case 'R':
-            result.value.reg_id = (uint64)REG_RF;
+            result.value.reg_id = (uint32)REG_RF;
             break;
 
         default:
@@ -1699,9 +1707,9 @@ ret_err:
     return result;
 }
 
-bool checkFuncArgs(Funcall* funcall, uint64 expected_arity, FileLocation location)
+bool checkFuncArgs(Funcall* funcall, uint32 expected_arity, FileLocation location)
 {
-    const uint64 actual_arity = getFunCallArgCnt(funcall->args);
+    const uint32 actual_arity = getFunCallArgCnt(funcall->args);
     try(actual_arity == expected_arity,
         FLFmt ": ERROR: %.*s() expects %" PRIu64 " but got %" PRIu64,
         FLArg(location), Str_Fmt(funcall->name), expected_arity, actual_arity);
@@ -1723,8 +1731,8 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
 
         addr            = result.value;
         QuadWord length = { 0 };
-        try(getStrLenByAddr(sasm, addr.u64, &length), FLFmt ": ERROR: Could not compute the length of string at address %" PRIu64 "\n",
-            FLArg(location), addr.u64);
+        try(getStrLenByAddr(sasm, addr.u32, &length), FLFmt ": ERROR: Could not compute the length of string at address %" PRIu64 "\n",
+            FLArg(location), addr.u32);
         return resultOK(length, BIND_TYPE_UINT);
     }
     if (sv_compare(expr.value.funcall->name, STR("res"))) {
@@ -1733,10 +1741,10 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
         QuadWord addr = { 0 };
         result        = evaluateExpression(sasm, expr.value.funcall->args->value, location);
 
-        try(sasm->mem_size + result.value.u64 <= MAX_MEMORY_CAPACITY, "memory cap excedeed!", "");
+        try(sasm->mem_size + result.value.u32 <= MAX_MEMORY_CAPACITY, "memory cap excedeed!", "");
 
         addr = quadwordFromU64(sasm->mem_size);
-        sasm->mem_size += result.value.u64;
+        sasm->mem_size += result.value.u32;
 
         if (sasm->mem_size > sasm->mem_capacity) {
             sasm->mem_capacity = sasm->mem_size;
@@ -1763,7 +1771,7 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
         if (result.status == EVAL_STATUS_DEFERRED)
             return result;
 
-        uint64 val = result.value.u64 + REG_COUNT;
+        uint32 val = result.value.u32 + REG_COUNT;
         return resultOK(quadwordFromU64(val), BIND_TYPE_UINT);
     }
     err(FLFmt ": ERROR: Unknown translation time function `%.*s`\n",
@@ -1786,7 +1794,7 @@ QuadWord pushStringToMemory(Sasm_Context* sasm, String_View str)
     }
 
     sasm->stringLens[sasm->strLensCnt++] = (StringLength) {
-        .addr = result.u64,
+        .addr = result.u32,
         .len  = str.len,
     };
 
@@ -1909,8 +1917,8 @@ bool translateSasmInstruction(Sasm_Context* sasm, InstStmt inst, FileLocation lo
 {
     try(sasm $instructionCount < MAX_PROGRAM_CAPACITY, "Max instruction count exceeded!", "");
     sasm $instructions[sasm $instructionCount].type         = inst.type;
-    sasm $instructions[sasm $instructionCount].operand.u64  = 0;
-    sasm $instructions[sasm $instructionCount].operand2.u64 = 0;
+    sasm $instructions[sasm $instructionCount].operand.u32  = 0;
+    sasm $instructions[sasm $instructionCount].operand2.u32 = 0;
 
     OpcodeDetails details                                   = getOpcodeDetails(inst.type);
     if (details.has_operand) {
@@ -1941,7 +1949,7 @@ bool bindUnresolvedLocalScope(Scope* scope, String_View name, BindingType type, 
         .status    = BIND_STATUS_DEFERRED,
         .type      = type,
         .location  = location,
-        .value.u64 = 0
+        .value.u32 = 0
     };
 
     return true;
@@ -1969,7 +1977,6 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
         case STMT_BLOCK:     // Currently unused!
             try(translateSasmStatementChain(sasm, statement.value.block), "Unable to bind!", "");
             break;
-
         case STMT_SCOPE:
         case STMT_INST:
             break;
@@ -1986,11 +1993,11 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
         case STMT_LABEL:
             {
                 Binding* binding = sasm_binding_resolve(sasm, statement.value.label.name);
-                try(binding != NULL, "binding not found", "");
+                try(binding != NULL, "binding not found: %s", statement.value.label.name.data);
                 try(binding->status == BIND_STATUS_DEFERRED, "binding already defined!", "");
 
                 binding->status    = BIND_STATUS_EVALUATED;
-                binding->value.u64 = sasm $instructionCount;
+                binding->value.u32 = sasm $instructionCount;
             }
             break;
 
@@ -2026,7 +2033,6 @@ bool translateSasmFile(Sasm_Context* sasm, String_View inputFileData, String_Vie
     }
 
     CodeBlock inputFileBlock = sasm_line_parse_codeblock(&sasm->arena, &SasmLexer);
-
     return translateSasmStatementChain(sasm, inputFileBlock.begin);
 ret_err:
     return false;
@@ -2179,7 +2185,9 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
     FuncallArg* last  = NULL;
 
     do {
-        FuncallArg* arg = region_alloc(arena, sizeof(FuncallArg));
+        ResultPtr space = region_alloc(arena, sizeof(FuncallArg));
+        try(RESULT_OK(space), "out of space!", "");
+        FuncallArg* arg = (FuncallArg*)RESULT_VAL(space);
         arg->value      = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         if (first == NULL) {
@@ -2206,19 +2214,19 @@ ret_err:
     return NULL;
 }
 
-QuadWord quadwordFromU64(uint64 u64)
+QuadWord quadwordFromU64(u32 u64)
 {
-    return (QuadWord) { .u64 = u64 };
+    return (QuadWord) { .u32 = u64 };
 }
 
-QuadWord quadwordFromI64(int64 i64)
+QuadWord quadwordFromI64(i32 i64)
 {
-    return (QuadWord) { .i64 = i64 };
+    return (QuadWord) { .i32 = i64 };
 }
 
-QuadWord quadwordFromF64(double f64)
+QuadWord quadwordFromF64(f32 f64)
 {
-    return (QuadWord) { .f64 = f64 };
+    return (QuadWord) { .f32 = f64 };
 }
 
 QuadWord quadwordFromPtr(void* ptr)
@@ -2261,7 +2269,7 @@ void displayStringMessageError(const char* msg, String_View str)
     printf("\n|   |                                                                                                                              |");
     printf("\n| W | ERROR | '%.*s' | %s", Str_Fmt(str), msg);
 
-    for (uint64 i = strlen(msg) + str.len; i < 110; i++)
+    for (uint32 i = strlen(msg) + str.len; i < 110; i++)
         printf(" ");
 
     printf("|"

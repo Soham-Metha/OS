@@ -5,7 +5,7 @@ IDT_Entry idt[256];
 GDT_Entry gdtEntries[5];
 static bool vectors[256];
 
-static uint32* fb;
+static volatile uint32* fb;
 static uint32 pitch;
 static uint32 width;
 static uint32 height;
@@ -269,6 +269,7 @@ void hal_clear(uint32 rgba)
 void hal_present(void)
 {
     // nothing for now, pixels instantly render to screen
+    // TODO: This may be causing the render issue
 }
 
 uint32 hal_get_width()

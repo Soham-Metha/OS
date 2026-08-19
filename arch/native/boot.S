@@ -84,8 +84,8 @@ isr_stub_table:
 
     /* video mode request */
     .long 0                   /* mode type: 0 = linear framebuffer */
-    .long 1024                /* width  */
-    .long 768                 /* height */
+    .long 1920                /* width  */
+    .long 1080                /* height */
     .long 32                  /* bpp    */
 
     .globl  start
@@ -122,4 +122,4 @@ flush:
     RET
 
 .section .bss
-    .lcomm  stackSpace,     8192
+    .lcomm  stackSpace,     524288
