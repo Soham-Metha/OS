@@ -433,4 +433,57 @@ inline void gfx_fill_textured_rowspan(
     }
 }
 
+void gfx_copy_rect(GFX_Canvas canvas,
+    int src_x, int src_y,
+    int dst_x, int dst_y,
+    int w, int h)
+{
+    if (src_x < 0 || src_y < 0 || dst_x < 0 || dst_y < 0)
+        return;
+
+    if (src_x + w > canvas.px_w)
+        w = canvas.px_w - src_x;
+    if (dst_x + w > canvas.px_w)
+        w = canvas.px_w - dst_x;
+    if (src_y + h > canvas.px_h)
+        h = canvas.px_h - src_y;
+    if (dst_y + h > canvas.px_h)
+        h = canvas.px_h - dst_y;
+
+    if (w <= 0 || h <= 0)
+        return;
+
+    int y_start, y_end, y_step;
+    int x_start, x_end, x_step;
+
+    if (dst_y > src_y) {
+        y_start = h - 1;
+        y_end   = -1;
+        y_step  = -1;
+    } else {
+        y_start = 0;
+        y_end   = h;
+        y_step  = 1;
+    }
+
+    if (dst_x > src_x) {
+        x_start = w - 1;
+        x_end   = -1;
+        x_step  = -1;
+    } else {
+        x_start = 0;
+        x_end   = w;
+        x_step  = 1;
+    }
+
+    for (int y = y_start; y != y_end; y += y_step) {
+        uint32* src = canvas.px + (src_y + y) * canvas.px_stride;
+        uint32* dst = canvas.px + (dst_y + y) * canvas.px_stride;
+
+        for (int x = x_start; x != x_end; x += x_step)
+            dst[dst_x + x] = src[src_x + x];
+    }
+}
+
+
 #endif

@@ -10,9 +10,7 @@
 typedef struct Surface {
     int x;
     int y;
-    int width;
-    int height;
-    uint32* pixels;
+    GFX_Canvas canvas;
     bool dirty;
     bool visible;
 } Surface;
@@ -49,13 +47,13 @@ void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w,
 private
 void blit_surface(Surface* s, int width, int height)
 {
-    if (!s || !s->visible || !s->pixels)
+    if (!s || !s->visible || !s->canvas.px)
         return;
 
     int x0 = s->x < 0 ? 0 : s->x;
     int y0 = s->y < 0 ? 0 : s->y;
-    int x1 = s->x + s->width;
-    int y1 = s->y + s->height;
+    int x1 = s->x + s->canvas.px_w;
+    int y1 = s->y + s->canvas.px_h;
 
     if (x1 > width)
         x1 = width;
@@ -67,7 +65,7 @@ void blit_surface(Surface* s, int width, int height)
             int sx       = x - s->x;
             int sy       = y - s->y;
 
-            uint32 color = s->pixels[sy * s->width + sx];
+            uint32 color = s->canvas.px[sy * s->canvas.px_stride + sx];
             if ((color & 0xFF) == 0)
                 continue;
 
@@ -185,70 +183,37 @@ void compositor_render(Compositor* c)
 
 void surface_put_pixel(Surface* s, int x, int y, uint32 color)
 {
-    if (!s || !s->pixels)
+    if (!s)
         return;
 
-    if (gfx_put_pixel(GFX_CANVAS(s->pixels, s->width, s->height, 1.0f), x, y, color))
+    if (gfx_put_pixel(s->canvas, x, y, color))
         s->dirty = true;
 }
 
 void surface_clear(Surface* s, uint32 color)
 {
-    if (!s || !s->pixels)
+    if (!s)
         return;
 
-    gfx_fill(GFX_CANVAS(s->pixels, s->width, s->height, 1.0f), color);
+    gfx_fill(s->canvas, color);
     s->dirty = true;
 }
 
 void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color)
 {
-    if (!s || !s->pixels)
+    if (!s)
         return;
-    gfx_fill_rect(GFX_CANVAS(s->pixels, s->width, s->height, 1.0f), x, y, w, h, color);
+
+    gfx_fill_rect(s->canvas, x, y, w, h, color);
     s->dirty = true;
 }
 
 void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h)
 {
-    if (!s || !s->pixels)
+    if (!s)
         return;
 
-    if (src_x < 0 || src_y < 0 || dst_x < 0 || dst_y < 0)
-        return;
-
-    if (src_x + w > s->width)
-        w = s->width - src_x;
-    if (dst_x + w > s->width)
-        w = s->width - dst_x;
-    if (src_y + h > s->height)
-        h = s->height - src_y;
-    if (dst_y + h > s->height)
-        h = s->height - dst_y;
-
-    if (w <= 0 || h <= 0)
-        return;
-
-    int y_start, y_end, y_step;
-
-    if (dst_y > src_y) {
-        y_start = h - 1;
-        y_end   = -1;
-        y_step  = -1;
-    } else {
-        y_start = 0;
-        y_end   = h;
-        y_step  = 1;
-    }
-
-    for (int y = y_start; y != y_end; y += y_step) {
-        uint32* src = &s->pixels[SURF_IDX(s, src_x, src_y + y)];
-        uint32* dst = &s->pixels[SURF_IDX(s, dst_x, dst_y + y)];
-
-        for (int x = 0; x < w; x++)
-            dst[x] = src[x];
-    }
-
+    gfx_copy_rect(s->canvas, src_x, src_y, dst_x, dst_y, w, h);
     s->dirty = true;
 }
 

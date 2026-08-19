@@ -51,8 +51,7 @@ void render_loop(void)
 void graphics_test(void)
 {
     Surface* s         = &graphics_win->surface;
-    GFX_Canvas canvas  = GFX_CANVAS(s->pixels, s->width, s->height, 1);
-
+    GFX_Canvas canvas  = s->canvas;
     int xmax           = canvas.px_w;
     int ymax           = canvas.px_h;
     int xmid           = xmax / 2;
@@ -86,18 +85,18 @@ void kernel_init(void)
     compositor_init(&comp, screen_w, screen_h);
     wm_init(&wm, &comp);
 
-    graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
-    shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
-           COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0, 0, 0xFF));
+    // graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
+    //     COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
+    shell_win    = wm_create_window(&wm, 0, 0, screen_w, screen_h,
+        COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0xE6, 0x39, 0x46, 0xFF));
 }
 
 void fs_init(void)
 {
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w) / GLYPH_W; i++)
         putch('-');
     print_str("File System v0.1\n");
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w) / GLYPH_W; i++)
         putch('-');
 
     filename dir_nm = (filename) { .name = "test" };
@@ -123,10 +122,10 @@ void fs_init(void)
 
 void shell_win_init(void)
 {
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w) / GLYPH_W; i++)
         putch('-');
     printf("Shell v0.1 (%dx%d)\n", screen_w, screen_h);
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w) / GLYPH_W; i++)
         putch('-');
 
     print_str("\n> ");
@@ -176,7 +175,7 @@ void gfx_io_loop()
         else if (c == 's') tz -= 0.5f;
         else if (c == 'a') ry -= 0.05f;
         else if (c == 'd') ry += 0.05f;
-        gfx_3d_Cam_Move(tx,ty,tz,ry);
+        gfx_3d_Cam_Move(tx, ty, tz, ry);
     }
     p_yield();
 }
