@@ -20,7 +20,7 @@
 #define TTY_1
 
 #define TTY_BUF_SIZE 2048
-#include <common/result.h>
+#include <common/types.h>
 #include <common/errors.h>
 
 typedef struct tty {

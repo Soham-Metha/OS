@@ -18,7 +18,6 @@
 #ifndef KERNEL_1
 #define KERNEL_1
 
-#include <common/result.h>
 #include <common/types.h>
 #include <drivers/tty.h>
 

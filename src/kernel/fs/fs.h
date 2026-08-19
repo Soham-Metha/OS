@@ -19,7 +19,6 @@
 #ifndef FS_1
 #define FS_1
 
-#include <common/result.h>
 #include <common/types.h>
 
 #define BLOCK_SIZE 512

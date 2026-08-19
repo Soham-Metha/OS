@@ -18,7 +18,7 @@
 #ifndef USPACE_IO_1
 #define USPACE_IO_1
 #include <common/errors.h>
-#include <common/result.h>
+#include <common/types.h>
 
 void putch(char c);
 void print_str(const char* str);

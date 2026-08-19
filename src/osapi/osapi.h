@@ -18,7 +18,6 @@
 #ifndef OSAPI_1
 #define OSAPI_1
 
-#include <common/result.h>
 #include <common/types.h>
 
 /* write 1 char */
