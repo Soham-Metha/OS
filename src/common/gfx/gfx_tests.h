@@ -45,6 +45,9 @@
 PX_SKY2;
 static GFX_Canvas text = CANVAS_SKY2;
 
+void* malloc(uint64 size);
+void* memcpy(void* dst, const void* src, uint32 n);
+
 void gfx_pattern_checker(GFX_Canvas canvas, int box_side, uint32 fg, uint32 bg)
 {
     int row_cnt = canvas.px_h / box_side - 1;
@@ -270,7 +273,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
 
-        depth_buff = malloc(canvas.px_w*canvas.px_h); // TODO: shouldn't use malloc here
+        depth_buff = malloc(canvas.px_w*canvas.px_h); // TODO: shouldn't use malloc here?
         initialized    = true;
     }
 

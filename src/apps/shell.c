@@ -27,13 +27,13 @@
 #define STRING_VIEW_IMPL
 #include "shell.h"
 #include <common/event.h>
+#include <common/gfx/gfx_tests.h>
 #include <common/memmanager.h>
 #include <common/strings.h>
 #include <osapi/exec/virex.h>
 #include <osapi/gfx/wm.h>
 #include <osapi/io.h>
 // TODO: fix boundary violation
-#include <gfx/gfx_tests.h>
 #include <kernel/fs/fs.h>
 #include <kernel/scheduler.h>
 

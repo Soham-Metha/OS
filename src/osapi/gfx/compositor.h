@@ -19,7 +19,7 @@
 #define COMPOSITOR_1
 
 #include <common/types.h>
-#include <gfx/graphics.h>
+#include <common/gfx/graphics.h>
 #define COMPOSITOR_MAX_SURFACES 4
 
 typedef struct Surface {
