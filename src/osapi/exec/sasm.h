@@ -24,8 +24,8 @@
 #pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
 #endif
 
+#include <common/errors.h>
 #include <common/memmanager.h>
-#include <common/panic.h>
 #include <common/strings.h>
 #include <common/types.h>
 #include <kernel/heap.h>

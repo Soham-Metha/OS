@@ -18,7 +18,7 @@
 #ifndef UTILS_MEM_MANAGER_1
 #define UTILS_MEM_MANAGER_1
 
-#include "panic.h"
+#include "errors.h"
 #include "strings.h"
 #include "types.h"
 
