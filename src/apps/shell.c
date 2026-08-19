@@ -30,7 +30,7 @@
 #include <common/gfx/gfx_tests.h>
 #include <common/memmanager.h>
 #include <common/strings.h>
-#include <osapi/exec/virex.h>
+#include <common/virex/virex.h>
 #include <osapi/gfx/wm.h>
 #include <osapi/io.h>
 // TODO: fix boundary violation
