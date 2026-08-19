@@ -4,7 +4,7 @@
 #define COMPOSITOR_1
 
 #include <common/types.h>
-#include <modules/graphics.h>
+#include <gfx/graphics.h>
 #define COMPOSITOR_MAX_SURFACES 4
 
 typedef struct Surface {
@@ -42,7 +42,7 @@ void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w,
 
 #ifdef IMPL_COMPOSITOR_1
 #undef IMPL_COMPOSITOR_1
-#include <arch/hal.h>     // TODO: fix boundary violation
+#include <hal/hal.h>     // TODO: fix boundary violation
 
 private
 void blit_surface(Surface* s, int width, int height)

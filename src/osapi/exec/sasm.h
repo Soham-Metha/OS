@@ -12,7 +12,7 @@
 #include <common/result.h>
 #include <common/strings.h>
 #include <common/types.h>
-#include <userspace/libs/io.h>
+#include <osapi/io.h>
 
 #define NULL ((void*)0)
 

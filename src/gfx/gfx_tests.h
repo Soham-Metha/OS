@@ -1,8 +1,8 @@
 #include "graphics3d.h"
-#include <examples/img_ex.c>
-#include <examples/space.c>
-#include <examples/space_tex.c>
-#include <examples/fish.c>
+#include "examples/generated/fish.c"
+#include "examples/generated/img_ex.c"
+#include "examples/generated/space.c"
+#include "examples/generated/space_tex.c"
 
 // Examples available:
 // ---- | ------------ | PX_PIKA   | CANVAS_PIKA   | 256x256

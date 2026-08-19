@@ -9,15 +9,15 @@
 #define MEM_MANAGER_IMPL
 #define STRING_VIEW_IMPL
 #include "shell.h"
-#include "libs/io.h"
-#include "services/wm.h"
 #include <common/event.h>
 #include <common/memmanager.h>
 #include <common/strings.h>
-#include <modules/gfx_tests.h>
-#include <modules/virex.h>
+#include <osapi/exec/virex.h>
+#include <osapi/gfx/wm.h>
+#include <osapi/io.h>
 // TODO: fix boundary violation
-#include <kernel/fs.h>
+#include <gfx/gfx_tests.h>
+#include <kernel/fs/fs.h>
 #include <kernel/scheduler.h>
 
 WindowManager wm     = { 0 };

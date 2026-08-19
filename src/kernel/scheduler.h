@@ -31,8 +31,8 @@ void resume(Task_State ts);
 #ifdef IMPL_SCHEDULER_1
 #undef IMPL_SCHEDULER_1
 
-#include <arch/hal.h>
 #include <common/heap.h>
+#include <hal/hal.h>
 
 Task* current   = (Task*)0;
 Task* run_queue = (Task*)0;
