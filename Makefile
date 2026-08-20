@@ -4,14 +4,15 @@ export PATH := $(PREFIX)/bin:$(PATH)
 .ONESHELL:
 SHELL  := /bin/bash
 BUILDS := ./build
+SRC    := ./src
 
 NAT_CC := i686-elf-gcc
 NAT_AS := i686-elf-as
 NAT_LD := i686-elf-ld
 
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-CFLAGS += -ffreestanding  -fno-builtin -I .
-LIBS   := 
+CFLAGS += -ffreestanding -fno-builtin -I $(SRC)
+LIBS   :=
 
 _HAL   := $(BUILDS)/hal_browser.o
 _ITR   := $(BUILDS)/interrupt.o
@@ -34,7 +35,10 @@ clean: | $(BUILDS)
 	@rm -f $(BUILDS)/*.o $(_NATIVE_KERNEL) && \
 	printf  "\n\e[36m  CLEANED ALL OBJECT FILES AND EXECUTABLES	\e[0m\n\n"
 
-ifeq ($(TARGET),native)
+# ============================================================
+ifeq ($(TARGET),native) # Native target
+# ============================================================
+
 CC     := $(NAT_CC)
 
 all: clean $(_ISO)
@@ -42,11 +46,13 @@ all: clean $(_ISO)
 run_all: all
 	@qemu-system-i386 -enable-kvm -drive format=raw,file="$(_ISO)" -vga std
 
-$(_HAL): arch/native/boot.c arch/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/native/boot.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-else
+# ============================================================
+else # Browser / WASM target
+# ============================================================
 
 ifeq ($(COMPILER),clang)
 CC     := clang-15
@@ -54,14 +60,12 @@ LD     := wasm-ld
 CFLAGS += --target=wasm32-unknown-unknown
 LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
 LFLAGS += --export=main --export=kernel_irq_wrapper --export-table
-
 else
 CC     := emcc
 LD     := emcc
-CFLAGS += -matomics -mbulk-memory 
+CFLAGS += -matomics -mbulk-memory
 LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=15MB -s STANDALONE_WASM=1 -Wl,--shared-memory
 LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
-
 endif
 
 all: clean $(EXEC_FILE)
@@ -69,45 +73,57 @@ all: clean $(EXEC_FILE)
 run_all: all
 	@python3 -m http.server 8000
 
-$(_HAL): arch/browser/hal_browser.c arch/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/browser/hal_browser.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 endif
 
-$(_EVENT): userspace/services/event.c common/event.h | $(BUILDS)
+# ============================================================
+# Common objects
+# ============================================================
+
+$(_EVENT): $(SRC)/osapi/gfx/event.c $(SRC)/common/event.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_ITR): kernel/interrupt.c kernel/interrupt.h | $(BUILDS)
+$(_ITR): $(SRC)/kernel/interrupt.c $(SRC)/kernel/interrupt.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_KERN): kernel/kernel.c kernel/kernel.h | $(BUILDS)
+$(_KERN): $(SRC)/kernel/kernel.c $(SRC)/kernel/kernel.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_OSAPI): osapi/osapi.c osapi/osapi.h | $(BUILDS)
+$(_OSAPI): $(SRC)/osapi/osapi.c $(SRC)/osapi/osapi.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_SHELL): userspace/shell.c userspace/shell.h | $(BUILDS)
+$(_SHELL): $(SRC)/apps/shell.c $(SRC)/apps/shell.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
+
+# ============================================================
+# WASM executable
+# ============================================================
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
 	@source ./tools/emsdk/emsdk_env.sh
 	@$(LD) $(LFLAGS) $^ -o $@ && \
 	printf "\e[32m		[ LINK  COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
+# ============================================================
+# Native executable
+# ============================================================
+
 $(_ISO): $(_NATIVE_KERNEL)
 	@grub-mkrescue -o $@ $(BUILDS)/OS/ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_KERNEL): $(_NATIVE_BOOT_A) $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@$(NAT_LD) -m elf_i386 -T ./extras/native.ld  $^ -o $@ && \
+	@$(NAT_LD) -m elf_i386 -T $(SRC)/platform/native/native.ld  $^ -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_NATIVE_BOOT_A):arch/native/boot.S  | $(BUILDS)
-	@$(NAT_AS) --32 $< -o $@  && \
+$(_NATIVE_BOOT_A): $(SRC)/hal/native/boot.S | $(BUILDS)
+	@$(NAT_AS) --32 $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"

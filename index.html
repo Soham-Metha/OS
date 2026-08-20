@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <title>webOS</title>
-    <link rel="stylesheet" href="extras/style.css" />
+    <link rel="stylesheet" href="./src/platform/browser/style.css" />
   </head>
   <body>
     <canvas id="screen" width="1800" height="900"></canvas>
 
-    <script src="./arch/browser/hal.js"></script>
+    <script src="./src/platform/browser/hal.js"></script>
     <script type="module">
       (async function () {
         await boot();
