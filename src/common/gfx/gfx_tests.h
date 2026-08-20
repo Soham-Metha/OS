@@ -316,10 +316,12 @@ void gfx_3d_test2(GFX_Canvas canvas)
         if (p3f_dot(normal, pCamRay) >= 0)
             continue;
 
-        float dp = p3f_dot(normal, light);
-        if (dp > 1.0f) dp = 1.0f;
-        if (dp < 0.1f) dp = 0.1f;
-        trans.shade = dp;
+        float ambient = 0.1f;
+        float diffuse = p3f_dot(normal, light);
+        if (diffuse > 1.0f) diffuse = 1.0f;
+        if (diffuse < 0.0f) diffuse = 0.0f;
+
+        trans.shade = lerp(ambient, 1.0f, diffuse);
 
         Tri3f clipped[2];
         uint8 clip_cnt = tri_clip(
