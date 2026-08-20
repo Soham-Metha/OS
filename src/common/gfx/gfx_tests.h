@@ -258,7 +258,11 @@ void gfx_3d_test2(GFX_Canvas canvas)
     PX_SPACE;
     static GFX_Canvas tex   = CANVAS_SPACE;
     static Tri3f mesh[]     = MESH_SHIP2;
-    static Point3f light    = { .z = -1 };
+    static Point3f light    = {
+        .x = -1.0f,
+        .y = 0.5f,
+        .z = -1.0f
+    };
 
     static bool initialized = false;
     static Mat4f mTransProjView;
@@ -307,7 +311,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             .texture[2] = mesh[i].texture[2],
         };
 
-        Point3f pCamRay = p3f_sub(trans.vertex[0], camera);
+        Point3f pCamRay = p3f_normalize(p3f_sub(trans.vertex[0], camera));
         Point3f normal  = p3f_normalize(
              p3f_cross(
                  p3f_sub(trans.vertex[1], trans.vertex[0]),
@@ -322,6 +326,18 @@ void gfx_3d_test2(GFX_Canvas canvas)
         if (diffuse < 0.0f) diffuse = 0.0f;
 
         trans.shade = lerp(ambient, 1.0f, diffuse);
+
+        float highlight = -p3f_dot(normal, pCamRay);
+        if (highlight > 1.0f) highlight = 1.0f;
+        if (highlight < 0.0f) highlight = 0.0f;
+        highlight *= highlight;
+        highlight *= highlight;
+
+        trans.shade = lerp(
+            trans.shade,
+            1.0f,
+            highlight
+        );
 
         Tri3f clipped[2];
         uint8 clip_cnt = tri_clip(
