@@ -364,11 +364,11 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
 
 void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src)
 {
-    for (int y = 0; y < dest.px_h; y++) {
+    for (int y = 0; y < dest.px_h - 1; y++) {
         int y0 = y * src.px_h / dest.px_h;
         int y1 = (y + 1) * src.px_h / dest.px_h;
 
-        for (int x = 0; x < dest.px_w; x++) {
+        for (int x = 0; x < dest.px_w - 1; x++) {
             int x0 = x * src.px_w / dest.px_w;
             int x1 = (x + 1) * src.px_w / dest.px_w;
 
