@@ -36,6 +36,8 @@ typedef struct Window {
 
 typedef struct WindowManager {
     Window windows[WM_MAX_WINDOWS];
+    GFX_Canvas screen;
+    Arena arena;
     int mx;
     int my;
     int count;
@@ -70,10 +72,15 @@ void wm_init(WindowManager* wm, Compositor* c)
     wm->my         = 0;
     wm->compositor = c;
 
+    ResultPtr space = region_alloc(&wm->arena, (c->width * c->height) * sizeof(uint32));
+    try(RESULT_OK(space), "out of space!", "");
+    wm->screen     = gfx_init_canvas((uint32*)RESULT_VAL(space), c->width, c->height);
+
     for (int i = 0; i < WM_MAX_WINDOWS; i++) {
         wm->windows[i].visible = false;
         wm->windows[i].focused = false;
     }
+ret_err:;
 }
 
 Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg)
@@ -82,11 +89,9 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
         return 0;
 
     Window* win     = &wm->windows[wm->count++];
-    ResultPtr space = region_alloc(&win->arena, w * h * sizeof(uint32));
-    try(RESULT_OK(space), "out of space!", "");
     win->surface.x       = x;
     win->surface.y       = y;
-    win->surface.canvas  = gfx_init_canvas((uint32*)RESULT_VAL(space), w, h, 1.0f);
+    win->surface.canvas  = gfx_init_subcanvas(wm->screen, x, y, w, h);
     win->surface.visible = true;
     win->surface.dirty   = true;
     win->visible         = true;
@@ -96,8 +101,6 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     wm_focus_window(wm, win);
 
     return win;
-ret_err:
-    return (Window*)0;
 }
 
 void wm_focus_window(WindowManager* wm, Window* win)
@@ -189,9 +192,18 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
     }
 }
 
+#include <hal/hal.h>     // TODO: fix boundary violation
+
 void wm_render(WindowManager* wm)
 {
-    compositor_render(wm->compositor);
+    for (int y = 0; y < wm->screen.px_h; y++)
+    {
+        for (int x = 0; x < wm->screen.px_w; x++)
+        {
+            hal_put_pixel(x, y, wm->screen.px[y * wm->screen.px_stride + x]);
+        }
+    }
+    hal_present();
 }
 
 #else

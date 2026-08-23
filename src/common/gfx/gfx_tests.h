@@ -83,21 +83,21 @@ void gfx_pattern_circles(GFX_Canvas canvas, int row_cnt, int col_cnt, uint32 col
 void gfx_pattern_shapes(GFX_Canvas canvas, uint32 col)
 {
     gfx_fill_triangle(canvas,
-        80 / canvas.scale, 80 / canvas.scale,
-        320 / canvas.scale, 80 / canvas.scale,
-        200 / canvas.scale, 420 / canvas.scale,
+        80, 80,
+        320, 80,
+        200, 420,
         COL(0xFF, 0x00, 0xFF, 0xFF));
 
     gfx_fill_triangle(canvas,
-        100 / canvas.scale, 100 / canvas.scale,
-        250 / canvas.scale, 200 / canvas.scale,
-        120 / canvas.scale, 350 / canvas.scale,
+        100, 100,
+        250, 200,
+        120, 350,
         COL(0x00, 0x00, 0xFF, 0xAA));
 
     gfx_fill_triangle(canvas,
-        120 / canvas.scale, 150 / canvas.scale,
-        300 / canvas.scale, 220 / canvas.scale,
-        180 / canvas.scale, 380 / canvas.scale,
+        120, 150,
+        300, 220,
+        180, 380,
         COL(0xFF, 0xFF, 0x00, 0x88));
 
     int xmin = 0;
@@ -226,7 +226,7 @@ void gfx_3d_test(GFX_Canvas canvas)
                     (struct Circ) {
                         .x   = px * canvas.px_w,
                         .y   = py * canvas.px_h,
-                        .r   = 8 / canvas.scale,
+                        .r   = 8,
                         .col = COL(r, g, b, 255),
                         .z   = z });
                 idx += 1;
@@ -277,7 +277,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
 
-        depth_buff = malloc(canvas.px_w*canvas.px_h); // TODO: shouldn't use malloc here?
+        depth_buff = malloc(canvas.px_w * canvas.px_h * sizeof(float)); // TODO: shouldn't use malloc here?
         initialized    = true;
     }
 

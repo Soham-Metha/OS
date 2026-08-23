@@ -1830,5 +1830,5 @@
 }
 
 #define CANVAS_CLOCK { \
-    .px = img_px,    .px_w = 256,    .px_h = 256,    .px_stride = 256,    .scale = 1.0f,}
+    .px = img_px,    .px_w = 256,    .px_h = 256,    .px_stride = 256,}
 

@@ -24,7 +24,6 @@ typedef struct gfx_canvas {
     int px_w;
     int px_h;
     int px_stride;
-    float scale;
 } GFX_Canvas;
 
 typedef struct {
@@ -63,7 +62,7 @@ typedef union Color {
     uint8 as_[4];
 } Color;
 
-#define GFX_CANVAS(p, w, h, s) gfx_init_canvas(p, w, h, s)
+#define GFX_CANVAS(p, w, h) gfx_init_canvas(p, w, h)
 #define swap_points(ax, ay, bx, by) \
     do {                            \
         int tx = ax;                \
@@ -84,11 +83,12 @@ typedef union Color {
 #define lerp(u, v, t) ((u) + ((v) - (u)) * ((float)t))
 #define COL(r, g, b, a) (r << 24 | g << 16 | b << 8 | a)
 
-GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h, float scale);
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h);
 GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h);
 
-uint32 gfx_lerp_color(uint32 a, uint32 b, int mode);
+uint32 gfx_lerp_color(uint32 a, uint32 b);
 bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col);
+bool gfx_blend_pixel(GFX_Canvas canvas, int x, int y, uint32 col);
 
 void gfx_fill(GFX_Canvas canvas, uint32 col);
 void gfx_fill_circ(GFX_Canvas canvas, int x, int y, int r, uint32 col);
@@ -103,7 +103,41 @@ void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src);
 void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float w1, float u2, float v2, float w2, float* depth_buff, float shade);
 void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float* depth_buff, float shade);
 
-#endif
+#endif // GRAPHICS_1
+
+#ifndef GRAPHICS3D_1
+#define GRAPHICS3D_1
+
+float p3f_len(Point3f a);
+float p3f_dot(Point3f a, Point3f b);
+Point3f p3f_cross(Point3f a, Point3f b);
+Point3f p3f_normalize(Point3f a);
+Point3f p3f_mul_mat(Point3f i, Mat4f m);
+Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end, float* t);
+uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3f* out_tri2);
+
+Point2f p2f_div(Point2f a, float b);
+Point3f p3f_add(Point3f a, Point3f b);
+Point3f p3f_sub(Point3f a, Point3f b);
+Point3f p3f_mul(Point3f a, float b);
+Point3f p3f_div(Point3f a, float b);
+
+Mat4f tri_to_mat4(Tri3f t);
+Tri3f mat4_to_tri(Mat4f m);
+
+Mat4f matrix_mul(Mat4f A, Mat4f B);
+Mat4f matrix_chain(int count, ...);
+Mat4f matrix_project(float z_min, float z_max, float fov, int w, int h);
+Mat4f matrix_viewport();
+
+Mat4f matrix_trans(float x, float y, float z);
+Mat4f matrix_scale(float x, float y, float z);
+Mat4f matrix_rotX(float angle);
+Mat4f matrix_rotY(float angle);
+Mat4f matrix_rotZ(float angle);
+
+#endif // GRAPHICS3D_1
+
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
 
@@ -138,14 +172,13 @@ bool gfx_blit_rect(int px_w, int px_h, int x, int y, int w, int h, int* x1, int*
     return true;
 }
 
-GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h, float scale)
+GFX_Canvas gfx_init_canvas(uint32* px, int px_w, int px_h)
 {
     GFX_Canvas res = (GFX_Canvas) {
         .px        = px,
-        .px_w      = px_w / scale,
-        .px_h      = px_h / scale,
-        .px_stride = px_w,
-        .scale     = scale,
+        .px_w      = px_w,
+        .px_h      = px_h,
+        .px_stride = px_w
     };
 
     return res;
@@ -155,40 +188,30 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h)
 {
     GFX_Canvas res = { 0 };
     int x1, y1, x2, y2;
-    if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
-        int phys_x = (int)(x * canvas.scale);
-        int phys_y = (int)(y * canvas.scale);
 
+    if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
         res        = (GFX_Canvas) {
-                   .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
+                   .px        = &canvas.px[y1 * canvas.px_stride + x1],
                    .px_w      = x2 - x1 + 1,
                    .px_h      = y2 - y1 + 1,
                    .px_stride = canvas.px_stride,
-                   .scale     = canvas.scale,
         };
     }
 
     return res;
 }
 
-uint32 gfx_lerp_color(uint32 a, uint32 b, int mode)
+uint32 gfx_lerp_color(uint32 bg, uint32 fg)
 {
-    Color c1 = (Color) { .as_u32 = a };
-    Color c2 = (Color) { .as_u32 = b };
+    Color c1 = (Color) { .as_u32 = bg };
+    Color c2 = (Color) { .as_u32 = fg };
     if (c2.as_[COL_A] == 0xFF)
         return c2.as_u32;
 
-    if (mode == 0) {
-        c1.as_[COL_R] = gfx_blend_color(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A]);
-        c1.as_[COL_G] = gfx_blend_color(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A]);
-        c1.as_[COL_B] = gfx_blend_color(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A]);
-        // c1.as_[COL_A] = gfx_blend_color(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A]);
-    } else {
-        c1.as_[COL_R] = gfx_blend_color(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A] / 4);
-        c1.as_[COL_G] = gfx_blend_color(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A] / 4);
-        c1.as_[COL_B] = gfx_blend_color(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A] / 4);
-        // c1.as_[COL_A] = gfx_blend_color(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A] / 4);
-    }
+    c1.as_[COL_R] = gfx_blend_color(c1.as_[COL_R], c2.as_[COL_R], c2.as_[COL_A]);
+    c1.as_[COL_G] = gfx_blend_color(c1.as_[COL_G], c2.as_[COL_G], c2.as_[COL_A]);
+    c1.as_[COL_B] = gfx_blend_color(c1.as_[COL_B], c2.as_[COL_B], c2.as_[COL_A]);
+    // c1.as_[COL_A] = gfx_blend_color(c1.as_[COL_A], c2.as_[COL_A], c2.as_[COL_A]);
 
     return c1.as_u32;
 }
@@ -203,16 +226,19 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
     if (x < 0 || y < 0 || x >= canvas.px_w || y >= canvas.px_h)
         return false;
 
-    int phys_x = round(x * canvas.scale);
-    int phys_y = round(y * canvas.scale);
+    canvas.px[y * canvas.px_stride + x] = col;
 
-    for (int dy = 0; dy < canvas.scale; dy++) {
-        for (int dx = 0; dx < canvas.scale; dx++) {
+    return true;
+}
 
-            uint32* p = &canvas.px[(phys_y + dy) * canvas.px_stride + (phys_x + dx)];
-            *p        = gfx_lerp_color(*p, col, canvas.scale < 1);
-        }
-    }
+bool gfx_blend_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
+{
+    if (x < 0 || y < 0 ||
+        x >= canvas.px_w || y >= canvas.px_h)
+        return false;
+
+    uint32 *p = &canvas.px[y * canvas.px_stride + x];
+    *p = gfx_lerp_color(*p, col);
 
     return true;
 }
@@ -221,7 +247,7 @@ void gfx_fill(GFX_Canvas canvas, uint32 col)
 {
     for (int y = 0; y < canvas.px_h; y++) {
         for (int x = 0; x < canvas.px_w; x++) {
-            gfx_put_pixel(canvas, x, y, col);
+            gfx_blend_pixel(canvas, x, y, col);
         }
     }
 }
@@ -257,7 +283,7 @@ void gfx_draw_line(GFX_Canvas canvas, int x1, int y1, int x2, int y2, uint32 col
     int er = dx + dy;
 
     while (1) {
-        gfx_put_pixel(canvas, x1, y1, col);
+        gfx_blend_pixel(canvas, x1, y1, col);
 
         int e2 = 2 * er;
 
@@ -339,11 +365,42 @@ void gfx_fill_circ(GFX_Canvas canvas, int xc, int yc, int r, uint32 col)
 void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src)
 {
     for (int y = 0; y < dest.px_h; y++) {
-        int ny = y * src.px_h / dest.px_h;
+        int y0 = y * src.px_h / dest.px_h;
+        int y1 = (y + 1) * src.px_h / dest.px_h;
+
         for (int x = 0; x < dest.px_w; x++) {
-            int nx     = x * src.px_w / dest.px_w;
-            uint32 col = src.px[ny * src.px_stride + nx];
-            gfx_put_pixel(dest, x, y, col);
+            int x0 = x * src.px_w / dest.px_w;
+            int x1 = (x + 1) * src.px_w / dest.px_w;
+
+            uint32 r = 0;
+            uint32 g = 0;
+            uint32 b = 0;
+            uint32 a = 0;
+            uint32 count = 0;
+
+            for (int sy = y0; sy <= y1; sy++) {
+                for (int sx = x0; sx <= x1; sx++) {
+                    uint32 col = src.px[sy * src.px_stride + sx];
+
+                    Color c = { .as_u32 = col };
+
+                    r += c.as_[COL_R];
+                    g += c.as_[COL_G];
+                    b += c.as_[COL_B];
+                    a += c.as_[COL_A];
+
+                    count++;
+                }
+            }
+
+            Color out = {
+                .as_[COL_R] = r / count,
+                .as_[COL_G] = g / count,
+                .as_[COL_B] = b / count,
+                .as_[COL_A] = a / count,
+            };
+
+            gfx_put_pixel(dest, x, y, out.as_u32);
         }
     }
 }
@@ -443,9 +500,9 @@ inline void gfx_fill_textured_rowspan(
         col.as_[COL_G] = shade * col.as_[COL_G];
         col.as_[COL_B] = shade * col.as_[COL_B];
 
-        if (w > depth_buff[sy * dest.px_stride + sx]) {
-            gfx_put_pixel(dest, sx, sy, col.as_u32);
-            depth_buff[sy * dest.px_stride + sx] = w;
+        if (w > depth_buff[sy * dest.px_w + sx]) { // depth buffer is malloced using width, not stride!
+            gfx_blend_pixel(dest, sx, sy, col.as_u32);
+            depth_buff[sy * dest.px_w + sx] = w;
         }
     }
 }
@@ -503,40 +560,8 @@ void gfx_copy_rect(GFX_Canvas canvas,
 }
 
 
-#endif
+#endif  // IMPL_GRAPHICS_1
 
-#ifndef GRAPHICS3D_1
-#define GRAPHICS3D_1
-
-float p3f_len(Point3f a);
-float p3f_dot(Point3f a, Point3f b);
-Point3f p3f_cross(Point3f a, Point3f b);
-Point3f p3f_normalize(Point3f a);
-Point3f p3f_mul_mat(Point3f i, Mat4f m);
-Point3f p3f_intersect_plane(Point3f plane_p, Point3f plane_n, Point3f line_start, Point3f line_end, float* t);
-uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3f* out_tri2);
-
-Point2f p2f_div(Point2f a, float b);
-Point3f p3f_add(Point3f a, Point3f b);
-Point3f p3f_sub(Point3f a, Point3f b);
-Point3f p3f_mul(Point3f a, float b);
-Point3f p3f_div(Point3f a, float b);
-
-Mat4f tri_to_mat4(Tri3f t);
-Tri3f mat4_to_tri(Mat4f m);
-
-Mat4f matrix_mul(Mat4f A, Mat4f B);
-Mat4f matrix_chain(int count, ...);
-Mat4f matrix_project(float z_min, float z_max, float fov, int w, int h);
-Mat4f matrix_viewport();
-
-Mat4f matrix_trans(float x, float y, float z);
-Mat4f matrix_scale(float x, float y, float z);
-Mat4f matrix_rotX(float angle);
-Mat4f matrix_rotY(float angle);
-Mat4f matrix_rotZ(float angle);
-
-#endif
 #ifdef IMPL_GRAPHICS3D_1
 #undef IMPL_GRAPHICS3D_1
 
@@ -1030,4 +1055,4 @@ Mat4f matrix_inv(Mat4f a)
     };
 }
 
-#endif
+#endif  // IMPL_GRAPHICS3D_1

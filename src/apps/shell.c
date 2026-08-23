@@ -121,6 +121,8 @@ void kernel_init(void)
     compositor_init(&comp, screen_w, screen_h);
     wm_init(&wm, &comp);
 
+    graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
     shell_win    = wm_create_window(&wm, 0, 0, screen_w/2, screen_h,
         COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0xE6, 0x39, 0x46, 0xFF));
 }
@@ -171,9 +173,6 @@ void shell_handler(String_View inp)
         virex_test();     // TODO: doesn't work in 'native' mode
         printf("\n> ");
     } else if (sv_compare(inp, STR("gfx-test"))) {
-        graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
-            COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
-        wm_focus_window(&wm, shell_win);
         create_task(graphics_test);
         // create_task(gfx_io_loop); // TODO: bind input with windows
         printf("> ");
