@@ -62,6 +62,7 @@ int main()
     printf("    .px_w = %d,", w);
     printf("    .px_h = %d,", h);
     printf("    .px_stride = %d,", w);
+    printf("    .scale = 1.0f,");
     printf("}\n");
 
     fclose(f);

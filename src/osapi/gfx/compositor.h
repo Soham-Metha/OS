@@ -147,7 +147,7 @@ void surface_put_pixel(Surface* s, int x, int y, uint32 color)
     if (!s)
         return;
 
-    if (gfx_blend_pixel(s->canvas, x, y, color))
+    if (gfx_put_pixel(s->canvas, x, y, color))
         s->dirty = true;
 }
 

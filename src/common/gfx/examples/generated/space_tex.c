@@ -515,4 +515,4 @@
 }
     
 #define CANVAS_SPACE { \
-    .px = img_px,    .px_w = 512,    .px_h = 512,    .px_stride = 512,}
+    .px = img_px,    .px_w = 512,    .px_h = 512,    .px_stride = 512,    .scale = 1.0f,}
