@@ -47,7 +47,7 @@ typedef struct WindowManager {
 
 void wm_init(WindowManager* wm, Compositor* c);
 
-Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg);
+Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg, float scale);
 void wm_destroy_window(WindowManager* wm, Window* win);
 void wm_focus_window(WindowManager* wm, Window* win);
 
@@ -74,7 +74,7 @@ void wm_init(WindowManager* wm, Compositor* c)
 
     ResultPtr space = region_alloc(&wm->arena, (c->width * c->height) * sizeof(uint32));
     try(RESULT_OK(space), "out of space!", "");
-    wm->screen     = gfx_init_canvas((uint32*)RESULT_VAL(space), c->width, c->height);
+    wm->screen     = gfx_init_canvas((uint32*)RESULT_VAL(space), c->width, c->height, 1.0f);
 
     for (int i = 0; i < WM_MAX_WINDOWS; i++) {
         wm->windows[i].visible = false;
@@ -83,7 +83,7 @@ void wm_init(WindowManager* wm, Compositor* c)
 ret_err:;
 }
 
-Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg)
+Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg, float scale)
 {
     if (wm->count >= WM_MAX_WINDOWS)
         return 0;
@@ -91,7 +91,7 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     Window* win     = &wm->windows[wm->count++];
     win->surface.x       = x;
     win->surface.y       = y;
-    win->surface.canvas  = gfx_init_subcanvas(wm->screen, x, y, w, h);
+    win->surface.canvas  = gfx_init_subcanvas(wm->screen, x, y, w, h, scale);
     win->surface.visible = true;
     win->surface.dirty   = true;
     win->visible         = true;
@@ -127,23 +127,8 @@ void wm_handle_key(WindowManager* wm, uint8 key)
     }
 }
 
-void surface_swap_colors_at(Surface* s, int x, int y, uint32 fg, uint32 bg)
-{
-    if (!s)
-        return;
-    for (int row = 0; row < GLYPH_H; row++) {
-        for (int col = 0; col < GLYPH_W; col++) {
-            uint32 *px = &s->canvas.px[(y + row) * s->canvas.px_stride + (x + col)];
-            *px = (*px == bg) ? fg : bg;
-        }
-    }
-    s->dirty = true;
-}
-
 void wm_handle_mouse(WindowManager* wm, MouseEvent me)
 {
-    static int cursor_win = -1;
-
     if (!wm || !wm->compositor || wm->count == 0)
         return;
 
@@ -159,20 +144,12 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
     if (newy >= wm->compositor->height)
         newy = wm->compositor->height - 1;
 
-    if (wm->mx == newx && wm->my == newy && !me.left) {
-        return;
-    }
-
-    if (cursor_win >= 0 && cursor_win < wm->count) {
-        surface_swap_colors_at(&wm->windows[cursor_win].surface,
-            wm->mx - wm->windows[cursor_win].surface.x,
-            wm->my - wm->windows[cursor_win].surface.y,
-            wm->windows[cursor_win].term.fg,
-            wm->windows[cursor_win].term.bg);
-    }
-
     wm->mx = newx;
     wm->my = newy;
+
+    if (!me.left) {
+        return;
+    }
 
     // TODO: optimization(z buffering?)
     for (int i = wm->count - 1; i >= 0; i--) {
@@ -184,9 +161,7 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
         if (lx >= 0 && lx < s->canvas.px_w &&
             ly >= 0 && ly < s->canvas.px_h)
         {
-            surface_swap_colors_at(s, lx, ly, wm->windows[i].term.fg, wm->windows[i].term.bg);
             wm_focus_window(wm, &wm->windows[i]);
-            cursor_win = i;
             return;
         }
     }
@@ -196,14 +171,7 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
 
 void wm_render(WindowManager* wm)
 {
-    for (int y = 0; y < wm->screen.px_h; y++)
-    {
-        for (int x = 0; x < wm->screen.px_w; x++)
-        {
-            hal_put_pixel(x, y, wm->screen.px[y * wm->screen.px_stride + x]);
-        }
-    }
-    hal_present();
+    hal_present(wm->screen, wm->mx, wm->my);
 }
 
 #else

@@ -74,10 +74,10 @@ void graphics_test(void)
     int xmid           = xmax / 2;
     int ymid           = ymax / 2;
 
-    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid);
+    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid, 4.0f);
     // GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
-    GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid);
-    GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid);
+    GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid, 1.0f);
+    GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid, 1.0f);
 
     gfx_fill(canvas, COL(0x00, 0x00, 0x00, 0xFF));
 
@@ -122,9 +122,9 @@ void kernel_init(void)
     wm_init(&wm, &comp);
 
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF));
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF), 1.0f);
     shell_win    = wm_create_window(&wm, 0, 0, screen_w/2, screen_h,
-        COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0xE6, 0x39, 0x46, 0xFF));
+        COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0xE6, 0x39, 0x46, 0xFF), 1.0f);
 }
 
 void fs_init(void)
