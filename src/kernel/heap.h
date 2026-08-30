@@ -19,7 +19,7 @@
 #define KMALLOC_1
 
 #include <common/types.h>
-#define KHEAP_SIZE (10 * 1024 * 1024)
+#define KHEAP_SIZE (25 * 1024 * 1024)
 
 void* malloc(uint64 size);
 void* memset(void* buf, char c, uint32 n);

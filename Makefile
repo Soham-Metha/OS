@@ -11,8 +11,8 @@ NAT_AS := i686-elf-as
 NAT_LD := i686-elf-ld
 
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-CFLAGS += -ffreestanding -fno-builtin -I $(SRC)
-LIBS   :=
+CFLAGS += -ffreestanding -fno-builtin -g
+LIBS   := -I $(SRC)
 
 _HAL   := $(BUILDS)/hal_browser.o
 _ITR   := $(BUILDS)/interrupt.o
@@ -58,14 +58,14 @@ ifeq ($(COMPILER),clang)
 CC     := clang-15
 LD     := wasm-ld
 CFLAGS += --target=wasm32-unknown-unknown
-LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
-LFLAGS += --export=main --export=kernel_irq_wrapper --export-table
+LFLAGS := --allow-undefined --no-entry --initial-memory=33554432 --global-base=1024 -z stack-size=16384
+LFLAGS += --export=kernelMain --export=kernel_irq_wrapper --export-table
 else
 CC     := emcc
 LD     := emcc
 CFLAGS += -matomics -mbulk-memory
-LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=15MB -s STANDALONE_WASM=1 -Wl,--shared-memory
-LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
+LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=32MB -s STANDALONE_WASM=1 -g
+LFLAGS += -s EXPORTED_FUNCTIONS=['_kernelMain','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
 endif
 
 all: clean $(EXEC_FILE)
