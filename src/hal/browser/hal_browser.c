@@ -1,5 +1,5 @@
 /*
- * hal_browser.h
+ * hal_browser.c
  *  Copyright (C) 2026 Soham Metha
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -17,42 +17,59 @@
  */
 #include "../hal.h"
 #include <kernel/interrupt.h>
+#include <kernel/heap.h>
 // #include <emscripten/wasm_worker.h>
+
+static uint32* fb_px;
+static GFX_Canvas frame_buffer;
 
 /*
  * This function is implemented in JavaScript
  * and imported into the WASM module.
  */
 
-extern void __hal_put_pixel(int x, int y, uint32 rgba);
-extern void __hal_clear(uint32 rgba);
-extern void __hal_present(void);
-extern uint32 __hal_get_width(void);
-extern uint32 __hal_get_height(void);
+extern void __hal_present(uint32* pixels, uint32 width, uint32 height, uint32 stride);
 
-void hal_put_pixel(int x, int y, uint32 rgba)
+static inline uint32 rgba_to_abgr(uint32 rgba)
 {
-    __hal_put_pixel(x, y, rgba);
+    uint32 r = (rgba >> 24) & 0xFF;
+    uint32 g = (rgba >> 16) & 0xFF;
+    uint32 b = (rgba >> 8)  & 0xFF;
+    uint32 a = rgba & 0xFF;
+
+    return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
-void hal_clear(uint32 rgba)
+void hal_present(GFX_Canvas buffer, int32 mx, int32 my)
 {
-    __hal_clear(rgba);
-}
+    for (int i = 0; i < (buffer.px_stride * buffer.px_h); i++)
+    {
+        frame_buffer.px[i] = rgba_to_abgr(buffer.px[i]);
+    }
 
-void hal_present(void)
-{
-    __hal_present();
+    // gfx_fill_rect(frame_buffer, mx, my, 8, 16, COL(0xFF,0xFF, 0xFF, 0xFF));
+    for (int y = 0; y < 16; y++){
+        for (int x = 0; x < 8; x++) {
+            frame_buffer.px[(my + y) * frame_buffer.px_stride + (mx + x)] = COL(0xFF,0xFF, 0xFF, 0xFF);
+        }
+    }
+
+    __hal_present(
+        frame_buffer.px,
+        frame_buffer.px_w,
+        frame_buffer.px_h,
+        frame_buffer.px_stride
+    );
 }
 
 uint32 hal_get_width()
 {
-    return __hal_get_width();
+    return frame_buffer.px_w;
 }
 
 uint32 hal_get_height()
 {
-    return __hal_get_height();
+    return frame_buffer.px_h;
 }
 
 void switch_to(void (*func)(void))
@@ -72,4 +89,19 @@ void kernel_irq_wrapper(Interrupt i, int a, int b, int c)
         kernel_irq(i, (IRQ_Data) {
                           .mouse_movement = { .dx = a, .dy = b, .left = c & 1, .right = (c >> 1) & 1, .middle = (c >> 2) & 1 }
         });
+}
+
+extern int main(void);
+
+void kernelMain(uint32 width, uint32 height) {
+    fb_px = malloc(width * height * sizeof(uint32));
+
+    frame_buffer = (GFX_Canvas) {
+        .px = fb_px,
+        .px_stride = width,
+        .px_w = width,
+        .px_h = height,
+    };
+
+    (void)main();
 }

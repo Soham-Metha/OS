@@ -11,7 +11,10 @@
     <script type="module">
       (async function () {
         await boot();
-        window.kernel.wasm.exports.main();
+        window.kernel.wasm.exports.kernelMain(
+            window.innerWidth,
+            window.innerHeight
+        );
         setInterval(() => {
           window.kernel.wasm.exports.kernel_irq_wrapper(
             IRQ_TIMER,

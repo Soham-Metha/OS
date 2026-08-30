@@ -17,10 +17,9 @@
  */
 
 #include <common/types.h>
+#include <common/gfx/graphics.h>
 
-void hal_put_pixel(int x, int y, uint32 rgba);
-void hal_clear(uint32 rgba);
-void hal_present(void);
+void hal_present(GFX_Canvas buffer, int32 mx, int32 my);
 uint32 hal_get_width();
 uint32 hal_get_height();
 void switch_to(void (*func)(void));
