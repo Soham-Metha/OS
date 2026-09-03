@@ -1,14 +1,9 @@
-export PREFIX := ./tools/cross
-export PATH := $(PREFIX)/bin:$(PATH)
-
 .ONESHELL:
 SHELL  := /bin/bash
 BUILDS := ./build
 SRC    := ./src
 
-NAT_CC := i686-elf-gcc
-NAT_AS := i686-elf-as
-NAT_LD := i686-elf-ld
+CC     := clang-15
 
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
 CFLAGS += -ffreestanding -fno-builtin -g
@@ -38,17 +33,10 @@ clean: | $(BUILDS)
 # ============================================================
 ifeq ($(TARGET),native) # Native target
 # ============================================================
-
-ifeq ($(COMPILER),clang)
-CC       := clang-15
-NAT_CC   := clang-15
-NAT_AS   := clang-15
-NAT_LD   := ld.lld
-NAT_CFLAGS := --target=i686-elf -m32
-CFLAGS   += $(NAT_CFLAGS)
-else
-CC     := $(NAT_CC)
-endif
+NAT_TARGET := --target=i686-elf -m32
+CFLAGS     += $(NAT_TARGET)
+LD         := ld.lld
+LFLAGS     := -m elf_i386 -T $(SRC)/platform/i386/native.ld
 
 all: clean $(_ISO)
 
@@ -63,19 +51,11 @@ $(_HAL): $(SRC)/hal/i386/boot.c $(SRC)/hal/hal.h | $(BUILDS)
 else # Browser / WASM target
 # ============================================================
 
-ifeq ($(COMPILER),clang)
-CC     := clang-15
-LD     := wasm-ld
-CFLAGS += --target=wasm32-unknown-unknown
-LFLAGS := --allow-undefined --no-entry --initial-memory=33554432 --global-base=1024 -z stack-size=16384
-LFLAGS += --export=kernelMain --export=kernel_irq_wrapper --export-table
-else
-CC     := emcc
-LD     := emcc
-CFLAGS += -matomics -mbulk-memory
-LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=32MB -s STANDALONE_WASM=1 -g
-LFLAGS += -s EXPORTED_FUNCTIONS=['_kernelMain','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
-endif
+WEB_TARGET := --target=wasm32-unknown-unknown
+CFLAGS     += $(WEB_TARGET)
+LD         := wasm-ld
+LFLAGS     := --allow-undefined --no-entry --initial-memory=33554432 --global-base=1024 -z stack-size=16384
+LFLAGS     += --export=kernelMain --export=kernel_irq_wrapper --export-table
 
 all: clean $(EXEC_FILE)
 
@@ -117,7 +97,6 @@ $(_SHELL): $(SRC)/apps/shell.c $(SRC)/apps/shell.h | $(BUILDS)
 # ============================================================
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@source ./tools/emsdk/emsdk_env.sh
 	@$(LD) $(LFLAGS) $^ -o $@ && \
 	printf "\e[32m		[ LINK  COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -130,9 +109,9 @@ $(_ISO): $(_NATIVE_KERNEL)
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_KERNEL): $(_NATIVE_BOOT_A) $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@$(NAT_LD) -m elf_i386 -T $(SRC)/platform/i386/native.ld  $^ -o $@ && \
+	@$(LD) $(LFLAGS)  $^ -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_BOOT_A): $(SRC)/hal/i386/boot.S | $(BUILDS)
-	@$(NAT_AS) $(NAT_CFLAGS) -c $< -o $@ && \
+	@$(CC) $(NAT_TARGET) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
