@@ -26,7 +26,7 @@ typedef struct Font {
     uint8 cell_h;
 } Font;
 
-#define FONT(bm, w, h) (Font){ .bitmap = &bm[0][0], .cell_h = h, .cell_w = w}
+#define FONT(bm, w, h) { .bitmap = &bm[0][0], .cell_h = h, .cell_w = w}
 
 #endif
 #ifdef IMPL_FONT_1

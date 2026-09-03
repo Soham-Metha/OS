@@ -43,6 +43,7 @@ int screen_w         = { 0 };
 int screen_h         = { 0 };
 Window* graphics_win = { 0 };
 Window* shell_win    = { 0 };
+Font f               = FONT(font8x16, 8, 16);
 
 void event_handle_loop(void)
 {
@@ -74,10 +75,10 @@ void graphics_test(void)
     int xmid           = xmax / 2;
     int ymid           = ymax / 2;
 
-    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid, 4.0f);
+    GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid, 2.0f);
     // GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
-    GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid, 1.0f);
-    GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid, 1.0f);
+    GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid, 0.5f);
+    GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid, 0.5f);
 
     gfx_fill(canvas, COL(0x00, 0x00, 0x00, 0xFF));
 
@@ -119,20 +120,20 @@ void kernel_init(void)
     screen_h = hal_get_height();
 
     compositor_init(&comp, screen_w, screen_h);
-    wm_init(&wm, &comp);
+    wm_init(&wm, &comp, f);
 
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
-        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0, 0xFF, 0xFF, 0xFF), 1.0f);
+        COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0x39, 0x46, 0xFF, 0xFF), 2.0f);
     shell_win    = wm_create_window(&wm, 0, 0, screen_w/2, screen_h,
-        COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0xE6, 0x39, 0x46, 0xFF), 1.0f);
+        COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0x39, 0x46, 0xFF, 0xFF), 1.0f);
 }
 
 void fs_init(void)
 {
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
         putch('-');
     print_str("File System v0.1\n");
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
         putch('-');
 
     filename dir_nm = (filename) { .name = "test" };
@@ -158,10 +159,10 @@ void fs_init(void)
 
 void shell_win_init(void)
 {
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
         putch('-');
     printf("Shell v0.1 (%dx%d)\n", screen_w, screen_h);
-    for (uint16 i = 0; i < (screen_w / 2) / GLYPH_W; i++)
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
         putch('-');
 
     print_str("\n> ");

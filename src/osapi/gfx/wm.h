@@ -37,6 +37,7 @@ typedef struct Window {
 typedef struct WindowManager {
     Window windows[WM_MAX_WINDOWS];
     GFX_Canvas screen;
+    Font f;
     Arena arena;
     int mx;
     int my;
@@ -45,7 +46,7 @@ typedef struct WindowManager {
     Compositor* compositor;
 } WindowManager;
 
-void wm_init(WindowManager* wm, Compositor* c);
+void wm_init(WindowManager* wm, Compositor* c, Font f);
 
 Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 fg, uint32 bg, float scale);
 void wm_destroy_window(WindowManager* wm, Window* win);
@@ -62,15 +63,16 @@ void wm_render(WindowManager* wm);
 
 #define IMPL_COMPOSITOR_1
 #include "compositor.h"
-#include "font.h"
 
-void wm_init(WindowManager* wm, Compositor* c)
+void wm_init(WindowManager* wm, Compositor* c, Font f)
 {
     wm->count      = 0;
     wm->focused    = -1;
     wm->mx         = 0;
     wm->my         = 0;
     wm->compositor = c;
+    wm->f          = f;
+
 
     ResultPtr space = region_alloc(&wm->arena, (c->width * c->height) * sizeof(uint32));
     try(RESULT_OK(space), "out of space!", "");
@@ -97,7 +99,7 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     win->visible         = true;
 
     compositor_attach(wm->compositor, &win->surface);
-    terminal_init(&win->term, &win->surface, h / GLYPH_H, w / GLYPH_W, fg, bg);
+    terminal_init(&win->term, &win->surface, wm->f, h / wm->f.cell_h, w / wm->f.cell_w, fg, bg);
     wm_focus_window(wm, win);
 
     return win;
@@ -123,7 +125,6 @@ void wm_handle_key(WindowManager* wm, uint8 key)
 {
     if (wm->focused >= 0) {
         terminal_put_char(&wm->windows[wm->focused].term, key);
-        terminal_draw_cursor(&wm->windows[wm->focused].term);
     }
 }
 
