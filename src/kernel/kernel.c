@@ -25,7 +25,7 @@
 #include <common/types.h>
 #include <drivers/tty.h>
 
-tty io_buffer = { .echo = true };
+tty io_buffer = { .echo = true, .mode = TTY_CANONICAL };
 
 private
 Result8 _k_read(file_discriptor fd)
@@ -34,9 +34,9 @@ Result8 _k_read(file_discriptor fd)
     // TODO: ownership of resources
     (void)fd;
     if (fd == stdout) {
-        return tty_pop_char(&io_buffer);
+        return tty_out_pop(&io_buffer);
     } else if (fd == stdin) {
-        Result8 c = tty_read_char(&io_buffer);
+        Result8 c = tty_in_pop(&io_buffer);
         if RESULT_ERR (c) {
             reschedule(TASK_BLOCKED);
         }
@@ -51,10 +51,10 @@ Result8 _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
     if (fd == stdin) {
-        tty_push_key(&io_buffer, c);
+        tty_in_push(&io_buffer, c);
         return Ok8(0);
     } else if (fd == stdout) {
-        tty_write_char(&io_buffer, c);
+        tty_out_push(&io_buffer, c);
         return Ok8(0);
     } else {
         return Err8(ERR_INVALID_SYSCALL);

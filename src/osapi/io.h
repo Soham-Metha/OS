@@ -113,17 +113,16 @@ ResultPtr getline()
     static int size = 0;
 
     Result8 r       = getch();
-    if RESULT_OK (r) {
+    while RESULT_OK(r) {
         buf[size++] = (char)RESULT_VAL(r);
-
-        if ((char)RESULT_VAL(r) != '\n') {
-            return ErrPtr(ERR_NO_INPUT_AVAILABLE);
+        if (buf[size - 1] == '\n') {
+            buf[size - 1] = '\0';     // replace '\n' with '\0'
+            size          = 0;
+            return OkPtr((uintPtr)buf);
         }
-
-        buf[size - 1] = '\0';     // replace '\n' with '\0'
-        size          = 0;
-        return OkPtr((uintPtr)buf);
+        r = getch();
     }
+
     return ErrPtr(ERR_NO_INPUT_AVAILABLE);
 }
 

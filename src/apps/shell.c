@@ -190,7 +190,7 @@ void shell_handler(String_View inp)
         printf("\n> ");
     } else {
         printf("\nInvalid command entered, use 'help' for a list of commands!");
-        printf("\n    You entered: %s", inp.data);
+        printf("\n    You entered: %s (length=%d)", inp.data, inp.len);
         printf("\n> ");
     }
 }
