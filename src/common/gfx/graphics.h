@@ -199,15 +199,12 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h, flo
         int phys_x = (int)round(x * canvas.scale);
         int phys_y = (int)round(y * canvas.scale);
 
-        int phys_w = x2 - x1 + 1;
-        int phys_h = y2 - y1 + 1;
-
         scale = scale * canvas.scale;
 
         res = (GFX_Canvas) {
             .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
-            .px_w      = (int)(phys_w / scale),
-            .px_h      = (int)(phys_h / scale),
+            .px_w      = (int)round(w * canvas.scale / scale),
+            .px_h      = (int)round(h * canvas.scale / scale),
             .px_stride = canvas.px_stride,
             .scale     = scale,
         };
