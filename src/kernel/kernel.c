@@ -18,8 +18,8 @@
 #define IMPL_ERRORS_1
 #define IMPL_KMALLOC_1
 #define IMPL_TTY_1
-#include "heap.h"
 #include "kernel.h"
+#include "heap.h"
 #include "scheduler.h"
 #include <common/errors.h>
 #include <common/types.h>
@@ -51,11 +51,15 @@ Result8 _k_write(file_discriptor fd, uint8 c)
 {
     (void)fd;
     if (fd == stdin) {
-        tty_in_push(&io_buffer, c);
-        return Ok8(0);
+        if (tty_in_push(&io_buffer, c))
+            return Ok8(0);
+        else
+            return Err8(0);
     } else if (fd == stdout) {
-        tty_out_push(&io_buffer, c);
-        return Ok8(0);
+        if (tty_out_push(&io_buffer, c))
+            return Ok8(0);
+        else
+            return Err8(0);
     } else {
         return Err8(ERR_INVALID_SYSCALL);
     }
