@@ -46,7 +46,7 @@ all: clean $(_ISO)
 run_all: all
 	@qemu-system-i386 -enable-kvm -drive format=raw,file="$(_ISO)" -vga std
 
-$(_HAL): $(SRC)/hal/native/boot.c $(SRC)/hal/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/i386/boot.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -73,7 +73,7 @@ all: clean $(EXEC_FILE)
 run_all: all
 	@python3 -m http.server 8000
 
-$(_HAL): $(SRC)/hal/browser/hal_browser.c $(SRC)/hal/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/wasm32/hal_browser.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -121,9 +121,9 @@ $(_ISO): $(_NATIVE_KERNEL)
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_KERNEL): $(_NATIVE_BOOT_A) $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@$(NAT_LD) -m elf_i386 -T $(SRC)/platform/native/native.ld  $^ -o $@ && \
+	@$(NAT_LD) -m elf_i386 -T $(SRC)/platform/i386/native.ld  $^ -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_NATIVE_BOOT_A): $(SRC)/hal/native/boot.S | $(BUILDS)
+$(_NATIVE_BOOT_A): $(SRC)/hal/i386/boot.S | $(BUILDS)
 	@$(NAT_AS) --32 $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
