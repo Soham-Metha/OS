@@ -79,7 +79,7 @@ void schedule()
     if (next != current) {
         current          = next;
         current->t_state = TASK_RUNNING;
-        switch_to(current->entry);
+        switch_to(current->entry); // TODO: fix switching/pre-empting logic
         if (current->t_state != TASK_WAITING)
             current->t_state = TASK_EXITED;
     }
