@@ -60,12 +60,20 @@ void terminal_scroll(Terminal* t)
     if (!t || !t->surface)
         return;
 
-    int row_px    = 16;
-    int width_px  = t->cols * 8;
-    int height_px = t->rows * 16;
+    int row_height  = t->font.cell_w;
+    int term_width  = t->cols * t->font.cell_h;
+    int term_height = t->rows * t->font.cell_w;
 
-    surface_blit(t->surface, 0, row_px, 0, 0, width_px, height_px - row_px);
-    surface_fill_rect(t->surface, 0, height_px - row_px, width_px, row_px, t->bg);
+    surface_copy_rect(t->surface, 
+        0, row_height,
+        0, 0, 
+        term_width, (term_height - row_height)
+    );
+    surface_fill_rect(t->surface, 
+        0, (term_height - row_height),
+        term_width, row_height, 
+        t->bg
+    );
 }
 
 void terminal_put_char(Terminal* t, char c)

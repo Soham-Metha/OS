@@ -52,7 +52,7 @@ void surface_put_pixel(Surface* s, int x, int y, uint32 color);
 void surface_draw_char(Surface* s, Font font, char c, int x, int y, uint32 fg, uint32 bg);
 void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color);
 void surface_clear(Surface* s, uint32 color);
-void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h);
+void surface_copy_rect(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h);
 
 #endif
 
@@ -172,7 +172,7 @@ void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color)
     s->dirty = true;
 }
 
-void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h)
+void surface_copy_rect(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h)
 {
     if (!s)
         return;
