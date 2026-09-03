@@ -31,7 +31,7 @@ void kernel_irq(Interrupt i, IRQ_Data data)
     case IRQ_KEYBOARD:
         {
             if (data.keycode >= 128 || scan_code_ascii[data.keycode] < 1)
-                return;
+                return; // TODO: handle Ctrl/Alt/Meta+key press
             Event e;
             e.type                 = EVENT_KEYBOARD;
             e.as.key_event.keycode = scan_code_ascii[data.keycode];
