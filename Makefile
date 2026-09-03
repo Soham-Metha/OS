@@ -39,7 +39,16 @@ clean: | $(BUILDS)
 ifeq ($(TARGET),native) # Native target
 # ============================================================
 
+ifeq ($(COMPILER),clang)
+CC       := clang-15
+NAT_CC   := clang-15
+NAT_AS   := clang-15
+NAT_LD   := ld.lld
+NAT_CFLAGS := --target=i686-elf -m32
+CFLAGS   += $(NAT_CFLAGS)
+else
 CC     := $(NAT_CC)
+endif
 
 all: clean $(_ISO)
 
@@ -125,5 +134,5 @@ $(_NATIVE_KERNEL): $(_NATIVE_BOOT_A) $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_BOOT_A): $(SRC)/hal/i386/boot.S | $(BUILDS)
-	@$(NAT_AS) --32 $< -o $@ && \
+	@$(NAT_AS) $(NAT_CFLAGS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"

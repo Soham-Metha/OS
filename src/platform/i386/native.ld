@@ -3,27 +3,31 @@ ENTRY(start)
 
 SECTIONS
 {
-   .text 0x100000 :
-   {
+   . = 0x100000;
+
+   .multiboot : {
+      KEEP(*(.multiboot))
+   }
+
+   .text : {
       code = .; _code = .; __code = .;
-      *(.text)
+      *(.text*)
       . = ALIGN(4096);
    }
 
-   .data :
-   {
+   .data : {
       data = .; _data = .; __data = .;
-      *(.data)
-      *(.rodata)
+      *(.data*)
+      *(.rodata*)
       . = ALIGN(4096);
    }
 
-   .bss :
-   {
+   .bss : {
       bss = .; _bss = .; __bss = .;
-      *(.bss)
+      *(.bss*)
+      *(COMMON)
       . = ALIGN(4096);
    }
 
-   end = .;_end = .; __end = .;
+   end = .; _end = .; __end = .;
 }
