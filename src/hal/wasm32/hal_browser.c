@@ -94,6 +94,8 @@ void kernel_irq_wrapper(Interrupt i, int a, int b, int c)
 extern int main(void);
 
 void kernelMain(uint32 width, uint32 height) {
+    // TODO: remove this malloc.
+    // TODO: the only need for "frame_buffer" is to convert from rgba to argb.
     fb_px = malloc(width * height * sizeof(uint32));
 
     frame_buffer = (GFX_Canvas) {
