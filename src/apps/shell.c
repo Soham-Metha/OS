@@ -210,8 +210,8 @@ extern int main(void)
     scheduler_init(kernel_init);
     create_task(fs_init);
     create_task(shell_win_init);
-    create_task(event_handle_loop);
     create_task(render_loop);
+    create_task(event_handle_loop);
     create_task(shell_loop);
     return 0;
 }
