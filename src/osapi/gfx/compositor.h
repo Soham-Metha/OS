@@ -18,8 +18,9 @@
 #ifndef COMPOSITOR_1
 #define COMPOSITOR_1
 
-#include <common/types.h>
+#include <common/font.h>
 #include <common/gfx/graphics.h>
+#include <common/types.h>
 #define COMPOSITOR_MAX_SURFACES 4
 
 typedef struct Surface {
@@ -48,9 +49,11 @@ bool compositor_raise(Compositor* c, struct Surface* s);
 bool compositor_lower(Compositor* c, struct Surface* s);
 
 void surface_put_pixel(Surface* s, int x, int y, uint32 color);
+void surface_draw_char(Surface* s, Font font, char c, int x, int y, uint32 fg, uint32 bg);
 void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color);
 void surface_clear(Surface* s, uint32 color);
 void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h);
+
 #endif
 
 #ifdef IMPL_COMPOSITOR_1
@@ -176,6 +179,21 @@ void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w,
 
     gfx_copy_rect(s->canvas, src_x, src_y, dst_x, dst_y, w, h);
     s->dirty = true;
+}
+
+void surface_draw_char(Surface* s, Font font, char c, int x, int y, uint32 fg, uint32 bg)
+{
+    const uint8* glyph = &font.bitmap[((uint8)c) * font.cell_h];
+
+    for (int row = 0; row < font.cell_h; row++) {
+        uint8 bits = glyph[row];
+
+        for (int col = 0; col < font.cell_w; col++) {
+            uint32 color = (bits & (1 << ((font.cell_w - 1) - col))) ? fg : bg;
+
+            surface_put_pixel(s, x * font.cell_w + col, y * font.cell_h + row, color);
+        }
+    }
 }
 
 #endif
