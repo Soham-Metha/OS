@@ -60,9 +60,9 @@ void terminal_scroll(Terminal* t)
     if (!t || !t->surface)
         return;
 
-    int row_height  = t->font.cell_w;
-    int term_width  = t->cols * t->font.cell_h;
-    int term_height = t->rows * t->font.cell_w;
+    int row_height  = t->font.cell_h;
+    int term_width  = t->cols * t->font.cell_w;
+    int term_height = t->rows * t->font.cell_h;
 
     surface_copy_rect(t->surface, 
         0, row_height,
