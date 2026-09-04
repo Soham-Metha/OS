@@ -110,10 +110,10 @@ isr_stub_table:
 
 start:
     CLI
-    MOVL    $stackSpace + 8192,     %ESP
+    MOVL    $stackSpace + 524288,     %ESP
     
-    PUSH    %EBX        # mbi
-    PUSH    %EAX        # magic
+    PUSHL    %EBX        # mbi
+    PUSHL    %EAX        # magic
     CALL    kernelMain
     ADD     $8, %ESP
 
