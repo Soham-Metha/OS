@@ -610,22 +610,17 @@ bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* out_ptr)
     case 5:
         type = INST_DONOP;
         last = INST_SHUTS;
-        break;
-    case 4:
+    break; case 4:
         type = INST_SETR;
         last = INST_DUPS;
-        break;
-    case 3:
+    break; case 3:
         type = INST_RET;
         last = INST_F2U;
-        break;
-    case 6:
+    break; case 6:
         type = INST_READ1U;
         last = INST_WRITE8;
-        break;
-
-    default:
-        last = 0;
+    break; default:
+        last = NUMBER_OF_INSTS;
         break;
     }
     while (type <= last) {
@@ -1261,9 +1256,7 @@ CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
                 try(sasm_codeblock_push(arena, &result, statement), "Unable to push into codeblock!", "");
                 moveSasmLexerToNextLine(lineInterpreter, NULL);
             }
-            break;
-
-        case LINE_LABEL:
+        break; case LINE_LABEL:
             {
                 Expr label = parseExprFromStr(arena, line.value.label.name, location);
 
@@ -1275,10 +1268,7 @@ CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
                 try(sasm_codeblock_push(arena, &result, statement), "Unable to push into codeblock!", "");
                 moveSasmLexerToNextLine(lineInterpreter, NULL);
             }
-
-            break;
-
-        case LINE_DIRECTIVE:
+        break; case LINE_DIRECTIVE:
             if (sv_compare(line.value.directive.name, STR("end"))) {
                 return result;
             }
@@ -1605,28 +1595,13 @@ EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation locati
 {
     EvalResult res = { 0 };
     switch (expr.type) {
-    case EXPR_LIT_INT:
-        res = resultOK(quadwordFromU64(expr.value.lit_int), BIND_TYPE_UINT);
-        break;
-
-    case EXPR_LIT_FLOAT:
-        res = resultOK(quadwordFromF64(expr.value.lit_float), BIND_TYPE_FLOAT);
-        break;
-
-    case EXPR_LIT_CHAR:
-        res = resultOK(quadwordFromU64(expr.value.lit_char), BIND_TYPE_UINT);
-        break;
-
-    case EXPR_LIT_STR:
-        res = resultOK(pushStringToMemory(sasm, expr.value.lit_str), BIND_TYPE_MEM_ADDR);
-        break;
-
-    case EXPR_FUNCALL:
-        res = resolveFuncall(sasm, expr, location);
-        break;
-
-    case EXPR_BINDING:
-        {
+    case EXPR_LIT_INT:          res = resultOK(quadwordFromU64(expr.value.lit_int), BIND_TYPE_UINT);
+    break; case EXPR_LIT_FLOAT: res = resultOK(quadwordFromF64(expr.value.lit_float), BIND_TYPE_FLOAT);
+    break; case EXPR_LIT_CHAR:  res = resultOK(quadwordFromU64(expr.value.lit_char), BIND_TYPE_UINT);
+    break; case EXPR_LIT_STR:   res = resultOK(pushStringToMemory(sasm, expr.value.lit_str), BIND_TYPE_MEM_ADDR);
+    break; case EXPR_FUNCALL:   res = resolveFuncall(sasm, expr, location);
+    break; case EXPR_REG:       res = resultOK(quadwordFromU64(expr.value.reg_id), BIND_TYPE_UINT);
+    break; case EXPR_BINDING: {
             String_View name = expr.value.binding;
             Binding* binding = sasm_binding_resolve(sasm, name);
             try(binding != NULL, FLFmt ": ERROR: couldnt find binding `%.*s`.\n",
@@ -1634,11 +1609,6 @@ EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation locati
 
             res = sasm_binding_eval(sasm, binding);
         }
-        break;
-
-    case EXPR_REG:
-        res = resultOK(quadwordFromU64(expr.value.reg_id), BIND_TYPE_UINT);
-        break;
     }
 ret_err:
     return res;
@@ -1760,35 +1730,22 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
     for (StmtNode* iter = block; iter != NULL; iter = iter->next) {
         Stmt statement = iter->statement;
         switch (statement.kind) {
-        case STMT_LABEL:
-            try(bindUnresolvedLocalScope(sasm->scope, statement.value.label.name, BIND_TYPE_INST_ADDR, statement.location), "Unable to bind!", "");
-            break;
-        case STMT_CONST:
-            try(translateSasmBindDirective(sasm, statement.value.constant, statement.location), "Unable to bind!", "");
-            break;
-        case STMT_INCLUDE:
-            try(translateSasmIncludeDirective(sasm, statement.value.include, statement.location), "Unable to bind!", "");
-            break;
-        case STMT_ENTRY:
-            try(translateSasmEntryDirective(sasm, statement.value.entry, statement.location), "Unable to bind!", "");
-            break;
-        case STMT_BLOCK:     // Currently unused!
-            try(translateSasmStatementChain(sasm, statement.value.block), "Unable to bind!", "");
-            break;
-        case STMT_SCOPE:
+        case STMT_LABEL:            try(bindUnresolvedLocalScope(sasm->scope, statement.value.label.name, BIND_TYPE_INST_ADDR, statement.location), "Unable to bind!", "");
+        break; case STMT_CONST:     try(translateSasmBindDirective(sasm, statement.value.constant, statement.location), "Unable to bind!", "");
+        break; case STMT_INCLUDE:   try(translateSasmIncludeDirective(sasm, statement.value.include, statement.location), "Unable to bind!", "");
+        break; case STMT_ENTRY:     try(translateSasmEntryDirective(sasm, statement.value.entry, statement.location), "Unable to bind!", "");
+        break; case STMT_BLOCK:     try(translateSasmStatementChain(sasm, statement.value.block), "Unable to bind!", "");    // Currently unused! 
+        break; case STMT_SCOPE:
         case STMT_INST:
-            break;
         }
     }
 
     for (StmtNode* iter = block; iter != NULL; iter = iter->next) {
         Stmt statement = iter->statement;
         switch (statement.kind) {
-        case STMT_INST:
+        case STMT_INST: 
             try(translateSasmInstruction(sasm, statement.value.inst, statement.location), "Unable to bind!", "");
-            break;
-
-        case STMT_LABEL:
+        break; case STMT_LABEL: 
             {
                 Binding* binding = sasm_binding_resolve(sasm, statement.value.label.name);
                 try(binding != NULL, "binding not found: %s", statement.value.label.name.data);
@@ -1797,19 +1754,14 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
                 binding->status    = BIND_STATUS_EVALUATED;
                 binding->value.u32 = sasm $instructionCount;
             }
-            break;
-
-        case STMT_SCOPE:
+        break; case STMT_SCOPE:
             sasm_scope_push(sasm);
             try(translateSasmStatementChain(sasm, statement.value.scope), "Unable to translate scope", "");
             sasm_scope_pop(sasm);
-            break;
-
-        case STMT_BLOCK:
+        break; case STMT_BLOCK:
         case STMT_ENTRY:
         case STMT_INCLUDE:
         case STMT_CONST:
-            break;
         }
     }
     return true;
@@ -1876,58 +1828,35 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
 
     Token token = { 0 };
     switch (*tokenizer->source.data) {
-    case '(':
-        {
+    case '(': {
             token.type = TOKEN_TYPE_OPEN_PAREN;
             token.text = sv_split_by_len(&tokenizer->source, 1);
-        }
-        break;
-
-    case ')':
-        {
+    } break; case ')': {
             token.type = TOKEN_TYPE_CLOSING_PAREN;
             token.text = sv_split_by_len(&tokenizer->source, 1);
-        }
-        break;
-
-    case ',':
-        {
+    } break; case ',': {
             token.type = TOKEN_TYPE_COMMA;
             token.text = sv_split_by_len(&tokenizer->source, 1);
-        }
-        break;
-
-    case '"':
-        {
+    } break; case '"': {
             sv_split_by_len(&tokenizer->source, 1);
             uint64 index = 0;
 
             try(sv_index_of(tokenizer->source, '"', &index),
-                FLFmt ": ERROR: Could not find closing \"\n",
-                FLArg(location));
+                FLFmt ": ERROR: Could not find closing \"\n", FLArg(location));
             String_View text = sv_split_by_len(&tokenizer->source, index);
             sv_split_by_len(&tokenizer->source, 1);
             token.type = TOKEN_TYPE_STR;
             token.text = text;
-        }
-        break;
-
-    case '\'':
-        {
+    } break; case '\'': {
             sv_split_by_len(&tokenizer->source, 1);
             uint64 index = 0;
 
-            try(sv_index_of(tokenizer->source, '\'', &index), FLFmt ": ERROR: Could not find closing \'\n",
-                FLArg(location));
+            try(sv_index_of(tokenizer->source, '\'', &index), FLFmt ": ERROR: Could not find closing \'\n", FLArg(location));
             String_View text = sv_split_by_len(&tokenizer->source, index);
             sv_split_by_len(&tokenizer->source, 1);
             token.type = TOKEN_TYPE_CHAR;
             token.text = text;
-        }
-        break;
-
-    default:
-        {
+    } break; default: {
             if (isalphabet(*tokenizer->source.data)) {
                 token.type = TOKEN_TYPE_NAME;
                 token.text = sv_split_by_condition(&tokenizer->source, isName);
@@ -1935,20 +1864,15 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                 token.type = TOKEN_TYPE_NUMBER;
                 token.text = sv_split_by_condition(&tokenizer->source, isNumber);
             } else if (tokenizer->source.len >= 3 && *tokenizer->source.data == '[' && tokenizer->source.data[3] == ']') {
-                if (tokenizer->source.len - 2 < 2) {
-                    err(FLFmt ": ERROR: Check register name %c\n",
-                        FLArg(location), *tokenizer->source.data);
-                }
+                try(tokenizer->source.len <= 4, FLFmt ": ERROR: Check register name %c\n", FLArg(location), *tokenizer->source.data);
                 sv_split_by_len(&tokenizer->source, 1);
                 uint64 index = 0;
-                try(sv_index_of(tokenizer->source, ']', &index), FLFmt ": ERROR: Could not find closing \'\n",
-                    FLArg(location));
+                try(sv_index_of(tokenizer->source, ']', &index), FLFmt ": ERROR: Could not find closing \'\n", FLArg(location));
                 token.type = TOKEN_TYPE_REGISTER;
                 token.text = sv_split_by_len(&tokenizer->source, index);
                 sv_split_by_len(&tokenizer->source, 1);
             } else {
-                err(FLFmt ": ERROR: Unknown token starts with %c\n",
-                    FLArg(location), *tokenizer->source.data);
+                err(FLFmt ": ERROR: Unknown token starts with %c\n", FLArg(location), *tokenizer->source.data);
             }
         }
     }
@@ -1970,8 +1894,7 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
     Token token = { 0 };
 
     try(moveSasmTokenizerToNextToken(tokenizer, &token, location) && token.type == TOKEN_TYPE_OPEN_PAREN,
-        FLFmt ": ERROR: expected %s\n",
-        FLArg(location),
+        FLFmt ": ERROR: expected %s\n", FLArg(location),
         getTokenName(TOKEN_TYPE_OPEN_PAREN));
 
     if (fetchCachedSasmTokenFromSasmTokenizer(tokenizer, &token, location) && token.type == TOKEN_TYPE_CLOSING_PAREN) {
@@ -1997,39 +1920,22 @@ FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation lo
         }
 
         try(moveSasmTokenizerToNextToken(tokenizer, &token, location),
-            FLFmt ": ERROR: expected %s or %s\n",
-            FLArg(location),
+            FLFmt ": ERROR: expected %s or %s\n", FLArg(location),
             getTokenName(TOKEN_TYPE_CLOSING_PAREN),
             getTokenName(TOKEN_TYPE_COMMA));
     } while (token.type == TOKEN_TYPE_COMMA);
 
     try(token.type == TOKEN_TYPE_CLOSING_PAREN,
-        FLFmt ": ERROR: expected %s\n",
-        FLArg(location), getTokenName(TOKEN_TYPE_CLOSING_PAREN));
+        FLFmt ": ERROR: expected %s\n", FLArg(location), getTokenName(TOKEN_TYPE_CLOSING_PAREN));
 
     return first;
 ret_err:
     return NULL;
 }
 
-QuadWord quadwordFromU64(u32 u64)
-{
-    return (QuadWord) { .u32 = u64 };
-}
-
-QuadWord quadwordFromI64(i32 i64)
-{
-    return (QuadWord) { .i32 = i64 };
-}
-
-QuadWord quadwordFromF64(f32 f64)
-{
-    return (QuadWord) { .f32 = f64 };
-}
-
-QuadWord quadwordFromPtr(void* ptr)
-{
-    return (QuadWord) { .ptr = ptr };
-}
+QuadWord quadwordFromU64(u32 u64)   {  return (QuadWord) { .u32 = u64 }; }
+QuadWord quadwordFromI64(i32 i64)   {  return (QuadWord) { .i32 = i64 }; }
+QuadWord quadwordFromF64(f32 f64)   {  return (QuadWord) { .f32 = f64 }; }
+QuadWord quadwordFromPtr(void* ptr) {  return (QuadWord) { .ptr = ptr }; }
 
 #endif
