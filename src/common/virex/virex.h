@@ -24,14 +24,74 @@
 #define CALL_NAME_CAPACITY 256
 
 typedef struct Vm Vm;
+typedef struct CPU CPU;
+typedef union Registers Registers;
 typedef struct VmCalls VmCalls;
 
 typedef VM_Error (*InternalVmCall)(Vm* vm);
+
+typedef enum {
+    META_HALT = 1 << 0,
+    META_F1   = 1 << 1,
+    META_F2   = 1 << 2,
+    META_F3   = 1 << 3,
+    META_F4   = 1 << 4,
+    META_F5   = 1 << 5,
+    META_F6   = 1 << 6,
+    META_F7   = 1 << 7
+} Meta;
+
+typedef enum {
+    ERR_OK = 0,              /**< No error */
+    ERR_STACK_OVERFLOW,      /**< Stack overflow error */
+    ERR_STACK_UNDERFLOW,     /**< Stack underflow error */
+    ERR_DIV_BY_ZERO,         /**< Division by zero error */
+    ERR_ILLEGAL_INST,        /**< Illegal instruction error */
+    ERR_ILLEGAL_INST_ACCESS, /**< Illegal instruction access error */
+    ERR_ILLEGAL_OPERAND,     /**< Illegal operand error */
+    ERR_NULL_CALL,           /**< called NULL vmcall */
+    ERR_ILLEGAL_MEMORY_ACCESS,
+    ERR_NAN,
+    ERR_ALREADY_BOUND
+} VM_Error;
 
 struct VmCalls
 {
     InternalVmCall VmCallI[INTERNAL_VMCALLS_CAPACITY];
     uint32 internalVmCallsDefined;
+};
+
+union Registers {
+    struct
+    {
+        Register U0;
+        Register U1;
+        Register U2;
+        Register U3;
+        Register U4;
+        Register U5;
+        Register U6;
+        Register U7;
+        Register U8;
+        Register U9;
+
+        Register S0;
+        Register S1;
+        Register S2;
+        Register S3;
+        Register S4;
+        Register S5;
+        Register S6;
+
+        Register IP;
+        Register SP;
+    };
+    Register reg[REG_COUNT];
+};
+
+struct CPU {
+    Registers registers;
+    volatile short flags;
 };
 
 struct Vm {
@@ -53,12 +113,16 @@ struct Vm {
 
 #define $vm_call ->vmCalls.VmCallI
 
+void setFlag(Meta f, CPU* cpu, bool state);
+bool getFlag(Meta f, const CPU* cpu);
+
 bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
 bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec);
 
 bool executeProgram(Vm* vm, int i);
 VM_Error executeInst(Vm* vm);
 
+const char* getNameOfError(const VM_Error);
 inline QuadWord stack_pop(Vm* vm);
 inline void stack_push(Vm* vm, QuadWord val);
 
@@ -66,6 +130,34 @@ inline void stack_push(Vm* vm, QuadWord val);
 
 #ifdef IMPL_KERN_VIREX_1
 #undef IMPL_KERN_VIREX_1
+
+const char* getNameOfError(const VM_Error error)
+{
+    switch (error) {
+    case ERR_OK:                    return "ERR_OK";
+    case ERR_STACK_OVERFLOW:        return "ERR_STACK_OVERFLOW";
+    case ERR_STACK_UNDERFLOW:       return "ERR_STACK_UNDERFLOW";
+    case ERR_DIV_BY_ZERO:           return "ERR_DIV_BY_ZERO";
+    case ERR_ILLEGAL_INST:          return "ERR_ILLEGAL_INST";
+    case ERR_ILLEGAL_INST_ACCESS:   return "ERR_ILLEGAL_INST_ACCESS";
+    case ERR_ILLEGAL_OPERAND:       return "ERR_ILLEGAL_OPERAND";
+    case ERR_NULL_CALL:             return "ERR_NULL_CALL";
+    case ERR_ILLEGAL_MEMORY_ACCESS: return "ERR_ILLEGAL_MEMORY_ACCESS";
+    case ERR_NAN:                   return "ERR_NAN";
+    case ERR_ALREADY_BOUND:         return "ERR_ALREADY_BOUND";
+    default:                        return "";
+    }
+}
+
+inline void setFlag(Meta f, CPU* cpu, bool state)
+{
+    cpu->flags = state ? cpu->flags | f : cpu->flags & ~(f);
+}
+
+inline bool getFlag(Meta f, const CPU* cpu)
+{
+    return cpu->flags & f;
+}
 
 bool loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
 {

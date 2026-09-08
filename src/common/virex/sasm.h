@@ -81,18 +81,6 @@ typedef union {
 // ---------------------------------------------------------------------------------------------------
 
 typedef enum {
-    META_HALT = 1 << 0,
-    META_F1   = 1 << 1,
-    META_F2   = 1 << 2,
-    META_F3   = 1 << 3,
-    META_F4   = 1 << 4,
-    META_F5   = 1 << 5,
-    META_F6   = 1 << 6,
-    META_F7   = 1 << 7
-} Meta;
-
-typedef enum {
-
     INST_DONOP = 0,
     INST_INVOK,
     INST_SPOPR,
@@ -246,27 +234,12 @@ enum BindingType {
     BIND_TYPE_INST_ADDR,
 };
 
-typedef enum {
-    ERR_OK = 0,              /**< No error */
-    ERR_STACK_OVERFLOW,      /**< Stack overflow error */
-    ERR_STACK_UNDERFLOW,     /**< Stack underflow error */
-    ERR_DIV_BY_ZERO,         /**< Division by zero error */
-    ERR_ILLEGAL_INST,        /**< Illegal instruction error */
-    ERR_ILLEGAL_INST_ACCESS, /**< Illegal instruction access error */
-    ERR_ILLEGAL_OPERAND,     /**< Illegal operand error */
-    ERR_NULL_CALL,           /**< called NULL vmcall */
-    ERR_ILLEGAL_MEMORY_ACCESS,
-    ERR_NAN,
-    ERR_ALREADY_BOUND
-} VM_Error;
 
 typedef QuadWord Register;
 typedef struct __attribute__((__packed__)) Instruction Instruction;
 typedef struct OpcodeDetails OpcodeDetails;
 typedef struct Program Program;
-typedef struct CPU CPU;
 typedef struct Memory Memory;
-typedef union Registers Registers;
 typedef struct SasmLexer SasmLexer;                         // Lexer ( performs "Get Next Line", "Move To Next Line", "Load File In")
 typedef struct Line Line;                                   // └───>  Line
 typedef enum LineType LineType;                             //        └───> LineType
@@ -333,39 +306,6 @@ struct OpcodeDetails {
 struct Program {
     Instruction instructions[MAX_PROGRAM_CAPACITY]; /**< The array of instructions */
     DataEntry instruction_count;                    /**< The number of instructions in the program */
-};
-
-union Registers {
-    struct
-    {
-        Register U0;
-        Register U1;
-        Register U2;
-        Register U3;
-        Register U4;
-        Register U5;
-        Register U6;
-        Register U7;
-        Register U8;
-        Register U9;
-
-        Register S0;
-        Register S1;
-        Register S2;
-        Register S3;
-        Register S4;
-        Register S5;
-        Register S6;
-
-        Register IP;
-        Register SP;
-    };
-    Register reg[REG_COUNT];
-};
-
-struct CPU {
-    Registers registers;
-    volatile short flags;
 };
 
 struct Memory {
@@ -599,16 +539,8 @@ QuadWord quadwordFromI64(i32 i64);
 QuadWord quadwordFromF64(f32 f64);
 QuadWord quadwordFromPtr(void* ptr);
 
-const char* getNameOfError(const VM_Error*);
-void displayStringMessageError(const char*, String_View);
-void debugCommentDisplay(String_View*);
-void debugMessageDisplay(String_View*);
-
 bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* outPtr);
 OpcodeDetails getOpcodeDetails(Opcode type);
-
-void setFlag(Meta f, CPU* cpu, bool state);
-bool getFlag(Meta f, const CPU* cpu);
 
 void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm);
 bool sasm_translate_root_file(Sasm_Context* sasm, String_View input_file_data);
@@ -747,13 +679,12 @@ bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* out_ptr)
     while (type <= last) {
         if (sv_compare(STR(OpcodeDetailsLUT[type].name), name)) {
             *out_ptr = OpcodeDetailsLUT[type];
-            return 1;
+            return true;
         }
         type += 1;
     }
 
-    displayStringMessageError("Unknown instruction detected!", name);
-    return 0;
+    return false;
 }
 
 OpcodeDetails getOpcodeDetails(Opcode type)
@@ -763,16 +694,6 @@ OpcodeDetails getOpcodeDetails(Opcode type)
 
 ret_err:
     return OpcodeDetailsLUT[INST_DONOP];
-}
-
-inline void setFlag(Meta f, CPU* cpu, bool state)
-{
-    cpu->flags = state ? cpu->flags | f : cpu->flags & ~(f);
-}
-
-inline bool getFlag(Meta f, const CPU* cpu)
-{
-    return cpu->flags & f;
 }
 
 /*
@@ -1369,9 +1290,7 @@ CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
                 String_View operandList = line.value.instruction.operand;
 
                 OpcodeDetails details;
-                if (!getOpcodeDetailsFromName(name, &details)) {
-                    continue;
-                }
+                try(getOpcodeDetailsFromName(name, &details), "Unknown instruction detected! %.*s", Str_Fmt(name));
 
                 statement.kind            = STMT_INST;
                 statement.value.inst.type = details.type;
@@ -2159,57 +2078,6 @@ QuadWord quadwordFromF64(f32 f64)
 QuadWord quadwordFromPtr(void* ptr)
 {
     return (QuadWord) { .ptr = ptr };
-}
-
-const char* getNameOfError(const VM_Error* error)
-{
-    switch ((*error)) {
-    case ERR_OK:                    return "ERR_OK";
-    case ERR_STACK_OVERFLOW:        return "ERR_STACK_OVERFLOW";
-    case ERR_STACK_UNDERFLOW:       return "ERR_STACK_UNDERFLOW";
-    case ERR_DIV_BY_ZERO:           return "ERR_DIV_BY_ZERO";
-    case ERR_ILLEGAL_INST:          return "ERR_ILLEGAL_INST";
-    case ERR_ILLEGAL_INST_ACCESS:   return "ERR_ILLEGAL_INST_ACCESS";
-    case ERR_ILLEGAL_OPERAND:       return "ERR_ILLEGAL_OPERAND";
-    case ERR_NULL_CALL:             return "ERR_NULL_CALL";
-    case ERR_ILLEGAL_MEMORY_ACCESS: return "ERR_ILLEGAL_MEMORY_ACCESS";
-    case ERR_NAN:                   return "ERR_NAN";
-    case ERR_ALREADY_BOUND:         return "ERR_ALREADY_BOUND";
-    default:                        return "";
-    }
-}
-
-void displayStringMessageError(const char* msg, String_View str)
-{
-    printf("\n|   |                                                                                                                              |");
-    printf("\n| W | ERROR | '%.*s' | %s", Str_Fmt(str), msg);
-
-    for (uint32 i = strlen(msg) + str.len; i < 110; i++)
-        printf(" ");
-
-    printf("|"
-           "\n|   |                                                                                                                              |\n");
-}
-
-void debugCommentDisplay(String_View* s)
-{
-    String_View seperator = sv_split_by_delim(s, ' ');
-    printf("\n| %.*s |", 1, seperator.data);
-
-    if (s->len < 125)
-        printf(" %-*.*s |", (int)(124), (int)(s->len), s->data);
-    else
-        printf(" %.*s |", (int)(124), s->data);
-}
-
-void debugMessageDisplay(String_View* s)
-{
-    printf("\n| D |");
-
-    if (s->len < 125)
-        printf(" %-*.*s |", (int)(124), (int)(s->len), s->data);
-    else
-        printf(" %.*s |", (int)(124), s->data);
 }
 
 #endif
