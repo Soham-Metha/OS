@@ -55,19 +55,15 @@ void graphics_test(void)
     int ymid           = ymax / 2;
 
     GFX_Canvas sub_c11 = gfx_init_subcanvas(canvas, 0, 0, xmax, ymid, 2.0f);
-    // GFX_Canvas sub_c12 = gfx_init_subcanvas(canvas, xmid, 0, xmid, ymid);
     GFX_Canvas sub_c21 = gfx_init_subcanvas(canvas, 0, ymid, xmid, ymid, 0.5f);
     GFX_Canvas sub_c22 = gfx_init_subcanvas(canvas, xmid, ymid, xmid, ymid, 0.5f);
 
-    gfx_fill(canvas, COL(0x00, 0x00, 0x00, 0xFF));
-
-    gfx_3d_test(sub_c21);
+    gfx_fill(canvas, COL(0x00, 0x00, 0x00, 0x44));
+    gfx_3d_test(sub_c21, 12, 1.25);
     gfx_testt(sub_c11);
     gfx_3d_test2(sub_c11);
-    // gfx_pattern_checker(sub_c21,
-    //     47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
-    // gfx_pattern_circles(sub_c12,
-    //     6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
+    // gfx_pattern_checker(sub_c21, 47, COL(0x22, 0x22, 0xFF, 0xFF), COL(0x11, 0x11, 0x11, 0xFF));
+    // gfx_pattern_circles(sub_c12, 6, 11, COL(0xFF, 0x22, 0x22, 0xFF));
     gfx_pattern_shapes(sub_c22,
         COL(0x22, 0xFF, 0x22, 0xFF));
     s->dirty = true;
@@ -76,11 +72,9 @@ void graphics_test(void)
 
 void fs_init(void)
 {
-    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
-        putch('-');
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++) putch('-');
     print_str("File System v0.1\n");
-    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++)
-        putch('-');
+    for (uint16 i = 0; i < (screen_w / 2) / f.cell_w; i++) putch('-');
 
     filename dir_nm = (filename) { .name = "test" };
     filename fl_nm  = (filename) { .name = "myfile", .ext = "txt" };
@@ -131,6 +125,7 @@ void shell_handler(String_View inp)
                 : "\nCode compilation & execution failed"
         );
     } else if (sv_compare(inp, STR("gfx-test"))) {
+        gfx_fill(graphics_win->surface.canvas, COL(0x00, 0x00, 0x00, 0xFF));
         create_task(graphics_test);
         // create_task(gfx_io_loop); // TODO: bind input with windows
         printf("> ");
