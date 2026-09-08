@@ -180,15 +180,17 @@ void insert_circ(struct Circ queue[], int idx, struct Circ c)
 }
 
 static float angle1 = 0;
-void gfx_3d_test(GFX_Canvas canvas)
+void gfx_3d_test(GFX_Canvas canvas, int radius, float focal)
 {
     angle1 += 0.02f;
-    float s1        = fast_sin(angle1 * 0.7f);
-    float c1        = fast_cos(angle1 * 0.7f);
-    float s2        = fast_sin(angle1);
-    float c2        = fast_cos(angle1);
-    float s3        = fast_sin(angle1 * 0.5f);
-    float c3        = fast_cos(angle1 * 0.5f);
+    float s1 = fast_sin(angle1);
+float c1 = fast_cos(angle1);
+
+float s2 = fast_sin(angle1 * 0.6f);
+float c2 = fast_cos(angle1 * 0.6f);
+
+float s3 = fast_sin(angle1 * 0.3f);
+float c3 = fast_cos(angle1 * 0.3f);
 
     int grid_count  = 5;
     float grid_pad  = 0.5f / grid_count;
@@ -211,8 +213,8 @@ void gfx_3d_test(GFX_Canvas canvas)
 
                 z += 0.6f;     // move cube away from camera
 
-                float px = x / z;
-                float py = y / z;
+                float px = focal * x / z;
+                float py = focal * y / z;
 
                 // normalize to screen
                 px       = (px + 1) / 2;
@@ -226,7 +228,7 @@ void gfx_3d_test(GFX_Canvas canvas)
                     (struct Circ) {
                         .x   = px * canvas.px_w,
                         .y   = py * canvas.px_h,
-                        .r   = 8 / canvas.scale,
+                        .r   = radius / canvas.scale,
                         .col = COL(r, g, b, 255),
                         .z   = z });
                 idx += 1;
