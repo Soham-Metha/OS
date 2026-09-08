@@ -50,7 +50,7 @@ typedef struct {
 
 #define $vm_call ->vmCalls.VmCallI
 
-bool virex_run(Sasm_Executable* exec, int lim);
+bool virex_run(Vm* vm, Sasm_Executable* exec, int lim);
 bool virex_test(void);
 
 #endif
@@ -788,9 +788,8 @@ VM_Error executeInst(Vm* vm)
     return ERR_OK;
 }
 
-bool virex_run(Sasm_Executable* exec, int lim)
+bool virex_run(Vm* vm, Sasm_Executable* exec, int lim)
 {
-    Vm* vm = malloc(sizeof(Vm)); // TODO: shouldn't use malloc here
     try(loadStandardCallsIntoVm(vm), "Unable to load vm calls", "");
     try(loadProgramIntoVm(vm, exec), "Unable to load program", "");
     try(executeProgram(vm, 0, lim), "Unable to exec prog", "");
@@ -822,43 +821,22 @@ const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
                        "\n    RET"
                        "\n%end";
 
+Vm vm                = { 0 };
 Sasm_Executable exec = { 0 };
-
-Instruction hello_[] = {
-    [0] = { .type = INST_SETR,  .operand.u32 = 2,  .operand2.u32 = 8 },
-    [1] = { .type = INST_SETR,  .operand.u32 = 0,  .operand2.u32 = 6 },
-    [2] = { .type = INST_SETR,  .operand.u32 = 16, .operand2.u32 = 16},
-    [3] = { .type = INST_CALL,  .operand.u32 = 6,  .operand2.u32 = 0 },
-    [4] = { .type = INST_LOOP,  .operand.u32 = 1,  .operand2.u32 = 8 },
-    [5] = { .type = INST_SHUTS, .operand.u32 = 0,  .operand2.u32 = 0 },
-    [6] = { .type = INST_INVOK, .operand.u32 = 7,  .operand2.u32 = 0 },
-    [7] = { .type = INST_RET,   .operand.u32 = 0,  .operand2.u32 = 0 },
-};
-
-void virex_test_sm(Sasm_Context* ctx)
-{
-    (void)pushStringToMemory(ctx, STR("\n Hello, World!"));
-    ctx->entry = ctx->prog.instruction_count;
-    for (int i = 0; i < 8; i++) {
-        ctx->prog.instructions[ctx->prog.instruction_count++] = hello_[i];
-    }
-}
 
 bool virex_test(void)
 {
+    vm                  = (Vm) { 0 };
+    exec                = (Sasm_Executable) { 0 };
     String_View sv_prog = STR(prog);
     printf("\nTest Program:");
     printf("\n-------------");
     printf("\n%s", sv_prog.data);
     printf("\n-------------");
-    Sasm_Context* sasm = malloc(sizeof(Sasm_Context)); // TODO: shouldn't use malloc here
-    virex_test_sm(sasm);
-    sasm_generate_executable(&exec, sasm);
-    // TODO: get sasm assembler working in native
-    // sasm_assemble(&exec, sv_prog);
+    sasm_assemble(&exec, sv_prog);
     printf("\nOutput:");
     printf("\n-------------");
-    return virex_run(&exec, -1);
+    return virex_run(&vm, &exec, -1);     // TODO: cleanup not handled after exectuion
 }
 
 #endif
