@@ -118,7 +118,7 @@ bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
         "ERROR: memory size %" PRIu64 " is greater than declared memory capacity %" PRIu64 "\n",
         meta.mem_size, meta.mem_capacity);
 
-    vm $reg[REG_NX].u32 = meta.entry;
+    vm $reg[REG_IP].u32 = meta.entry;
     // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
     vm->prog            = exec->prog;
     try(vm->prog.instruction_count == meta.prog_size, "ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
@@ -160,8 +160,8 @@ ret_err:
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u32;
-    uint32 count    = cpu->registers.QT.u32;
+    uint32 count    = cpu->registers.S5.u32;
+    MemoryAddr addr = cpu->registers.S0.u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -194,7 +194,7 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
 {
-    // cpu->registers.RF.ptr = region_alloc(arena, cpu->registers.QT.u32);
+    // cpu->registers.S6.ptr = region_alloc(arena, cpu->registers.S5.u32);
 
     return ERR_OK;
 }
@@ -208,32 +208,32 @@ VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %lf\n", cpu->registers.L1.f32);
+    printf(" %lf\n", cpu->registers.S1.f32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %" PRId64 "", cpu->registers.L2.i32);
+    printf(" %" PRId64 "", cpu->registers.S2.i32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %" PRIu64 "", cpu->registers.L3.u32);
+    printf(" %" PRIu64 "", cpu->registers.S3.u32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
 {
-    printf(" %p\n", cpu->registers.RF.ptr);
+    printf(" %p\n", cpu->registers.S6.ptr);
     return ERR_OK;
 }
 
 VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u32;
-    uint32 count    = cpu->registers.QT.u32;
+    MemoryAddr addr = cpu->registers.S0.u32;
+    uint32 count    = cpu->registers.S5.u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -256,10 +256,10 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
 
 VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
 {
-    MemoryAddr addr = cpu->registers.L0.u32;
-    uint32 count    = cpu->registers.QT.u32;
+    MemoryAddr addr = cpu->registers.S0.u32;
+    uint32 count    = cpu->registers.S5.u32;
 
-    char* buffer    = cpu->registers.RF.ptr;
+    char* buffer    = cpu->registers.S6.ptr;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -346,12 +346,12 @@ ret_err:
 
 VM_Error executeInst(Vm* vm)
 {
-    if (vm $reg[REG_NX].u32 >= vm $inst_cnt) {
-        printf("error tring to access instruction at '%d', but there are only '%d' instructions", vm $reg[REG_NX].u32, vm $inst_cnt);
+    if (vm $reg[REG_IP].u32 >= vm $inst_cnt) {
+        printf("error tring to access instruction at '%d', but there are only '%d' instructions", vm $reg[REG_IP].u32, vm $inst_cnt);
         return ERR_ILLEGAL_INST_ACCESS;
     }
 
-    Instruction inst = vm $inst[vm $reg[REG_NX].u32];
+    Instruction inst = vm $inst[vm $reg[REG_IP].u32];
     // register value dereferencing
     if (inst.opr1IsReg && inst.operand.u32 > REG_COUNT) {
         inst.operand.u32 = vm $reg[inst.operand.u32 % REG_COUNT].u32;
@@ -397,25 +397,25 @@ VM_Error executeInst(Vm* vm)
         vm $stack[b] = tmp;
     // ==================== Branching (Unconditional) ====================
     break; case INST_JMPU:
-        vm $reg[REG_NX].u32 = inst.operand.u32;
+        vm $reg[REG_IP].u32 = inst.operand.u32;
     return ERR_OK; case INST_CALL:
         if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
-        stack_push(vm, quadwordFromU64(vm $reg[REG_NX].u32 + 1));
-        vm $reg[REG_NX].u32 = inst.operand.u32;
+        stack_push(vm, quadwordFromU64(vm $reg[REG_IP].u32 + 1));
+        vm $reg[REG_IP].u32 = inst.operand.u32;
     return ERR_OK; case INST_RET:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        vm $reg[REG_NX].u32 = stack_pop(vm).u32;
+        vm $reg[REG_IP].u32 = stack_pop(vm).u32;
     // ===================== Branching (Conditional) =====================
     return ERR_OK; case INST_JMPC:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         if (stack_pop(vm).u32 > 0) {
-            vm $reg[REG_NX].u32 = inst.operand.u32;
+            vm $reg[REG_IP].u32 = inst.operand.u32;
             return ERR_OK;
         }
     break; case INST_LOOP:
         vm $reg[inst.operand.u32].u32 -= 1;
         if (vm $reg[inst.operand.u32].u32 > 0) {
-            vm $reg[REG_NX].u32 = inst.operand2.u32;
+            vm $reg[REG_IP].u32 = inst.operand2.u32;
             return ERR_OK;
         }
     // ========================= Logical (Unary) =========================
@@ -507,7 +507,7 @@ VM_Error executeInst(Vm* vm)
         return ERR_ILLEGAL_INST;
     }
 
-    vm $reg[REG_NX].u32++;
+    vm $reg[REG_IP].u32++;
     return ERR_OK;
 }
 
@@ -533,12 +533,12 @@ const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
                        "\n"
                        "\nmain:"
                        "\n%scope"
-                       "\n    SETR    ref([L2])   2            ; iteration count"
+                       "\n    SETR    ref([U1])   2            ; iteration count"
                        "\nsay_hello:                              ; LOCAL 'say_hello'"
-                       "\n    SETR    ref([L0])   hello        ; ptr to string start"
-                       "\n    SETR    ref([QT])   len(hello)   ; length of string"
+                       "\n    SETR    ref([S0])   hello        ; ptr to string start"
+                       "\n    SETR    ref([S5])   len(hello)   ; length of string"
                        "\n    CALL    print                    ; expects above 2 arguments"
-                       "\n    LOOP    ref([L2])   say_hello       ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
+                       "\n    LOOP    ref([U1])   say_hello       ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
                        "\n%end"
                        "\nSHUTS";
 

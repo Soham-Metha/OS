@@ -167,24 +167,24 @@ typedef enum {
 } Opcode;
 
 typedef enum {
-    REG_H0,
-    REG_H1,
-    REG_I0,
-    REG_I1,
-    REG_JS,
-    REG_KC,
-    REG_L0,
-    REG_L1,
-    REG_L2,
-    REG_L3,
-    REG_NX,
-    REG_OP,
-    REG_P0,
-    REG_P1,
-    REG_P2,
-    REG_P3,
-    REG_QT,
-    REG_RF,
+    REG_U0,
+    REG_U1,
+    REG_U2,
+    REG_U3,
+    REG_U4,
+    REG_U5,
+    REG_U6,
+    REG_U7,
+    REG_U8,
+    REG_U9,
+    REG_S0,
+    REG_S1,
+    REG_S2,
+    REG_S3,
+    REG_S4,
+    REG_S5,
+    REG_S6,
+    REG_IP,
     REG_SP,
     REG_COUNT,
 } RegID;
@@ -338,30 +338,26 @@ struct Program {
 union Registers {
     struct
     {
-        Register H0;
-        Register H1;
+        Register U0;
+        Register U1;
+        Register U2;
+        Register U3;
+        Register U4;
+        Register U5;
+        Register U6;
+        Register U7;
+        Register U8;
+        Register U9;
 
-        Register I0;
-        Register I1;
+        Register S0;
+        Register S1;
+        Register S2;
+        Register S3;
+        Register S4;
+        Register S5;
+        Register S6;
 
-        Register JS;
-        Register KC;
-
-        Register L0;
-        Register L1;
-        Register L2;
-        Register L3;
-
-        Register NX;
-        Register OP;
-
-        Register P0;
-        Register P1;
-        Register P2;
-        Register P3;
-
-        Register QT;
-        Register RF;
+        Register IP;
         Register SP;
     };
     Register reg[REG_COUNT];
@@ -842,44 +838,25 @@ inline bool getFlag(Meta f, const CPU* cpu)
 const char* getRegName(RegID type)
 {
     switch (type) {
-    case REG_H0:
-        return "H0";
-    case REG_H1:
-        return "H1";
-    case REG_I0:
-        return "I0";
-    case REG_I1:
-        return "I1";
-    case REG_JS:
-        return "JS";
-    case REG_KC:
-        return "KC";
-    case REG_L0:
-        return "L0";
-    case REG_L1:
-        return "L1";
-    case REG_L2:
-        return "L2";
-    case REG_L3:
-        return "L3";
-    case REG_NX:
-        return "NX";
-    case REG_OP:
-        return "OP";
-    case REG_P0:
-        return "P0";
-    case REG_P1:
-        return "P1";
-    case REG_P2:
-        return "P2";
-    case REG_P3:
-        return "P3";
-    case REG_QT:
-        return "QT";
-    case REG_RF:
-        return "RF";
-    case REG_SP:
-        return "SP";
+    case REG_U0: return "U0";
+    case REG_U1: return "U1";
+    case REG_U2: return "U2";
+    case REG_U3: return "U3";
+    case REG_U4: return "U4";
+    case REG_U5: return "U5";
+    case REG_U6: return "U6";
+    case REG_U7: return "U7";
+    case REG_U8: return "U8";
+    case REG_U9: return "U9";
+    case REG_S0: return "S0";
+    case REG_S1: return "S1";
+    case REG_S2: return "S2";
+    case REG_S3: return "S3";
+    case REG_S4: return "S4";
+    case REG_S5: return "S5";
+    case REG_S6: return "S6";
+    case REG_IP: return "IP";
+    case REG_SP: return "SP";
     case REG_COUNT:
     default:
         return "";
@@ -1664,43 +1641,13 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
         String_View str = token.text;
         switch (str.data[0]) {
-        case 'H':
-            try(str.data[1] <= '1', FLFmt ": ERROR: Invalid register %s\n",
-                FLArg(location), str.data);
-            result.value.reg_id = (uint32)(REG_H0 + str.data[1] - '0');
-            break;
-        case 'I':
-            try(str.data[1] <= '1', FLFmt ": ERROR: Invalid register %s\n",
-                FLArg(location), str.data);
-            result.value.reg_id = (uint32)(REG_I0 + str.data[1] - '0');
-            break;
-        case 'L':
-            try(str.data[1] <= '3', FLFmt ": ERROR: Invalid register %s\n",
-                FLArg(location), str.data);
-            result.value.reg_id = (uint32)(REG_L0 + str.data[1] - '0');
-            break;
-        case 'P':
-            try(str.data[1] <= '3', FLFmt ": ERROR: Invalid register %s\n",
-                FLArg(location), str.data);
-            result.value.reg_id = (uint32)(REG_P0 + str.data[1] - '0');
-            break;
-        case 'J':
-            result.value.reg_id = (uint32)REG_JS;
-            break;
-        case 'K':
-            result.value.reg_id = (uint32)REG_KC;
-            break;
-        case 'O':
-            result.value.reg_id = (uint32)REG_OP;
-            break;
-        case 'Q':
-            result.value.reg_id = (uint32)REG_QT;
-            break;
-        case 'R':
-            result.value.reg_id = (uint32)REG_RF;
-            break;
-
-        default:
+        break; case 'U':
+            try(str.data[1] >= '0' && str.data[1] <= '9',FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
+            result.value.reg_id = (uint32)(REG_U0 + str.data[1] - '0');
+        break; case 'S':
+            try(str.data[1] >= '0' && str.data[1] <= '6',FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
+            result.value.reg_id = (uint32)(REG_S0 + str.data[1] - '0');
+        break; default:      // IP, SP not allowed
             err(FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
         };
