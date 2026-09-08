@@ -16,23 +16,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #define IMPL_FS_1
-#define IMPL_GRAPHICS_1
-#define IMPL_GRAPHICS3D_1
-#define IMPL_KERN_VIREX_1
 #define IMPL_SCHEDULER_1
-#define IMPL_TERMINAL_1
-#define IMPL_USPACE_IO_1
-#define IMPL_WM_1
-#define MEM_MANAGER_IMPL
-#define STRING_VIEW_IMPL
+#define IMPL_VMAPI_1
 #include "shell.h"
-#include <common/event.h>
-#include <common/gfx/gfx_tests.h>
-#include <common/memmanager.h>
-#include <common/strings.h>
-#include <common/virex/virex.h>
-#include <osapi/gfx/wm.h>
-#include <osapi/io.h>
+#include <osapi/vmapi.h>
 // TODO: fix boundary violation
 #include <kernel/fs/fs.h>
 #include <kernel/scheduler.h>

@@ -53,29 +53,19 @@ struct Vm {
 
 #define $vm_call ->vmCalls.VmCallI
 
-bool virex_run(Vm* vm, Sasm_Executable* exec, int lim);
-bool virex_test(void);
+bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
+bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec);
+
+bool executeProgram(Vm* vm, int i);
+VM_Error executeInst(Vm* vm);
+
+inline QuadWord stack_pop(Vm* vm);
+inline void stack_push(Vm* vm, QuadWord val);
 
 #endif
 
 #ifdef IMPL_KERN_VIREX_1
 #undef IMPL_KERN_VIREX_1
-
-bool loadInternalCallIntoVm(Vm* Vm, InternalVmCall call);
-bool loadStandardCallsIntoVm(Vm* Vm);
-bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec);
-
-bool executeProgram(Vm* vm, int debug, int i);
-VM_Error executeInst(Vm* vm);
-
-VM_Error vmcall_write(Vm* vm);
-VM_Error vmcall_alloc(Vm* vm);
-VM_Error vmcall_free(Vm* vm);
-VM_Error vmcall_print_f64(Vm* vm);
-VM_Error vmcall_print_i64(Vm* vm);
-VM_Error vmcall_print_u64(Vm* vm);
-VM_Error vmcall_print_ptr(Vm* vm);
-VM_Error vmcall_dump_memory(Vm* vm);
 
 bool loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
 {
@@ -89,7 +79,6 @@ ret_err:
 bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
 {
     memset(&vm->prog, 0, sizeof(vm->prog));
-    // FILE* f       = openFile(filePath, "rb");
 
     Sasm_Metadata meta = exec->meta;
 
@@ -145,172 +134,37 @@ ret_err:
     return false;
 }
 
-bool loadStandardCallsIntoVm(Vm* vm)
-{
-    try(loadInternalCallIntoVm(vm, vmcall_alloc), "Unable to load vm call '%d'!", 0);
-    try(loadInternalCallIntoVm(vm, vmcall_free), "Unable to load vm call '%d'!", 1);
-    try(loadInternalCallIntoVm(vm, vmcall_print_f64), "Unable to load vm call '%d'!", 2);
-    try(loadInternalCallIntoVm(vm, vmcall_print_i64), "Unable to load vm call '%d'!", 3);
-    try(loadInternalCallIntoVm(vm, vmcall_print_u64), "Unable to load vm call '%d'!", 4);
-    try(loadInternalCallIntoVm(vm, vmcall_print_ptr), "Unable to load vm call '%d'!", 5);
-    try(loadInternalCallIntoVm(vm, vmcall_dump_memory), "Unable to load vm call '%d'!", 6);
-    try(loadInternalCallIntoVm(vm, vmcall_write), "Unable to load vm call '%d'!", 7);
-    return true;
-ret_err:
-    return false;
-}
-
-static inline QuadWord stack_pop(Vm* vm)
+inline QuadWord stack_pop(Vm* vm)
 {
     return vm $stack[--vm $stack_top];
 }
 
-static inline void stack_push(Vm* vm, QuadWord val)
+inline void stack_push(Vm* vm, QuadWord val)
 {
     vm $stack[vm $stack_top++] = val;
 }
 
-VM_Error vmcall_write(Vm* vm)
-{
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
-
-    if (addr >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    for (uint32 i = 0; i < count; i += 1) {
-        if (vm $memory [addr + i] == '\\') {
-            i += 1;
-            if (i >= count)
-                return ERR_ILLEGAL_OPERAND;
-            else if (vm $memory [addr + i] == 'n')
-                printf("\n");
-            else if (vm $memory [addr + i] == '_')
-                printf("_");
-            else
-                return ERR_ILLEGAL_OPERAND;
-        } else if (vm $memory [addr + i] == '_') {
-            printf(" ");
-        } else {
-            printf("%c", vm $memory [addr + i]);
-        }
-    }
-
-    return ERR_OK;
-}
-
-VM_Error vmcall_alloc(Vm* vm)
-{
-    (void)vm;
-    // stack_push(vm, region_alloc(arena, stack_pop(vm)));
-
-    return ERR_OK;
-}
-
-VM_Error vmcall_free(Vm* vm)
-{
-    (void)vm;
-    // clearGarbage(region);
-
-    return ERR_OK;
-}
-
-VM_Error vmcall_print_f64(Vm* vm)
-{
-    printf(" %lf\n", stack_pop(vm).f32);
-    return ERR_OK;
-}
-
-VM_Error vmcall_print_i64(Vm* vm)
-{
-    printf(" %" PRId64 "", stack_pop(vm).i32);
-    return ERR_OK;
-}
-
-VM_Error vmcall_print_u64(Vm* vm)
-{
-    printf(" %" PRIu64 "", stack_pop(vm).u32);
-    return ERR_OK;
-}
-
-VM_Error vmcall_print_ptr(Vm* vm)
-{
-    printf(" %p\n", stack_pop(vm).ptr);
-    return ERR_OK;
-}
-
-VM_Error vmcall_dump_memory(Vm* vm)
-{
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
-
-    if (addr >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    for (uint32 i = 0; i < count; ++i) {
-        printf(" %02X ", vm $memory [addr + i]);
-        if (i % 16 == 15) {
-            printf("\n ");
-        }
-    }
-    printf("\n");
-
-    return ERR_OK;
-}
-
-VM_Error vmcall_writeROM(Vm* vm)
-{
-    char* buffer    = stack_pop(vm).ptr;
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
-
-    if (addr >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    if (addr + count < addr || addr + count >= MAX_MEMORY_CAPACITY) {
-        return ERR_ILLEGAL_MEMORY_ACCESS;
-    }
-
-    memcpy(buffer, &vm $memory [addr], count);
-
-    return ERR_OK;
-}
-
-bool executeProgram(Vm* vm, int debug, int lim)
+bool executeProgram(Vm* vm, int lim)
 {
     VM_Error error = executeInst(vm);
 
-    if (lim == 0 || getFlag(META_HALT, &(vm->cpu))) {
+    if (lim == 0 || getFlag(META_HALT, &(vm->cpu)))
         return true;
-    }
 
     try(error == ERR_OK, "Error when executing inst! ecode: %d", error);
 
-    return executeProgram(vm, debug, lim - 1);
+    return executeProgram(vm, lim - 1);
 ret_err:
     return false;
 }
 
 #define READ_OP(type, out)                             \
     {                                                  \
-        if (vm $stack_top < 1) {                       \
+        if (vm $stack_top < 1)                         \
             return ERR_STACK_UNDERFLOW;                \
-        }                                              \
         const MemoryAddr addr = stack_pop(vm).u32;     \
-        if (addr >= MAX_MEMORY_CAPACITY) {             \
+        if (addr >= MAX_MEMORY_CAPACITY)               \
             return ERR_ILLEGAL_MEMORY_ACCESS;          \
-        }                                              \
         type tmp;                                      \
         memcpy(&tmp, &vm $memory[addr], sizeof(type)); \
         stack_push(vm, quadwordFrom##out(tmp));        \
@@ -318,22 +172,19 @@ ret_err:
 
 #define WRITE_OP(type, size)                              \
     {                                                     \
-        if (vm $stack_top < 2) {                          \
+        if (vm $stack_top < 2)                            \
             return ERR_STACK_UNDERFLOW;                   \
-        }                                                 \
         const type value      = stack_pop(vm).u32;        \
         const MemoryAddr addr = stack_pop(vm).u32;        \
-        if (addr >= MAX_MEMORY_CAPACITY - size) {         \
+        if (addr >= MAX_MEMORY_CAPACITY - size)           \
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
-        }                                                 \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \
     }
 
 #define BINARY_OP(in, out, op)                          \
     {                                                   \
-        if (vm $stack_top < 2) {                        \
+        if (vm $stack_top < 2)                          \
             return ERR_STACK_UNDERFLOW;                 \
-        }                                               \
         in opr2      = stack_pop(vm).in;                \
         in opr1      = stack_pop(vm).in;                \
         QuadWord res = quadwordFrom##out(opr1 op opr2); \
@@ -519,50 +370,6 @@ VM_Error executeInst(Vm* vm)
 
     vm $reg[REG_IP].u32++;
     return ERR_OK;
-}
-
-bool virex_run(Vm* vm, Sasm_Executable* exec, int lim)
-{
-    try(loadStandardCallsIntoVm(vm), "Unable to load vm calls", "");
-    try(loadProgramIntoVm(vm, exec), "Unable to load program", "");
-    try(executeProgram(vm, 0, lim), "Unable to exec prog", "");
-    return true;
-ret_err:
-    return false;
-}
-
-const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
-                       "\n%entry      main                      ; ENTRY POINT"
-                       "\n"
-                       "\nsay_hello:                              ; GLOBAL 'say_hello'"
-                       "\n"
-                       "\nmain:"
-                       "\n%scope"
-                       "\n    SETR    ref([U1])   2            ; iteration count"
-                       "\nsay_hello:                              ; LOCAL 'say_hello'"
-                       "\n    PUSH   hello                        ; ptr to string start"
-                       "\n    PUSH   len(hello)                   ; length of string"
-                       "\n    INVOK  7                         ; print vmcall, expects above 2 arguments"
-                       "\n    LOOP    ref([U1])   say_hello       ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
-                       "\n%end"
-                       "\nSHUTS";
-
-Vm vm                = { 0 };
-Sasm_Executable exec = { 0 };
-
-bool virex_test(void)
-{
-    vm                  = (Vm) { 0 };
-    exec                = (Sasm_Executable) { 0 };
-    String_View sv_prog = STR(prog);
-    printf("\nTest Program:");
-    printf("\n-------------");
-    printf("\n%s", sv_prog.data);
-    printf("\n");
-    sasm_assemble(&exec, sv_prog);
-    printf("\nOutput:");
-    printf("\n-------------");
-    return virex_run(&vm, &exec, -1);     // TODO: cleanup not handled after exectuion
 }
 
 #endif
