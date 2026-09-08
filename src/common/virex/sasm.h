@@ -1262,7 +1262,7 @@ void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm)
 
 void sasm_assemble(Sasm_Executable* exec, String_View input_prog)
 {
-    Sasm_Context* sasm = malloc(sizeof(Sasm_Context)); // TODO: shouldnt use malloc here
+    Sasm_Context* sasm = malloc(sizeof(Sasm_Context));     // TODO: shouldnt use malloc here
     sasm_translate_root_file(sasm, input_prog);
     sasm_generate_executable(exec, sasm);
 }

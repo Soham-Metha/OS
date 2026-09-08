@@ -103,7 +103,7 @@ void gfx_fill_textured(GFX_Canvas dest, GFX_Canvas src);
 void gfx_fill_textured_rowspan(GFX_Canvas dest, GFX_Canvas src, int y, int x1, int x2, float u1, float v1, float w1, float u2, float v2, float w2, float* depth_buff, float shade);
 void gfx_fill_textured_triangle(GFX_Canvas dest, GFX_Canvas src, Point2f tex[3], int x0, int y0, int x1, int y1, int x2, int y2, float* depth_buff, float shade);
 
-#endif // GRAPHICS_1
+#endif     // GRAPHICS_1
 
 #ifndef GRAPHICS3D_1
 #define GRAPHICS3D_1
@@ -136,7 +136,7 @@ Mat4f matrix_rotX(float angle);
 Mat4f matrix_rotY(float angle);
 Mat4f matrix_rotZ(float angle);
 
-#endif // GRAPHICS3D_1
+#endif     // GRAPHICS3D_1
 
 #ifdef IMPL_GRAPHICS_1
 #undef IMPL_GRAPHICS_1
@@ -199,14 +199,14 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h, flo
         int phys_x = (int)round(x * canvas.scale);
         int phys_y = (int)round(y * canvas.scale);
 
-        scale = scale * canvas.scale;
+        scale      = scale * canvas.scale;
 
-        res = (GFX_Canvas) {
-            .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
-            .px_w      = (int)round(w * canvas.scale / scale),
-            .px_h      = (int)round(h * canvas.scale / scale),
-            .px_stride = canvas.px_stride,
-            .scale     = scale,
+        res        = (GFX_Canvas) {
+                   .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
+                   .px_w      = (int)round(w * canvas.scale / scale),
+                   .px_h      = (int)round(h * canvas.scale / scale),
+                   .px_stride = canvas.px_stride,
+                   .scale     = scale,
         };
     }
 
@@ -244,8 +244,8 @@ bool gfx_put_pixel(GFX_Canvas canvas, int x, int y, uint32 col)
 
     for (int dy = 0; dy < canvas.scale; dy++) {
         for (int dx = 0; dx < canvas.scale; dx++) {
-        uint32* p = &canvas.px[(phys_y + dy) * canvas.px_stride + (phys_x + dx)];
-           *p     = gfx_lerp_color(*p, col, canvas.scale < 1);
+            uint32* p = &canvas.px[(phys_y + dy) * canvas.px_stride + (phys_x + dx)];
+            *p        = gfx_lerp_color(*p, col, canvas.scale < 1);
         }
     }
 
@@ -464,21 +464,21 @@ inline void gfx_fill_textured_rowspan(
     if (x2 > dest.px_w) x2 = dest.px_w;
 
     for (int x = 0; x < (x2 - x1); x++) {
-        float t   = (float)(x) / (float)(x2 - x1);
+        float t        = (float)(x) / (float)(x2 - x1);
 
-        float w = lerp(w1, w2, t);
+        float w        = lerp(w1, w2, t);
 
-        int nx = (int)(lerp(u1, u2, t) / w * src.px_w);
-        int ny = (int)(lerp(v1, v2, t) / w * src.px_h);
-        int sx = x1 + x;
-        int sy = y;
+        int nx         = (int)(lerp(u1, u2, t) / w * src.px_w);
+        int ny         = (int)(lerp(v1, v2, t) / w * src.px_h);
+        int sx         = x1 + x;
+        int sy         = y;
 
         Color col      = { .as_u32 = src.px[ny * src.px_stride + nx] };
         col.as_[COL_R] = shade * col.as_[COL_R];
         col.as_[COL_G] = shade * col.as_[COL_G];
         col.as_[COL_B] = shade * col.as_[COL_B];
 
-        if (w > depth_buff[sy * dest.px_w + sx]) { // depth buffer is malloced using width, not stride!
+        if (w > depth_buff[sy * dest.px_w + sx]) {     // depth buffer is malloced using width, not stride!
             gfx_put_pixel(dest, sx, sy, col.as_u32);
             depth_buff[sy * dest.px_w + sx] = w;
         }
@@ -537,8 +537,7 @@ void gfx_copy_rect(GFX_Canvas canvas,
     }
 }
 
-
-#endif  // IMPL_GRAPHICS_1
+#endif     // IMPL_GRAPHICS_1
 
 #ifdef IMPL_GRAPHICS3D_1
 #undef IMPL_GRAPHICS3D_1
@@ -566,14 +565,14 @@ float fast_cos(float angle)
 {
     int idx = (int)(angle * INV_TWO_PI);
 
-    idx = (idx + TABLE_SIZE / 4) & (TABLE_SIZE - 1);
+    idx     = (idx + TABLE_SIZE / 4) & (TABLE_SIZE - 1);
 
     return sin_table[idx];
 }
 
 float fast_tan(float angle)
 {
-    return fast_sin(angle)/fast_cos(angle);
+    return fast_sin(angle) / fast_cos(angle);
 }
 
 float Q_rsqrt(float number)
@@ -587,19 +586,20 @@ float Q_rsqrt(float number)
         long l;
     } u;
 
-    x2 = number * 0.5F;
-    y  = number;
+    x2  = number * 0.5F;
+    y   = number;
     u.f = y;
-    i = u.l;
-    i  = 0x5f3759df - (i >> 1);
+    i   = u.l;
+    i   = 0x5f3759df - (i >> 1);
     u.l = i;
-    y  = u.f;
-    y  = y * (threehalfs - (x2 * y * y));
+    y   = u.f;
+    y   = y * (threehalfs - (x2 * y * y));
 
     return y;
 }
 
-float fast_sqrt(float x) {
+float fast_sqrt(float x)
+{
     return x * Q_rsqrt(x);
 }
 
@@ -764,7 +764,7 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
             .w = lerp(inside_tex[0]->w, outside_tex[1]->w, t2),
         };
         *out_tri1 = (Tri3f) {
-            .shade        = in.shade,
+            .shade      = in.shade,
             .vertex[0]  = *inside[0],
             .vertex[1]  = new_p_1,
             .vertex[2]  = new_p_2,
@@ -789,20 +789,20 @@ uint8 tri_clip(Point3f plane_p, Point3f plane_n, Tri3f in, Tri3f* out_tri1, Tri3
             .v = lerp(inside_tex[1]->v, outside_tex[0]->v, t2),
             .w = lerp(inside_tex[1]->w, outside_tex[0]->w, t2),
         };
-        *out_tri1       = (Tri3f) {
-                  .shade       = in.shade,
-                  .vertex[0] = *inside[0],
-                  .vertex[1] = *inside[1],
-                  .vertex[2] = new_p_1,
-                  .texture[0] = *inside_tex[0],
-                  .texture[1] = *inside_tex[1],
-                  .texture[2] = new_t_1,
+        *out_tri1 = (Tri3f) {
+            .shade      = in.shade,
+            .vertex[0]  = *inside[0],
+            .vertex[1]  = *inside[1],
+            .vertex[2]  = new_p_1,
+            .texture[0] = *inside_tex[0],
+            .texture[1] = *inside_tex[1],
+            .texture[2] = new_t_1,
         };
         *out_tri2 = (Tri3f) {
-            .shade       = in.shade,
-            .vertex[0] = *inside[1],
-            .vertex[1] = new_p_1,
-            .vertex[2] = new_p_2,
+            .shade      = in.shade,
+            .vertex[0]  = *inside[1],
+            .vertex[1]  = new_p_1,
+            .vertex[2]  = new_p_2,
             .texture[0] = *inside_tex[1],
             .texture[1] = new_t_1,
             .texture[2] = new_t_2,
@@ -886,8 +886,8 @@ Mat4f matrix_chain(int count, ...)
 Mat4f matrix_project(float z_min, float z_max, float fov, int w, int h)
 {
     float aspect_ratio = (float)h / w;
-    float fov_rad = fov * (PI / 180.0f);
-    float fov_tan = 1.0f / fast_tan(fov_rad * 0.5f);
+    float fov_rad      = fov * (PI / 180.0f);
+    float fov_tan      = 1.0f / fast_tan(fov_rad * 0.5f);
     return (Mat4f) {
         .m[0][0] = aspect_ratio * fov_tan,
         .m[1][1] = fov_tan,
@@ -1033,4 +1033,4 @@ Mat4f matrix_inv(Mat4f a)
     };
 }
 
-#endif  // IMPL_GRAPHICS3D_1
+#endif     // IMPL_GRAPHICS3D_1

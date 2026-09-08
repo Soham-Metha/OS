@@ -15,11 +15,11 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "graphics.h"
 #include "examples/generated/fish.c"
 #include "examples/generated/img_ex.c"
 #include "examples/generated/space.c"
 #include "examples/generated/space_tex.c"
+#include "graphics.h"
 
 // Examples available:
 // ---- | ------------ | PX_PIKA   | CANVAS_PIKA   | 256x256
@@ -256,17 +256,17 @@ void gfx_3d_test2(GFX_Canvas canvas)
 {
     angle2 += 0.05f;
     PX_SPACE;
-    static GFX_Canvas tex   = CANVAS_SPACE;
-    static Tri3f mesh[]     = MESH_SHIP2;
-    static Point3f light    = {
-        .x = -1.0f,
-        .y = 0.5f,
-        .z = -1.0f
+    static GFX_Canvas tex = CANVAS_SPACE;
+    static Tri3f mesh[]   = MESH_SHIP2;
+    static Point3f light  = {
+         .x = -1.0f,
+         .y = 0.5f,
+         .z = -1.0f
     };
 
     static bool initialized = false;
     static Mat4f mTransProjView;
-    static float *depth_buff;
+    static float* depth_buff;
     if (!initialized) {
         // Fixed operations
         // move object away from camera before render
@@ -277,7 +277,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
 
-        depth_buff = malloc(canvas.px_w * canvas.px_h * sizeof(float)); // TODO: shouldn't use malloc here?
+        depth_buff     = malloc(canvas.px_w * canvas.px_h * sizeof(float));     // TODO: shouldn't use malloc here?
         initialized    = true;
     }
 
@@ -294,8 +294,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             p3f_add(camera, vLookDir),
             (Point3f) { .y = 1 })));
 
-    for(int idx = 0; idx < canvas.px_w*canvas.px_h; idx++)
-    {
+    for (int idx = 0; idx < canvas.px_w * canvas.px_h; idx++) {
         depth_buff[idx] = 0.0f;
     }
 
@@ -351,24 +350,24 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
             // Translate, Project and Viewport
             Tri3f proj = {
-                .shade      = clipped[j].shade,
-                .vertex[0]  = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
-                .vertex[1]  = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
-                .vertex[2]  = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
+                .shade     = clipped[j].shade,
+                .vertex[0] = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
+                .vertex[1] = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
+                .vertex[2] = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
             };
 
-            proj.texture[0] = p2f_div(clipped[j].texture[0], proj.vertex[0].w);
-            proj.texture[1] = p2f_div(clipped[j].texture[1], proj.vertex[1].w);
-            proj.texture[2] = p2f_div(clipped[j].texture[2], proj.vertex[2].w);
+            proj.texture[0]   = p2f_div(clipped[j].texture[0], proj.vertex[0].w);
+            proj.texture[1]   = p2f_div(clipped[j].texture[1], proj.vertex[1].w);
+            proj.texture[2]   = p2f_div(clipped[j].texture[2], proj.vertex[2].w);
 
             proj.texture[0].w = 1.0f / proj.vertex[0].w;
             proj.texture[1].w = 1.0f / proj.vertex[1].w;
             proj.texture[2].w = 1.0f / proj.vertex[2].w;
 
             // TODO: should p3f/p2f propogate w? currently they dont
-            proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
-            proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
-            proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
+            proj.vertex[0]    = p3f_div(proj.vertex[0], proj.vertex[0].w);
+            proj.vertex[1]    = p3f_div(proj.vertex[1], proj.vertex[1].w);
+            proj.vertex[2]    = p3f_div(proj.vertex[2], proj.vertex[2].w);
 
             Tri3f tri_q[8];
             int q_count      = 0;
@@ -408,7 +407,6 @@ void gfx_3d_test2(GFX_Canvas canvas)
             }
         }
     }
-
 }
 
 void gfx_testt(GFX_Canvas canvas)

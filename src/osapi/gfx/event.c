@@ -15,9 +15,9 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include "wm.h"
 #include <common/event.h>
 #include <osapi/osapi.h>
-#include "wm.h"
 
 Event event_queue[256];
 uint8 head = 0;

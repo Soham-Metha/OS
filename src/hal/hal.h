@@ -16,8 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <common/types.h>
 #include <common/gfx/graphics.h>
+#include <common/types.h>
 
 void hal_present(GFX_Canvas buffer, int32 mx, int32 my);
 uint32 hal_get_width();

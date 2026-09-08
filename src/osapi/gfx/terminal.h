@@ -64,14 +64,14 @@ void terminal_scroll(Terminal* t)
     int term_width  = t->cols * t->font.cell_w;
     int term_height = t->rows * t->font.cell_h;
 
-    surface_copy_rect(t->surface, 
+    surface_copy_rect(t->surface,
         0, row_height,
-        0, 0, 
+        0, 0,
         term_width, (term_height - row_height)
     );
-    surface_fill_rect(t->surface, 
+    surface_fill_rect(t->surface,
         0, (term_height - row_height),
-        term_width, row_height, 
+        term_width, row_height,
         t->bg
     );
 }

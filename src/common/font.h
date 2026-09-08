@@ -21,12 +21,15 @@
 #include <common/types.h>
 
 typedef struct Font {
-    const uint8 *bitmap;
+    const uint8* bitmap;
     uint8 cell_w;
     uint8 cell_h;
 } Font;
 
-#define FONT(bm, w, h) { .bitmap = &bm[0][0], .cell_h = h, .cell_w = w}
+#define FONT(bm, w, h)                                \
+    {                                                 \
+        .bitmap = &bm[0][0], .cell_h = h, .cell_w = w \
+    }
 
 #endif
 #ifdef IMPL_FONT_1

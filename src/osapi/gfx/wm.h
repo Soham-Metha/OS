@@ -66,17 +66,16 @@ void wm_render(WindowManager* wm);
 
 void wm_init(WindowManager* wm, Compositor* c, Font f)
 {
-    wm->count      = 0;
-    wm->focused    = -1;
-    wm->mx         = 0;
-    wm->my         = 0;
-    wm->compositor = c;
-    wm->f          = f;
-
+    wm->count       = 0;
+    wm->focused     = -1;
+    wm->mx          = 0;
+    wm->my          = 0;
+    wm->compositor  = c;
+    wm->f           = f;
 
     ResultPtr space = region_alloc(&wm->arena, (c->width * c->height) * sizeof(uint32));
     try(RESULT_OK(space), "out of space!", "");
-    wm->screen     = gfx_init_canvas((uint32*)RESULT_VAL(space), c->width, c->height, 1.0f);
+    wm->screen = gfx_init_canvas((uint32*)RESULT_VAL(space), c->width, c->height, 1.0f);
 
     for (int i = 0; i < WM_MAX_WINDOWS; i++) {
         wm->windows[i].visible = false;
@@ -90,7 +89,7 @@ Window* wm_create_window(WindowManager* wm, int x, int y, int w, int h, uint32 f
     if (wm->count >= WM_MAX_WINDOWS)
         return 0;
 
-    Window* win     = &wm->windows[wm->count++];
+    Window* win          = &wm->windows[wm->count++];
     win->surface.x       = x;
     win->surface.y       = y;
     win->surface.canvas  = gfx_init_subcanvas(wm->screen, x, y, w, h, scale);
@@ -156,12 +155,11 @@ void wm_handle_mouse(WindowManager* wm, MouseEvent me)
     for (int i = wm->count - 1; i >= 0; i--) {
         Surface* s = &wm->windows[i].surface;
 
-        int lx = newx - s->x;
-        int ly = newy - s->y;
+        int lx     = newx - s->x;
+        int ly     = newy - s->y;
 
         if (lx >= 0 && lx < s->canvas.px_w &&
-            ly >= 0 && ly < s->canvas.px_h)
-        {
+            ly >= 0 && ly < s->canvas.px_h) {
             wm_focus_window(wm, &wm->windows[i]);
             return;
         }
