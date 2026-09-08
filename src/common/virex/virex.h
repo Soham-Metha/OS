@@ -23,21 +23,24 @@
 
 #define CALL_NAME_CAPACITY 256
 
-typedef VM_Error (*InternalVmCall)(CPU* cpu, Memory* mem, Arena* arena);
+typedef struct Vm Vm;
+typedef struct VmCalls VmCalls;
 
-typedef struct
+typedef VM_Error (*InternalVmCall)(Vm* vm);
+
+struct VmCalls
 {
     InternalVmCall VmCallI[INTERNAL_VMCALLS_CAPACITY];
     uint32 internalVmCallsDefined;
-} VmCalls;
+};
 
-typedef struct {
+struct Vm {
     Memory mem;
     Program prog;
     CPU cpu;
     VmCalls vmCalls;
     Arena arena;
-} Vm;
+};
 
 #define $memory ->mem.memory
 #define $stack ->mem.stack
@@ -65,14 +68,14 @@ bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec);
 bool executeProgram(Vm* vm, int debug, int i);
 VM_Error executeInst(Vm* vm);
 
-VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena);
-VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena);
+VM_Error vmcall_write(Vm* vm);
+VM_Error vmcall_alloc(Vm* vm);
+VM_Error vmcall_free(Vm* vm);
+VM_Error vmcall_print_f64(Vm* vm);
+VM_Error vmcall_print_i64(Vm* vm);
+VM_Error vmcall_print_u64(Vm* vm);
+VM_Error vmcall_print_ptr(Vm* vm);
+VM_Error vmcall_dump_memory(Vm* vm);
 
 bool loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
 {
@@ -157,11 +160,20 @@ ret_err:
     return false;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
+static inline QuadWord stack_pop(Vm* vm)
 {
-    uint32 count    = cpu->registers.S5.u32;
-    MemoryAddr addr = cpu->registers.S0.u32;
+    return vm $stack[--vm $stack_top];
+}
+
+static inline void stack_push(Vm* vm, QuadWord val)
+{
+    vm $stack[vm $stack_top++] = val;
+}
+
+VM_Error vmcall_write(Vm* vm)
+{
+    uint32 count    = stack_pop(vm).u32;
+    MemoryAddr addr = stack_pop(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -172,68 +184,70 @@ VM_Error vmcall_write(CPU* cpu, Memory* mem, Arena* arena)
     }
 
     for (uint32 i = 0; i < count; i += 1) {
-        if (mem->memory[addr + i] == '\\') {
+        if (vm $memory [addr + i] == '\\') {
             i += 1;
             if (i >= count)
                 return ERR_ILLEGAL_OPERAND;
-            else if (mem->memory[addr + i] == 'n')
+            else if (vm $memory [addr + i] == 'n')
                 printf("\n");
-            else if (mem->memory[addr + i] == '_')
+            else if (vm $memory [addr + i] == '_')
                 printf("_");
             else
                 return ERR_ILLEGAL_OPERAND;
-        } else if (mem->memory[addr + i] == '_') {
+        } else if (vm $memory [addr + i] == '_') {
             printf(" ");
         } else {
-            printf("%c", mem->memory[addr + i]);
+            printf("%c", vm $memory [addr + i]);
         }
     }
 
     return ERR_OK;
 }
 
-VM_Error vmcall_alloc(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_alloc(Vm* vm)
 {
-    // cpu->registers.S6.ptr = region_alloc(arena, cpu->registers.S5.u32);
+    (void)vm;
+    // stack_push(vm, region_alloc(arena, stack_pop(vm)));
 
     return ERR_OK;
 }
 
-VM_Error vmcall_free(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_free(Vm* vm)
 {
+    (void)vm;
     // clearGarbage(region);
 
     return ERR_OK;
 }
 
-VM_Error vmcall_print_f64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_f64(Vm* vm)
 {
-    printf(" %lf\n", cpu->registers.S1.f32);
+    printf(" %lf\n", stack_pop(vm).f32);
     return ERR_OK;
 }
 
-VM_Error vmcall_print_i64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_i64(Vm* vm)
 {
-    printf(" %" PRId64 "", cpu->registers.S2.i32);
+    printf(" %" PRId64 "", stack_pop(vm).i32);
     return ERR_OK;
 }
 
-VM_Error vmcall_print_u64(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_u64(Vm* vm)
 {
-    printf(" %" PRIu64 "", cpu->registers.S3.u32);
+    printf(" %" PRIu64 "", stack_pop(vm).u32);
     return ERR_OK;
 }
 
-VM_Error vmcall_print_ptr(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_print_ptr(Vm* vm)
 {
-    printf(" %p\n", cpu->registers.S6.ptr);
+    printf(" %p\n", stack_pop(vm).ptr);
     return ERR_OK;
 }
 
-VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_dump_memory(Vm* vm)
 {
-    MemoryAddr addr = cpu->registers.S0.u32;
-    uint32 count    = cpu->registers.S5.u32;
+    uint32 count    = stack_pop(vm).u32;
+    MemoryAddr addr = stack_pop(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -244,7 +258,7 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
     }
 
     for (uint32 i = 0; i < count; ++i) {
-        printf(" %02X ", mem->memory[addr + i]);
+        printf(" %02X ", vm $memory [addr + i]);
         if (i % 16 == 15) {
             printf("\n ");
         }
@@ -254,12 +268,11 @@ VM_Error vmcall_dump_memory(CPU* cpu, Memory* mem, Arena* arena)
     return ERR_OK;
 }
 
-VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
+VM_Error vmcall_writeROM(Vm* vm)
 {
-    MemoryAddr addr = cpu->registers.S0.u32;
-    uint32 count    = cpu->registers.S5.u32;
-
-    char* buffer    = cpu->registers.S6.ptr;
+    char* buffer    = stack_pop(vm).ptr;
+    uint32 count    = stack_pop(vm).u32;
+    MemoryAddr addr = stack_pop(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -269,19 +282,9 @@ VM_Error vmcall_writeROM(CPU* cpu, Memory* mem, Arena* arena)
         return ERR_ILLEGAL_MEMORY_ACCESS;
     }
 
-    memcpy(buffer, &mem->memory[addr], count);
+    memcpy(buffer, &vm $memory [addr], count);
 
     return ERR_OK;
-}
-
-static inline QuadWord stack_pop(Vm* vm)
-{
-    return vm $stack[--vm $stack_top];
-}
-
-static inline void stack_push(Vm* vm, QuadWord val)
-{
-    vm $stack[vm $stack_top++] = val;
 }
 
 bool executeProgram(Vm* vm, int debug, int lim)
@@ -353,6 +356,8 @@ VM_Error executeInst(Vm* vm)
 
     Instruction inst = vm $inst[vm $reg[REG_IP].u32];
     // register value dereferencing
+    // 0         <= val < reg count   => val == register id
+    // reg_count <= val < 2*reg_count => val == value of register with ID (val - reg_count)
     if (inst.opr1IsReg && inst.operand.u32 > REG_COUNT) {
         inst.operand.u32 = vm $reg[inst.operand.u32 % REG_COUNT].u32;
     }
@@ -369,13 +374,18 @@ VM_Error executeInst(Vm* vm)
     break; case INST_INVOK:
         if (inst.operand.u32 > vm->vmCalls.internalVmCallsDefined) return ERR_ILLEGAL_OPERAND;
         if (!vm $vm_call[inst.operand.u32])                        return ERR_NULL_CALL;
-        const VM_Error err = vm $vm_call[inst.operand.u32](&vm->cpu, &vm->mem, &vm->arena);
+        const VM_Error err = vm $vm_call[inst.operand.u32](vm);
         if (err != ERR_OK) return err;
     // ============================ Registers ============================
-    break; case INST_SETR: vm $reg[inst.operand.u32].u32 = inst.operand2.u32;
-    break; case INST_COPY: vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
+    break; case INST_SETR:
+        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst.operand.u32].u32 = inst.operand2.u32;
+    break; case INST_COPY:
+        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
     break; case INST_SPOPR:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
+        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
         vm $reg[inst.operand.u32] = stack_pop(vm);
     // =============================== Stack ===============================
     break; case INST_PUSH:
@@ -525,19 +535,14 @@ const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
                        "\n%entry      main                      ; ENTRY POINT"
                        "\n"
                        "\nsay_hello:                              ; GLOBAL 'say_hello'"
-                       "\nprint:"
-                       "\n%scope"
-                       "\n    INVOK    7"
-                       "\n    RET"
-                       "\n%end"
                        "\n"
                        "\nmain:"
                        "\n%scope"
                        "\n    SETR    ref([U1])   2            ; iteration count"
                        "\nsay_hello:                              ; LOCAL 'say_hello'"
-                       "\n    SETR    ref([S0])   hello        ; ptr to string start"
-                       "\n    SETR    ref([S5])   len(hello)   ; length of string"
-                       "\n    CALL    print                    ; expects above 2 arguments"
+                       "\n    PUSH   hello                        ; ptr to string start"
+                       "\n    PUSH   len(hello)                   ; length of string"
+                       "\n    INVOK  7                         ; print vmcall, expects above 2 arguments"
                        "\n    LOOP    ref([U1])   say_hello       ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
                        "\n%end"
                        "\nSHUTS";
