@@ -58,7 +58,7 @@ else # Browser / WASM target
 WEB_TARGET := --target=wasm32-unknown-unknown
 CFLAGS     += $(WEB_TARGET)
 LD         := wasm-ld
-LFLAGS     := --allow-undefined --no-entry --initial-memory=33554432 --global-base=16384 -z stack-size=16384
+LFLAGS     := --allow-undefined --no-entry --initial-memory=33554432 --global-base=524288 -z stack-size=524288
 LFLAGS     += --export=kernelMain --export=kernel_irq_wrapper --export-table
 
 all: clean $(EXEC_FILE)
