@@ -196,15 +196,18 @@ GFX_Canvas gfx_init_subcanvas(GFX_Canvas canvas, int x, int y, int w, int h, flo
     int x1, y1, x2, y2;
 
     if (gfx_blit_rect(canvas.px_w, canvas.px_h, x, y, w, h, &x1, &y1, &x2, &y2)) {
-        int phys_x = (int)round(x * canvas.scale);
-        int phys_y = (int)round(y * canvas.scale);
+        int phys_x = (int)round(x1 * canvas.scale);
+        int phys_y = (int)round(y1 * canvas.scale);
+
+        int clip_w = x2 - x1 + 1;
+        int clip_h = y2 - y1 + 1;
 
         scale      = scale * canvas.scale;
 
         res        = (GFX_Canvas) {
                    .px        = &canvas.px[phys_y * canvas.px_stride + phys_x],
-                   .px_w      = (int)round(w * canvas.scale / scale),
-                   .px_h      = (int)round(h * canvas.scale / scale),
+                   .px_w      = (int)round(clip_w * canvas.scale / scale),
+                   .px_h      = (int)round(clip_h * canvas.scale / scale),
                    .px_stride = canvas.px_stride,
                    .scale     = scale,
         };
