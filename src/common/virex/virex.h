@@ -23,13 +23,6 @@
 
 #define CALL_NAME_CAPACITY 256
 
-typedef struct Vm Vm;
-typedef struct CPU CPU;
-typedef union Registers Registers;
-typedef struct VmCalls VmCalls;
-
-typedef VM_Error (*InternalVmCall)(Vm* vm);
-
 typedef enum {
     META_HALT = 1 << 0,
     META_F1   = 1 << 1,
@@ -54,6 +47,13 @@ typedef enum {
     ERR_NAN,
     ERR_ALREADY_BOUND
 } VM_Error;
+
+typedef struct Vm Vm;
+typedef struct CPU CPU;
+typedef union Registers Registers;
+typedef struct VmCalls VmCalls;
+
+typedef VM_Error (*InternalVmCall)(Vm* vm);
 
 struct VmCalls
 {

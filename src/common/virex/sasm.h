@@ -61,15 +61,15 @@ typedef union {
 #define STACK_CAPACITY 1024
 #define FILE_MAGIC 0x484f53
 #define FILE_VERSION 0x4D41
+#define DEFERRED_ASSERTS_CAPACITY 1024
+#define STRING_LENGTHS_CAPACITY 1024
+#define INCLUDE_PATHS_CAPACITY 1024
+
 #define COMMENT_SYMBOL ';'
 #define PREP_SYMBOL '%'
 
 #define $instructionCount ->prog.instruction_count
 #define $instructions ->prog.instructions
-#define DEFERRED_ASSERTS_CAPACITY 1024
-#define STRING_LENGTHS_CAPACITY 1024
-#define INCLUDE_PATHS_CAPACITY 1024
-#define MAX_PRECEDENCE 2
 #define Token_Fmt "%s"
 #define Token_Arg(token) token_kind_name((token).kind)
 
@@ -80,79 +80,90 @@ typedef union {
 
 // ---------------------------------------------------------------------------------------------------
 
+// X(name, has_operand, has_operand2)
+// NOTE: inst handler in virex.h
+// NOTE: keep list sorted by string len. Adding/removing insts may affect lookup, See "getOpcodeDetailsFromName"
+#define ISA_OPCODE_LIST(X) \
+    X(DONOP,  0, 0) \
+    X(INVOK,  1, 0) \
+    X(SPOPR,  1, 0) \
+    X(SHUTS,  0, 0) \
+    X(SETR,   1, 1) \
+    X(CALL,   1, 0) \
+    X(LOOP,   1, 1) \
+    X(PUSH,   1, 0) \
+    X(SPOP,   0, 0) \
+    X(SWAP,   1, 0) \
+    X(ADDI,   0, 0) \
+    X(SUBI,   0, 0) \
+    X(MULI,   0, 0) \
+    X(DIVI,   0, 0) \
+    X(MODI,   0, 0) \
+    X(ADDU,   0, 0) \
+    X(SUBU,   0, 0) \
+    X(MULU,   0, 0) \
+    X(DIVU,   0, 0) \
+    X(MODU,   0, 0) \
+    X(ADDF,   0, 0) \
+    X(SUBF,   0, 0) \
+    X(MULF,   0, 0) \
+    X(DIVF,   0, 0) \
+    X(JMPU,   1, 0) \
+    X(JMPC,   1, 0) \
+    X(ANDB,   0, 0) \
+    X(NOTB,   0, 0) \
+    X(COPY,   1, 1) \
+    X(DUPS,   1, 0) \
+    X(RET,    0, 0) \
+    X(NOT,    0, 0) \
+    X(EQI,    0, 0) \
+    X(GEI,    0, 0) \
+    X(GTI,    0, 0) \
+    X(LEI,    0, 0) \
+    X(LTI,    0, 0) \
+    X(NEI,    0, 0) \
+    X(EQU,    0, 0) \
+    X(GEU,    0, 0) \
+    X(GTU,    0, 0) \
+    X(LEU,    0, 0) \
+    X(LTU,    0, 0) \
+    X(NEU,    0, 0) \
+    X(EQF,    0, 0) \
+    X(GEF,    0, 0) \
+    X(GTF,    0, 0) \
+    X(LEF,    0, 0) \
+    X(LTF,    0, 0) \
+    X(NEF,    0, 0) \
+    X(ORB,    0, 0) \
+    X(XOR,    0, 0) \
+    X(SHR,    0, 0) \
+    X(SHL,    0, 0) \
+    X(I2F,    0, 0) \
+    X(U2F,    0, 0) \
+    X(F2I,    0, 0) \
+    X(F2U,    0, 0) \
+    X(READ1U, 0, 0) \
+    X(READ2U, 0, 0) \
+    X(READ4U, 0, 0) \
+    X(READ8U, 0, 0) \
+    X(READ1I, 0, 0) \
+    X(READ2I, 0, 0) \
+    X(READ4I, 0, 0) \
+    X(READ8I, 0, 0) \
+    X(WRITE1, 0, 0) \
+    X(WRITE2, 0, 0) \
+    X(WRITE4, 0, 0) \
+    X(WRITE8, 0, 0)
+
+#define OPCODE_ENUM(name, op1, op2) \
+    INST_##name,
+
 typedef enum {
-    INST_DONOP = 0,
-    INST_INVOK,
-    INST_SPOPR,
-    INST_SHUTS,
-    INST_SETR,
-    INST_CALL,
-    INST_LOOP,
-    INST_PUSH,
-    INST_SPOP,
-    INST_SWAP,
-    INST_ADDI,
-    INST_SUBI,
-    INST_MULI,
-    INST_DIVI,
-    INST_MODI,
-    INST_ADDU,
-    INST_SUBU,
-    INST_MULU,
-    INST_DIVU,
-    INST_MODU,
-    INST_ADDF,
-    INST_SUBF,
-    INST_MULF,
-    INST_DIVF,
-    INST_JMPU,
-    INST_JMPC,
-    INST_ANDB,
-    INST_NOTB,
-    INST_COPY,
-    INST_DUPS,
-    INST_RET,
-    INST_NOT,
-    INST_EQI,
-    INST_GEI,
-    INST_GTI,
-    INST_LEI,
-    INST_LTI,
-    INST_NEI,
-    INST_EQU,
-    INST_GEU,
-    INST_GTU,
-    INST_LEU,
-    INST_LTU,
-    INST_NEU,
-    INST_EQF,
-    INST_GEF,
-    INST_GTF,
-    INST_LEF,
-    INST_LTF,
-    INST_NEF,
-    INST_ORB,
-    INST_XOR,
-    INST_SHR,
-    INST_SHL,
-    INST_I2F,
-    INST_U2F,
-    INST_F2I,
-    INST_F2U,
-    INST_READ1U,
-    INST_READ2U,
-    INST_READ4U,
-    INST_READ8U,
-    INST_READ1I,
-    INST_READ2I,
-    INST_READ4I,
-    INST_READ8I,
-    INST_WRITE1,
-    INST_WRITE2,
-    INST_WRITE4,
-    INST_WRITE8,
+    ISA_OPCODE_LIST(OPCODE_ENUM)
     NUMBER_OF_INSTS
 } Opcode;
+
+#undef OPCODE_ENUM
 
 typedef enum {
     REG_U0,
@@ -578,78 +589,19 @@ EvalResult resultUnresolved(Binding* unresolvedBinding);
 FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
 EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation location);
 
+#define OPCODE_DETAILS(opcode, op1, op2) \
+    [INST_##opcode] = {                  \
+        .type = INST_##opcode,           \
+        .name = #opcode,                 \
+        .has_operand = op1,              \
+        .has_operand2 = op2,             \
+    },
+
 static OpcodeDetails OpcodeDetailsLUT[NUMBER_OF_INSTS] = {
-    [INST_DONOP]  = {.type = INST_DONOP,   .name = "DONOP",  .has_operand = 0, .has_operand2 = 0},
-    [INST_INVOK]  = { .type = INST_INVOK,  .name = "INVOK",  .has_operand = 1, .has_operand2 = 0},
-    [INST_SPOPR]  = { .type = INST_SPOPR,  .name = "SPOPR",  .has_operand = 1, .has_operand2 = 0},
-    [INST_SHUTS]  = { .type = INST_SHUTS,  .name = "SHUTS",  .has_operand = 0, .has_operand2 = 0},
-    [INST_SETR]   = { .type = INST_SETR,   .name = "SETR",   .has_operand = 1, .has_operand2 = 1},
-    [INST_CALL]   = { .type = INST_CALL,   .name = "CALL",   .has_operand = 1, .has_operand2 = 0},
-    [INST_LOOP]   = { .type = INST_LOOP,   .name = "LOOP",   .has_operand = 1, .has_operand2 = 1},
-    [INST_PUSH]   = { .type = INST_PUSH,   .name = "PUSH",   .has_operand = 1, .has_operand2 = 0},
-    [INST_SPOP]   = { .type = INST_SPOP,   .name = "SPOP",   .has_operand = 0, .has_operand2 = 0},
-    [INST_SWAP]   = { .type = INST_SWAP,   .name = "SWAP",   .has_operand = 1, .has_operand2 = 0},
-    [INST_ADDI]   = { .type = INST_ADDI,   .name = "ADDI",   .has_operand = 0, .has_operand2 = 0},
-    [INST_SUBI]   = { .type = INST_SUBI,   .name = "SUBI",   .has_operand = 0, .has_operand2 = 0},
-    [INST_MULI]   = { .type = INST_MULI,   .name = "MULI",   .has_operand = 0, .has_operand2 = 0},
-    [INST_DIVI]   = { .type = INST_DIVI,   .name = "DIVI",   .has_operand = 0, .has_operand2 = 0},
-    [INST_MODI]   = { .type = INST_MODI,   .name = "MODI",   .has_operand = 0, .has_operand2 = 0},
-    [INST_ADDU]   = { .type = INST_ADDU,   .name = "ADDU",   .has_operand = 0, .has_operand2 = 0},
-    [INST_SUBU]   = { .type = INST_SUBU,   .name = "SUBU",   .has_operand = 0, .has_operand2 = 0},
-    [INST_MULU]   = { .type = INST_MULU,   .name = "MULU",   .has_operand = 0, .has_operand2 = 0},
-    [INST_DIVU]   = { .type = INST_DIVU,   .name = "DIVU",   .has_operand = 0, .has_operand2 = 0},
-    [INST_MODU]   = { .type = INST_MODU,   .name = "MODU",   .has_operand = 0, .has_operand2 = 0},
-    [INST_ADDF]   = { .type = INST_ADDF,   .name = "ADDF",   .has_operand = 0, .has_operand2 = 0},
-    [INST_SUBF]   = { .type = INST_SUBF,   .name = "SUBF",   .has_operand = 0, .has_operand2 = 0},
-    [INST_MULF]   = { .type = INST_MULF,   .name = "MULF",   .has_operand = 0, .has_operand2 = 0},
-    [INST_DIVF]   = { .type = INST_DIVF,   .name = "DIVF",   .has_operand = 0, .has_operand2 = 0},
-    [INST_JMPU]   = { .type = INST_JMPU,   .name = "JMPU",   .has_operand = 1, .has_operand2 = 0},
-    [INST_JMPC]   = { .type = INST_JMPC,   .name = "JMPC",   .has_operand = 1, .has_operand2 = 0},
-    [INST_ANDB]   = { .type = INST_ANDB,   .name = "ANDB",   .has_operand = 0, .has_operand2 = 0},
-    [INST_NOTB]   = { .type = INST_NOTB,   .name = "NOTB",   .has_operand = 0, .has_operand2 = 0},
-    [INST_COPY]   = { .type = INST_COPY,   .name = "COPY",   .has_operand = 1, .has_operand2 = 1},
-    [INST_DUPS]   = { .type = INST_DUPS,   .name = "DUPS",   .has_operand = 1, .has_operand2 = 0},
-    [INST_RET]    = { .type = INST_RET,    .name = "RET",    .has_operand = 0, .has_operand2 = 0},
-    [INST_NOT]    = { .type = INST_NOT,    .name = "NOT",    .has_operand = 0, .has_operand2 = 0},
-    [INST_EQI]    = { .type = INST_EQI,    .name = "EQI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GEI]    = { .type = INST_GEI,    .name = "GEI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GTI]    = { .type = INST_GTI,    .name = "GTI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LEI]    = { .type = INST_LEI,    .name = "LEI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LTI]    = { .type = INST_LTI,    .name = "LTI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_NEI]    = { .type = INST_NEI,    .name = "NEI",    .has_operand = 0, .has_operand2 = 0},
-    [INST_EQU]    = { .type = INST_EQU,    .name = "EQU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GEU]    = { .type = INST_GEU,    .name = "GEU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GTU]    = { .type = INST_GTU,    .name = "GTU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LEU]    = { .type = INST_LEU,    .name = "LEU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LTU]    = { .type = INST_LTU,    .name = "LTU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_NEU]    = { .type = INST_NEU,    .name = "NEU",    .has_operand = 0, .has_operand2 = 0},
-    [INST_EQF]    = { .type = INST_EQF,    .name = "EQF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GEF]    = { .type = INST_GEF,    .name = "GEF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_GTF]    = { .type = INST_GTF,    .name = "GTF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LEF]    = { .type = INST_LEF,    .name = "LEF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_LTF]    = { .type = INST_LTF,    .name = "LTF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_NEF]    = { .type = INST_NEF,    .name = "NEF",    .has_operand = 0, .has_operand2 = 0},
-    [INST_ORB]    = { .type = INST_ORB,    .name = "ORB",    .has_operand = 0, .has_operand2 = 0},
-    [INST_XOR]    = { .type = INST_XOR,    .name = "XOR",    .has_operand = 0, .has_operand2 = 0},
-    [INST_SHR]    = { .type = INST_SHR,    .name = "SHR",    .has_operand = 0, .has_operand2 = 0},
-    [INST_SHL]    = { .type = INST_SHL,    .name = "SHL",    .has_operand = 0, .has_operand2 = 0},
-    [INST_I2F]    = { .type = INST_I2F,    .name = "I2F",    .has_operand = 0, .has_operand2 = 0},
-    [INST_U2F]    = { .type = INST_U2F,    .name = "U2F",    .has_operand = 0, .has_operand2 = 0},
-    [INST_F2I]    = { .type = INST_F2I,    .name = "F2I",    .has_operand = 0, .has_operand2 = 0},
-    [INST_F2U]    = { .type = INST_F2U,    .name = "F2U",    .has_operand = 0, .has_operand2 = 0},
-    [INST_READ1U] = { .type = INST_READ1U, .name = "READ1U", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ2U] = { .type = INST_READ2U, .name = "READ2U", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ4U] = { .type = INST_READ4U, .name = "READ4U", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ8U] = { .type = INST_READ8U, .name = "READ8U", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ1I] = { .type = INST_READ1I, .name = "READ1I", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ2I] = { .type = INST_READ2I, .name = "READ2I", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ4I] = { .type = INST_READ4I, .name = "READ4I", .has_operand = 0, .has_operand2 = 0},
-    [INST_READ8I] = { .type = INST_READ8I, .name = "READ8I", .has_operand = 0, .has_operand2 = 0},
-    [INST_WRITE1] = { .type = INST_WRITE1, .name = "WRITE1", .has_operand = 0, .has_operand2 = 0},
-    [INST_WRITE2] = { .type = INST_WRITE2, .name = "WRITE2", .has_operand = 0, .has_operand2 = 0},
-    [INST_WRITE4] = { .type = INST_WRITE4, .name = "WRITE4", .has_operand = 0, .has_operand2 = 0},
-    [INST_WRITE8] = { .type = INST_WRITE8, .name = "WRITE8", .has_operand = 0, .has_operand2 = 0},
+    ISA_OPCODE_LIST(OPCODE_DETAILS)
 };
+
+#undef OPCODE_DETAILS
 
 bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* out_ptr)
 {
