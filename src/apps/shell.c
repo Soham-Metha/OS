@@ -99,7 +99,7 @@ void gfx_io_loop()
 {
     Result8 r = getch();
     if RESULT_OK (r) {
-        char c = RESULT_VAL(r);
+        char c   = RESULT_VAL(r);
         float tx = 0.0f, ty = 0.0f, ry = 0.0f, tz = 0.0f;
         if      (c == '8') ty += 0.05f;
         else if (c == '2') ty -= 0.05f;
@@ -124,7 +124,7 @@ void kernel_init(void)
 
     graphics_win = wm_create_window(&wm, screen_w / 2, 0, screen_w / 2, screen_h,
         COL(0xFF, 0xFF, 0xFF, 0xFF), COL(0x39, 0x46, 0xFF, 0xFF), 2.0f);
-    shell_win    = wm_create_window(&wm, 0, 0, screen_w/2, screen_h,
+    shell_win    = wm_create_window(&wm, 0, 0, screen_w / 2, screen_h,
         COL(0xF1, 0xFA, 0xEE, 0xFF), COL(0x39, 0x46, 0xFF, 0xFF), 1.0f);
 }
 
@@ -171,7 +171,12 @@ void shell_win_init(void)
 void shell_handler(String_View inp)
 {
     if (sv_compare(inp, STR("test"))) {
-        virex_test();     // TODO: doesn't work in 'native' mode
+        printf(
+            "%s",
+            virex_test()
+                ? "\nCode compiled & executed successfully"
+                : "\nCode compilation & execution failed"
+        );
         printf("\n> ");
     } else if (sv_compare(inp, STR("gfx-test"))) {
         create_task(graphics_test);
