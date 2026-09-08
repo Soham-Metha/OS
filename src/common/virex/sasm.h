@@ -858,8 +858,7 @@ const char* getRegName(RegID type)
     case REG_IP: return "IP";
     case REG_SP: return "SP";
     case REG_COUNT:
-    default:
-        return "";
+    default:     return "";
     }
 }
 
@@ -877,16 +876,11 @@ Binding* resolveBindingLocalScope(Scope* scope, String_View name)
 const char* getNameOfBindType(BindingType type)
 {
     switch (type) {
-    case BIND_TYPE_FLOAT:
-        return "Float";
-    case BIND_TYPE_UINT:
-        return "Unsigned_Int";
-    case BIND_TYPE_MEM_ADDR:
-        return "Mem_Addr";
-    case BIND_TYPE_INST_ADDR:
-        return "Inst_Addr";
-    default:
-        return "";
+    case BIND_TYPE_FLOAT:     return "Float";
+    case BIND_TYPE_UINT:      return "Unsigned_Int";
+    case BIND_TYPE_MEM_ADDR:  return "Mem_Addr";
+    case BIND_TYPE_INST_ADDR: return "Inst_Addr";
+    default: return "";
     }
 }
 
@@ -1038,24 +1032,15 @@ Tokenizer loadStringIntoTokenizer(String_View source)
 const char* getTokenName(TokenType type)
 {
     switch (type) {
-    case TOKEN_TYPE_STR:
-        return "string";
-    case TOKEN_TYPE_CHAR:
-        return "character";
-    case TOKEN_TYPE_NUMBER:
-        return "number";
-    case TOKEN_TYPE_NAME:
-        return "name";
-    case TOKEN_TYPE_OPEN_PAREN:
-        return "open paren";
-    case TOKEN_TYPE_CLOSING_PAREN:
-        return "closing paren";
-    case TOKEN_TYPE_COMMA:
-        return "comma";
-    case TOKEN_TYPE_REGISTER:
-        return "register";
-    default:
-        return "";
+    case TOKEN_TYPE_STR:            return "string";
+    case TOKEN_TYPE_CHAR:           return "character";
+    case TOKEN_TYPE_NUMBER:         return "number";
+    case TOKEN_TYPE_NAME:           return "name";
+    case TOKEN_TYPE_OPEN_PAREN:     return "open paren";
+    case TOKEN_TYPE_CLOSING_PAREN:  return "closing paren";
+    case TOKEN_TYPE_COMMA:          return "comma";
+    case TOKEN_TYPE_REGISTER:       return "register";
+    default: return "";
     }
 }
 
@@ -1152,12 +1137,9 @@ EvalResult sasm_binding_eval(Sasm_Context* sasm, Binding* binding)
     case BIND_STATUS_EVALUATING:
         log(FLFmt ": ERROR: cycling binding definition.\n", FLArg(binding->location));
         return (EvalResult) { .status = EVAL_ERR };
-    case BIND_STATUS_EVALUATED:
-        return resultOK(binding->value, binding->type);
-    case BIND_STATUS_DEFERRED:
-        return resultUnresolved(binding);
-    default:
-        return (EvalResult) { .status = EVAL_ERR };
+    case BIND_STATUS_EVALUATED: return resultOK(binding->value, binding->type);
+    case BIND_STATUS_DEFERRED:  return resultUnresolved(binding);
+    default:                    return (EvalResult) { .status = EVAL_ERR };
     }
 }
 
@@ -1597,9 +1579,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
     case TOKEN_TYPE_STR:
         result.type          = EXPR_LIT_STR;
         result.value.lit_str = ParseStrFromSasmTokens(tokenizer, location);
-        break;
-
-    case TOKEN_TYPE_CHAR:
+    break; case TOKEN_TYPE_CHAR:
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
 
         try(token.text.len == 1, FLFmt ": ERROR: the length of char literal has to be exactly one\n",
@@ -1607,9 +1587,7 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
 
         result.type           = EXPR_LIT_CHAR;
         result.value.lit_char = token.text.data[0];
-        break;
-
-    case TOKEN_TYPE_NAME:
+    break; case TOKEN_TYPE_NAME:
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
 
         Token next = { 0 };
@@ -1624,41 +1602,32 @@ Expr parsePrimaryOfSasmTokens(Arena* arena, Tokenizer* tokenizer, FileLocation l
             result.value.binding = token.text;
             result.type          = EXPR_BINDING;
         }
-        break;
-
-    case TOKEN_TYPE_NUMBER:
-        return parseNumFromSasmTokens(arena, tokenizer, location);
-
+    break; case TOKEN_TYPE_NUMBER: return parseNumFromSasmTokens(arena, tokenizer, location);
     case TOKEN_TYPE_OPEN_PAREN:
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
         Expr expr = parsePrimaryOfSasmTokens(arena, tokenizer, location);
 
         try(moveSasmTokenizerToNextToken(tokenizer, &token, location) && token.type == TOKEN_TYPE_CLOSING_PAREN, FLFmt ": ERROR: expected `%s`\n",
             FLArg(location), getTokenName(TOKEN_TYPE_CLOSING_PAREN));
-        return expr;
-
-    case TOKEN_TYPE_REGISTER:
+    return expr; case TOKEN_TYPE_REGISTER:
         moveSasmTokenizerToNextToken(tokenizer, NULL, location);
         String_View str = token.text;
         switch (str.data[0]) {
-        break; case 'U':
-            try(str.data[1] >= '0' && str.data[1] <= '9',FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
+        case 'U':
+            try(str.data[1] >= '0' && str.data[1] <= '9', FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
             result.value.reg_id = (uint32)(REG_U0 + str.data[1] - '0');
         break; case 'S':
-            try(str.data[1] >= '0' && str.data[1] <= '6',FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
+            try(str.data[1] >= '0' && str.data[1] <= '6', FLFmt ": ERROR: Invalid register %s\n", FLArg(location), str.data);
             result.value.reg_id = (uint32)(REG_S0 + str.data[1] - '0');
-        break; default:      // IP, SP not allowed
+        break; default:     // IP, SP not allowed
             err(FLFmt ": ERROR: Invalid register %s\n",
                 FLArg(location), str.data);
         };
 
         result.type = EXPR_REG;
-        break;
-    case TOKEN_TYPE_COMMA:
+    break; case TOKEN_TYPE_COMMA:
     case TOKEN_TYPE_CLOSING_PAREN:
-        err(FLFmt ": ERROR: expected primary expression but found %s\n",
-            FLArg(location), getTokenName(token.type));
-        break;
+        err(FLFmt ": ERROR: expected primary expression but found %s\n", FLArg(location), getTokenName(token.type));
     }
 
 ret_err:
@@ -2195,30 +2164,18 @@ QuadWord quadwordFromPtr(void* ptr)
 const char* getNameOfError(const VM_Error* error)
 {
     switch ((*error)) {
-    case ERR_OK:
-        return "ERR_OK";
-    case ERR_STACK_OVERFLOW:
-        return "ERR_STACK_OVERFLOW";
-    case ERR_STACK_UNDERFLOW:
-        return "ERR_STACK_UNDERFLOW";
-    case ERR_DIV_BY_ZERO:
-        return "ERR_DIV_BY_ZERO";
-    case ERR_ILLEGAL_INST:
-        return "ERR_ILLEGAL_INST";
-    case ERR_ILLEGAL_INST_ACCESS:
-        return "ERR_ILLEGAL_INST_ACCESS";
-    case ERR_ILLEGAL_OPERAND:
-        return "ERR_ILLEGAL_OPERAND";
-    case ERR_NULL_CALL:
-        return "ERR_NULL_CALL";
-    case ERR_ILLEGAL_MEMORY_ACCESS:
-        return "ERR_ILLEGAL_MEMORY_ACCESS";
-    case ERR_NAN:
-        return "ERR_NAN";
-    case ERR_ALREADY_BOUND:
-        return "ERR_ALREADY_BOUND";
-    default:
-        return "";
+    case ERR_OK:                    return "ERR_OK";
+    case ERR_STACK_OVERFLOW:        return "ERR_STACK_OVERFLOW";
+    case ERR_STACK_UNDERFLOW:       return "ERR_STACK_UNDERFLOW";
+    case ERR_DIV_BY_ZERO:           return "ERR_DIV_BY_ZERO";
+    case ERR_ILLEGAL_INST:          return "ERR_ILLEGAL_INST";
+    case ERR_ILLEGAL_INST_ACCESS:   return "ERR_ILLEGAL_INST_ACCESS";
+    case ERR_ILLEGAL_OPERAND:       return "ERR_ILLEGAL_OPERAND";
+    case ERR_NULL_CALL:             return "ERR_NULL_CALL";
+    case ERR_ILLEGAL_MEMORY_ACCESS: return "ERR_ILLEGAL_MEMORY_ACCESS";
+    case ERR_NAN:                   return "ERR_NAN";
+    case ERR_ALREADY_BOUND:         return "ERR_ALREADY_BOUND";
+    default:                        return "";
     }
 }
 
