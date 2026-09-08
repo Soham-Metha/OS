@@ -311,7 +311,6 @@ ret_err:
         type tmp;                                      \
         memcpy(&tmp, &vm $memory[addr], sizeof(type)); \
         stack_push(vm, quadwordFrom##out(tmp));        \
-        vm $reg[REG_NX].u32++;                         \
     }
 
 #define WRITE_OP(type, size)                              \
@@ -325,13 +324,6 @@ ret_err:
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
         }                                                 \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \
-        vm $reg[REG_NX].u32++;                            \
-    }
-
-#define ARITH_OP(reg, in, op)  \
-    {                          \
-        reg = reg op in;       \
-        vm $reg[REG_NX].u32++; \
     }
 
 #define BINARY_OP(in, out, op)                          \
@@ -343,13 +335,6 @@ ret_err:
         in opr1      = stack_pop(vm).in;                \
         QuadWord res = quadwordFrom##out(opr1 op opr2); \
         stack_push(vm, res);                            \
-        vm $reg[REG_NX].u32++;                          \
-    }
-
-#define CAST_OP(r1, r2, src, dst, cast) \
-    {                                   \
-        r1.dst = cast r2.src;           \
-        vm $reg[REG_NX].u32++;          \
     }
 
 #define STACK_CAST(src, dst, cast)                  \
@@ -357,7 +342,6 @@ ret_err:
         src opr      = stack_pop(vm).src;           \
         QuadWord res = quadwordFrom##dst(cast opr); \
         stack_push(vm, res);                        \
-        vm $reg[REG_NX].u32++;                      \
     }
 
 VM_Error executeInst(Vm* vm)
@@ -378,413 +362,152 @@ VM_Error executeInst(Vm* vm)
 
     // printf("\nenter : %d %s", inst.type, OpcodeDetailsLUT[inst.type].name);
     switch (inst.type) {
-
+    // =============================== Misc ==============================
     case INST_DONOP:
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_RETVL:
-        // no implementation yet!!
-        break;
-
-    case INST_SHUTS:
-        setFlag(META_HALT, &vm->cpu, 1);
-        break;
-
-    case INST_INVOK:
-        if (inst.operand.u32 > vm->vmCalls.internalVmCallsDefined)
-            return ERR_ILLEGAL_OPERAND;
-
-        if (!vm $vm_call[inst.operand.u32])
-            return ERR_NULL_CALL;
-
+    break; case INST_SHUTS: setFlag(META_HALT, &vm->cpu, 1);
+    // ========================= env interaction =========================
+    break; case INST_INVOK:
+        if (inst.operand.u32 > vm->vmCalls.internalVmCallsDefined) return ERR_ILLEGAL_OPERAND;
+        if (!vm $vm_call[inst.operand.u32])                        return ERR_NULL_CALL;
         const VM_Error err = vm $vm_call[inst.operand.u32](&vm->cpu, &vm->mem, &vm->arena);
-        if (err != ERR_OK)
-            return err;
-
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_GETR: /* fallthrough */
-    case INST_PUSHR:
-        if (vm $stack_top >= STACK_CAPACITY)
-            return ERR_STACK_OVERFLOW;
-
-        stack_push(vm, vm $reg[inst.operand.u32]);
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_SETR:
-        vm $reg[inst.operand2.u32].u32 = inst.operand.u32;
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_SPOPR:
-        if (vm $stack_top < 1)
-            return ERR_STACK_UNDERFLOW;
-
+        if (err != ERR_OK) return err;
+    // ============================ Registers ============================
+    break; case INST_SETR: vm $reg[inst.operand.u32].u32 = inst.operand2.u32;
+    break; case INST_COPY: vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
+    break; case INST_SPOPR:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         vm $reg[inst.operand.u32] = stack_pop(vm);
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_PUSH:
-        if (vm $stack_top >= STACK_CAPACITY) {
-            return ERR_STACK_OVERFLOW;
-        }
+    // =============================== Stack ===============================
+    break; case INST_PUSH:
+        if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
         stack_push(vm, inst.operand);
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_SPOP:
-        if (vm $stack_top < 1) {
-            return ERR_STACK_UNDERFLOW;
-        }
-        vm $reg[REG_QT].u32 = stack_pop(vm).u32;
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_COPY:
-        vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_DUPS:
-        if (vm $stack_top >= STACK_CAPACITY) {
-            return ERR_STACK_OVERFLOW;
-        }
-
-        if (vm $stack_top <= inst.operand.u32) {
-            return ERR_STACK_UNDERFLOW;
-        }
-
+    break; case INST_SPOP:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
+        stack_pop(vm);
+    break; case INST_DUPS:
+        if (vm $stack_top >= STACK_CAPACITY)   return ERR_STACK_OVERFLOW;
+        if (vm $stack_top <= inst.operand.u32) return ERR_STACK_UNDERFLOW;
         stack_push(vm, vm $stack[vm $stack_top - 1 - inst.operand.u32]);
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_SWAP:
-        if (inst.operand.u32 >= vm $stack_top) {
-            return ERR_STACK_UNDERFLOW;
-        }
-
+    break; case INST_SWAP:
+        if (inst.operand.u32 >= vm $stack_top) return ERR_STACK_UNDERFLOW;
         const u32 a  = vm $stack_top - 1;
         const u32 b  = vm $stack_top - 1 - inst.operand.u32;
-
         QuadWord tmp = vm $stack[a];
         vm $stack[a] = vm $stack[b];
         vm $stack[b] = tmp;
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_JMPU:
+    // ==================== Branching (Unconditional) ====================
+    break; case INST_JMPU:
         vm $reg[REG_NX].u32 = inst.operand.u32;
-        break;
-
-    case INST_JMPC:
-        if (vm $stack_top < 1)
-            return ERR_STACK_UNDERFLOW;
-
-        if (stack_pop(vm).u32 > 0)
-            vm $reg[REG_NX].u32 = inst.operand.u32;
-        else
-            vm $reg[REG_NX].u32++;
-
-        break;
-
-    case INST_LOOP:
-        if (vm $reg[inst.operand2.u32].u32 > 0) {
-            vm $reg[REG_NX].u32 = inst.operand.u32;
-        } else {
-            vm $reg[REG_NX].u32++;
-        }
-        vm $reg[inst.operand2.u32].u32 -= 1;
-        break;
-
-    case INST_CALL:
-        if (vm $stack_top >= STACK_CAPACITY)
-            return ERR_STACK_OVERFLOW;
-
+    return ERR_OK; case INST_CALL:
+        if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
         stack_push(vm, quadwordFromU64(vm $reg[REG_NX].u32 + 1));
         vm $reg[REG_NX].u32 = inst.operand.u32;
-        break;
-
-    case INST_RET:
-        if (vm $stack_top < 1) {
-            return ERR_STACK_UNDERFLOW;
-        }
-
+    return ERR_OK; case INST_RET:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         vm $reg[REG_NX].u32 = stack_pop(vm).u32;
-        break;
-
-    case INST_NOT:
-        if (vm $stack_top < 1) {
-            return ERR_STACK_UNDERFLOW;
+    // ===================== Branching (Conditional) =====================
+    return ERR_OK; case INST_JMPC:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
+        if (stack_pop(vm).u32 > 0) {
+            vm $reg[REG_NX].u32 = inst.operand.u32;
+            return ERR_OK;
         }
+    break; case INST_LOOP:
+        vm $reg[inst.operand.u32].u32 -= 1;
+        if (vm $reg[inst.operand.u32].u32 > 0) {
+            vm $reg[REG_NX].u32 = inst.operand2.u32;
+            return ERR_OK;
+        }
+    // ========================= Logical (Unary) =========================
+    break; case INST_NOT:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         {
             u32 val = stack_pop(vm).u32;
             val     = !val;
             stack_push(vm, quadwordFromU64(val));
         }
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_NOTB:
-        if (vm $stack_top < 1) {
-            return ERR_STACK_UNDERFLOW;
-        }
-
+    // ========================= Binary (Unary) ==========================
+    break; case INST_NOTB:
+        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         {
             u32 val = stack_pop(vm).u32;
             val     = ~val;
             stack_push(vm, quadwordFromU64(val));
         }
-        vm $reg[REG_NX].u32++;
-        break;
-
-    case INST_ADDI:
-        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, +);
-        BINARY_OP(i32, I64, +);
-        break;
-
-    case INST_SUBI:
-        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, -);
-        BINARY_OP(i32, I64, -);
-        break;
-
-    case INST_MULI:
-        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, *);
-        BINARY_OP(i32, I64, *);
-        break;
-
-    case INST_DIVI:
-        if (vm $stack[vm $stack_top - 1].i32 == 0)
-            return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, /);
+    // ======================== Logical (Binary) =========================
+    break; case INST_EQI: BINARY_OP(i32, U64, ==);
+    break; case INST_EQU: BINARY_OP(u32, U64, ==);
+    break; case INST_EQF: BINARY_OP(f32, U64, ==);
+    break; case INST_GEI: BINARY_OP(i32, U64, >=);
+    break; case INST_GEU: BINARY_OP(u32, U64, >=);
+    break; case INST_GEF: BINARY_OP(f32, U64, >=);
+    break; case INST_GTI: BINARY_OP(i32, U64, >);
+    break; case INST_GTU: BINARY_OP(u32, U64, >);
+    break; case INST_GTF: BINARY_OP(f32, U64, >);
+    break; case INST_LEI: BINARY_OP(i32, U64, <=);
+    break; case INST_LEU: BINARY_OP(u32, U64, <=);
+    break; case INST_LEF: BINARY_OP(f32, U64, <=);
+    break; case INST_LTI: BINARY_OP(i32, U64, <);
+    break; case INST_LTU: BINARY_OP(u32, U64, <);
+    break; case INST_LTF: BINARY_OP(f32, U64, <);
+    break; case INST_NEI: BINARY_OP(i32, U64, !=);
+    break; case INST_NEU: BINARY_OP(u32, U64, !=);
+    break; case INST_NEF: BINARY_OP(f32, U64, !=);
+    // ========================= Binary (Binary) =========================
+    break; case INST_ANDB: BINARY_OP(u32, U64, &);
+    break; case INST_ORB: BINARY_OP(u32, U64, |);
+    break; case INST_XOR: BINARY_OP(u32, U64, ^);
+    break; case INST_SHR: BINARY_OP(u32, U64, >>);
+    break; case INST_SHL: BINARY_OP(u32, U64, <<);
+    // ============================ Typecast =============================
+    break; case INST_I2F: STACK_CAST(i32, F64, (f32));
+    break; case INST_U2F: STACK_CAST(u32, F64, (f32));
+    break; case INST_F2I: STACK_CAST(f32, I64, (f32));
+    break; case INST_F2U: STACK_CAST(f32, U64, (u32)(i32));
+    // =============================== I/O ===============================
+    break; case INST_READ1U: READ_OP(Byte, U64);
+    break; case INST_READ1I: READ_OP(int8, I64);
+    break; case INST_WRITE1: WRITE_OP(Byte, 0);
+    break; case INST_READ2U: READ_OP(Word, U64);
+    break; case INST_READ2I: READ_OP(int16, I64);
+    break; case INST_READ4U: READ_OP(DoubleWord, U64);
+    break; case INST_WRITE2: WRITE_OP(Word, 1);
+    break; case INST_READ4I: READ_OP(int32, I64);
+    break; case INST_WRITE4: WRITE_OP(DoubleWord, 3);
+    break; case INST_READ8U: READ_OP(u32, U64);
+    break; case INST_READ8I: READ_OP(int64, I64);
+    break; case INST_WRITE8: WRITE_OP(u32, 7);
+    // =========================== Arithmetic ============================
+    break; case INST_ADDI: BINARY_OP(i32, I64, +);
+    break; case INST_ADDU: BINARY_OP(u32, U64, +);
+    break; case INST_ADDF: BINARY_OP(f32, F64, +);
+    break; case INST_SUBI: BINARY_OP(i32, I64, -);
+    break; case INST_SUBU: BINARY_OP(u32, U64, -);
+    break; case INST_SUBF: BINARY_OP(f32, F64, -);
+    break; case INST_MULI: BINARY_OP(i32, I64, *);
+    break; case INST_MULU: BINARY_OP(u32, U64, *);
+    break; case INST_MULF: BINARY_OP(f32, F64, *);
+    break; case INST_DIVI:
+        if (vm $stack[vm $stack_top - 1].i32 == 0) return ERR_DIV_BY_ZERO;
         BINARY_OP(i32, I64, /);
-        break;
-
-    case INST_MODI:
-        if (inst.operand.i32 == 0)
-            return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L2].i32, inst.operand.i32, %);
-        BINARY_OP(i32, I64, %);
-        break;
-
-    case INST_ADDU:
-        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, +);
-        BINARY_OP(u32, U64, +);
-        break;
-
-    case INST_SUBU:
-        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, -);
-        BINARY_OP(u32, U64, -);
-        break;
-
-    case INST_MULU:
-        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, +);
-        BINARY_OP(u32, U64, *);
-        break;
-
-    case INST_DIVU:
-        if (inst.operand.u32 == 0)
-            return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, /);
+    break; case INST_DIVU:
+        if (vm $stack[vm $stack_top - 1].u32 == 0) return ERR_DIV_BY_ZERO;
         BINARY_OP(u32, U64, /);
-        break;
-
-    case INST_MODU:
-        if (inst.operand.u32 == 0)
-            return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L3].u32, inst.operand.u32, %);
-        BINARY_OP(u32, U64, %);
-        break;
-
-    case INST_ADDF:
-        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, +);
-        BINARY_OP(f32, F64, +);
-        break;
-
-    case INST_SUBF:
-        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, -);
-        BINARY_OP(f32, F64, -);
-        break;
-
-    case INST_MULF:
-        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, *);
-        BINARY_OP(f32, F64, *);
-        break;
-
-    case INST_DIVF:
-        if (inst.operand.f32 == 0.0)
-            return ERR_DIV_BY_ZERO;
-        // ARITH_OP(vm $reg[REG_L1].f32, inst.operand.f32, /);
+    break; case INST_DIVF:
+        if (vm $stack[vm $stack_top - 1].f32 == 0.0) return ERR_DIV_BY_ZERO;
         BINARY_OP(f32, F64, /);
-        break;
-
-    case INST_ANDB:
-        BINARY_OP(u32, U64, &);
-        break;
-
-    case INST_EQI:
-        BINARY_OP(i32, U64, ==);
-        break;
-
-    case INST_GEI:
-        BINARY_OP(i32, U64, >=);
-        break;
-
-    case INST_GTI:
-        BINARY_OP(i32, U64, >);
-        break;
-
-    case INST_LEI:
-        BINARY_OP(i32, U64, <=);
-        break;
-
-    case INST_LTI:
-        BINARY_OP(i32, U64, <);
-        break;
-
-    case INST_NEI:
-        BINARY_OP(i32, U64, !=);
-        break;
-
-    case INST_EQU:
-        BINARY_OP(u32, U64, ==);
-        break;
-
-    case INST_GEU:
-        BINARY_OP(u32, U64, >=);
-        break;
-
-    case INST_GTU:
-        BINARY_OP(u32, U64, >);
-        break;
-
-    case INST_LEU:
-        BINARY_OP(u32, U64, <=);
-        break;
-
-    case INST_LTU:
-        BINARY_OP(u32, U64, <);
-        break;
-
-    case INST_NEU:
-        BINARY_OP(u32, U64, !=);
-        break;
-
-    case INST_EQF:
-        BINARY_OP(f32, U64, ==);
-        break;
-
-    case INST_GEF:
-        BINARY_OP(f32, U64, >=);
-        break;
-
-    case INST_GTF:
-        BINARY_OP(f32, U64, >);
-        break;
-
-    case INST_LEF:
-        BINARY_OP(f32, U64, <=);
-        break;
-
-    case INST_LTF:
-        BINARY_OP(f32, U64, <);
-        break;
-
-    case INST_NEF:
-        BINARY_OP(f32, U64, !=);
-        break;
-
-    case INST_ORB:
-        BINARY_OP(u32, U64, |);
-        break;
-
-    case INST_XOR:
-        BINARY_OP(u32, U64, ^);
-        break;
-
-    case INST_SHR:
-        BINARY_OP(u32, U64, >>);
-        break;
-
-    case INST_SHL:
-        BINARY_OP(u32, U64, <<);
-        break;
-
-    case INST_I2F:
-        // CAST_OP(vm $reg[REG_L1], vm $reg[REG_L2], i64, f64, (f64));
-        STACK_CAST(i32, F64, (f32));
-        break;
-
-    case INST_U2F:
-        // CAST_OP(vm $reg[REG_L1], vm $reg[REG_L3], u64, f64, (f64));
-        STACK_CAST(u32, F64, (f32));
-        break;
-
-    case INST_F2I:
-        // CAST_OP(vm $reg[REG_L2], vm $reg[REG_L1], f64, i64, (i64));
-        STACK_CAST(f32, I64, (f32));
-        break;
-
-    case INST_F2U:
-        // CAST_OP(vm $reg[REG_L3], vm $reg[REG_L1], f64, u64, (u64)(i64));
-        STACK_CAST(f32, U64, (u32)(i32));
-        break;
-
-    case INST_READ1U:
-        READ_OP(Byte, U64);
-        break;
-
-    case INST_READ2U:
-        READ_OP(Word, U64);
-        break;
-
-    case INST_READ4U:
-        READ_OP(DoubleWord, U64);
-        break;
-
-    case INST_READ8U:
-        READ_OP(u32, U64);
-        break;
-
-    case INST_READ1I:
-        READ_OP(int8, I64);
-        break;
-
-    case INST_READ2I:
-        READ_OP(int16, I64);
-        break;
-
-    case INST_READ4I:
-        READ_OP(int32, I64);
-        break;
-
-    case INST_READ8I:
-        READ_OP(int64, I64);
-        break;
-
-    case INST_WRITE1:
-        WRITE_OP(Byte, 0);
-        break;
-
-    case INST_WRITE2:
-        WRITE_OP(Word, 1);
-        break;
-
-    case INST_WRITE4:
-        WRITE_OP(DoubleWord, 3);
-        break;
-
-    case INST_WRITE8:
-        WRITE_OP(u32, 7);
-        break;
-
-    case NUMBER_OF_INSTS:
+    break; case INST_MODI:
+        if (vm $stack[vm $stack_top - 1].i32 == 0) return ERR_DIV_BY_ZERO;
+        BINARY_OP(i32, I64, %);
+    break; case INST_MODU:
+        if (vm $stack[vm $stack_top - 1].u32 == 0) return ERR_DIV_BY_ZERO;
+        BINARY_OP(u32, U64, %);
+    break; case NUMBER_OF_INSTS:
     default:
         return ERR_ILLEGAL_INST;
     }
 
+    vm $reg[REG_NX].u32++;
     return ERR_OK;
 }
 
@@ -799,27 +522,25 @@ ret_err:
 }
 
 const char* prog     = "\n%bind       hello       \"\\n Hello, World\""
-                       "\n%entry      main                             ; ENTRY POINT"
+                       "\n%entry      main                      ; ENTRY POINT"
                        "\n"
-                       "\nmain:"
-                       "\nsay_hello:                                   ; GLOBAL 'say_hello'"
-                       "\n%scope                                       ; ENCAPSULATION"
-                       "\n"
-                       "\n    SETR    2           ref([L2])               ; iteration count"
-                       "\nsay_hello:                                   ; LOCAL 'say_hello'"
-                       "\n    SETR    hello       ref([L0])               ; ptr to string start"
-                       "\n    SETR    len(hello)  ref([QT])               ; length of string"
-                       "\n    CALL    print                               ; expects above 2 arguments"
-                       "\n    LOOP    say_hello   ref([L2])               ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
-                       "\n"
-                       "\n%end"
-                       "\nSHUTS"
-                       "\n"
+                       "\nsay_hello:                              ; GLOBAL 'say_hello'"
                        "\nprint:"
                        "\n%scope"
                        "\n    INVOK    7"
                        "\n    RET"
-                       "\n%end";
+                       "\n%end"
+                       "\n"
+                       "\nmain:"
+                       "\n%scope"
+                       "\n    SETR    ref([L2])   2            ; iteration count"
+                       "\nsay_hello:                              ; LOCAL 'say_hello'"
+                       "\n    SETR    ref([L0])   hello        ; ptr to string start"
+                       "\n    SETR    ref([QT])   len(hello)   ; length of string"
+                       "\n    CALL    print                    ; expects above 2 arguments"
+                       "\n    LOOP    ref([L2])   say_hello       ; CORRECTLY RESOLVE TO LOCAL 'say_hello'"
+                       "\n%end"
+                       "\nSHUTS";
 
 Vm vm                = { 0 };
 Sasm_Executable exec = { 0 };
@@ -832,7 +553,7 @@ bool virex_test(void)
     printf("\nTest Program:");
     printf("\n-------------");
     printf("\n%s", sv_prog.data);
-    printf("\n-------------");
+    printf("\n");
     sasm_assemble(&exec, sv_prog);
     printf("\nOutput:");
     printf("\n-------------");
