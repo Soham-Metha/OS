@@ -93,6 +93,7 @@ bool ramdisk_write(void* dev, uint32 block, const void* buf)
     return true;
 }
 
+// TODO: Figure out "persistant storage" for wasm32, maybe just periodic/user triggered writes of RAMDISK to OPFS?
 BlockDevice disk_init(disk_type dt, uint32 blk_cnt)
 {
     switch (dt) {

@@ -19,8 +19,9 @@
 #define KMALLOC_1
 
 #include <common/types.h>
-#define KHEAP_SIZE (10 * 1024 * 1024)
+#define KHEAP_SIZE (25 * 1024 * 1024)
 
+// TODO: make malloc platform specific (i.e. paging for i386 and ???(heap?) for wasm32)
 void* malloc(uint64 size);
 void* memset(void* buf, char c, uint32 n);
 void* memcpy(void* dst, const void* src, uint32 n);

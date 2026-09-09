@@ -18,8 +18,9 @@
 #ifndef COMPOSITOR_1
 #define COMPOSITOR_1
 
-#include <common/types.h>
+#include <common/font.h>
 #include <common/gfx/graphics.h>
+#include <common/types.h>
 #define COMPOSITOR_MAX_SURFACES 4
 
 typedef struct Surface {
@@ -47,47 +48,16 @@ bool compositor_detach(Compositor* c, struct Surface* s);
 bool compositor_raise(Compositor* c, struct Surface* s);
 bool compositor_lower(Compositor* c, struct Surface* s);
 
-void compositor_render(Compositor* c);
-
 void surface_put_pixel(Surface* s, int x, int y, uint32 color);
+void surface_draw_char(Surface* s, Font font, char c, int x, int y, uint32 fg, uint32 bg);
 void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color);
 void surface_clear(Surface* s, uint32 color);
-void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h);
+void surface_copy_rect(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h);
+
 #endif
 
 #ifdef IMPL_COMPOSITOR_1
 #undef IMPL_COMPOSITOR_1
-#include <hal/hal.h>     // TODO: fix boundary violation
-
-private
-void blit_surface(Surface* s, int width, int height)
-{
-    if (!s || !s->visible || !s->canvas.px)
-        return;
-
-    int x0 = s->x < 0 ? 0 : s->x;
-    int y0 = s->y < 0 ? 0 : s->y;
-    int x1 = s->x + s->canvas.px_w;
-    int y1 = s->y + s->canvas.px_h;
-
-    if (x1 > width)
-        x1 = width;
-    if (y1 > height)
-        y1 = height;
-
-    for (int y = y0; y < y1; y++) {
-        for (int x = x0; x < x1; x++) {
-            int sx       = x - s->x;
-            int sy       = y - s->y;
-
-            uint32 color = s->canvas.px[sy * s->canvas.px_stride + sx];
-            if ((color & 0xFF) == 0)
-                continue;
-
-            hal_put_pixel(x, y, color);
-        }
-    }
-}
 
 void compositor_init(Compositor* c, int width, int height)
 {
@@ -175,27 +145,6 @@ bool compositor_lower(Compositor* c, Surface* s)
     return true;
 }
 
-void compositor_render(Compositor* c)
-{
-    if (!c)
-        return;
-
-    bool any_dirty = false;
-
-    for (int i = 0; i < c->count; i++) {
-        Surface* s = c->surfaces[i];
-        if (s && s->visible && s->dirty) {
-            blit_surface(s, c->width, c->height);
-            s->dirty  = false;
-            any_dirty = true;
-        }
-    }
-
-    if (any_dirty) {
-        hal_present();
-    }
-}
-
 void surface_put_pixel(Surface* s, int x, int y, uint32 color)
 {
     if (!s)
@@ -223,13 +172,28 @@ void surface_fill_rect(Surface* s, int x, int y, int w, int h, uint32 color)
     s->dirty = true;
 }
 
-void surface_blit(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h)
+void surface_copy_rect(Surface* s, int src_x, int src_y, int dst_x, int dst_y, int w, int h)
 {
     if (!s)
         return;
 
     gfx_copy_rect(s->canvas, src_x, src_y, dst_x, dst_y, w, h);
     s->dirty = true;
+}
+
+void surface_draw_char(Surface* s, Font font, char c, int x, int y, uint32 fg, uint32 bg)
+{
+    const uint8* glyph = &font.bitmap[((uint8)c) * font.cell_h];
+
+    for (int row = 0; row < font.cell_h; row++) {
+        uint8 bits = glyph[row];
+
+        for (int col = 0; col < font.cell_w; col++) {
+            uint32 color = (bits & (1 << ((font.cell_w - 1) - col))) ? fg : bg;
+
+            surface_put_pixel(s, x * font.cell_w + col, y * font.cell_h + row, color);
+        }
+    }
 }
 
 #endif

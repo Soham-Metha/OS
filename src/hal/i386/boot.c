@@ -22,25 +22,22 @@ IDT_Entry idt[256];
 GDT_Entry gdtEntries[5];
 static bool vectors[256];
 
-static volatile uint32* fb;
-static uint32 pitch;
-static uint32 width;
-static uint32 height;
+static GFX_Canvas frame_buffer;
 
 static inline uint8 inb(uint16 port)
 {
     uint8 ret;
     __asm__ volatile("inb %1, %0"
-        : "=a"(ret)
-        : "Nd"(port));
+                     : "=a"(ret)
+                     : "Nd"(port));
     return ret;
 }
 
 static inline void outb(uint16 port, uint8 value)
 {
     __asm__ volatile("outb %0, %1"
-        :
-        : "a"(value), "Nd"(port));
+                     :
+                     : "a"(value), "Nd"(port));
 }
 
 // https://wiki.osdev.org/8259_PIC
@@ -93,19 +90,22 @@ void pic_send_eoi(uint8 irq)
 
 void ps2_write(uint8 val)
 {
-    while (inb(PS2_CMD) & 0x02);
+    while (inb(PS2_CMD) & 0x02)
+        ;
     outb(PS2_DATA, val);
 }
 
 void ps2_cmd(uint8 val)
 {
-    while (inb(PS2_CMD) & 0x02);
+    while (inb(PS2_CMD) & 0x02)
+        ;
     outb(PS2_CMD, val);
 }
 
 uint8 mouse_read()
 {
-    while (!(inb(PS2_CMD) & 0x01));
+    while (!(inb(PS2_CMD) & 0x01))
+        ;
     return inb(PS2_DATA);
 }
 
@@ -251,13 +251,17 @@ extern void kernelMain(uint32 magic, struct multiboot_info* mbi)
     pic_unmask(2);      // cascade
     pic_unmask(12);     // mouse
 
-    __asm__ volatile("lidt %0" : : "m"(idtr));
+    __asm__ volatile("lidt %0"
+                     :
+                     : "m"(idtr));
     __asm__ volatile("sti");
 
-    fb     = (uint32*)(uint32)mbi->framebuffer_addr;
-    pitch  = mbi->framebuffer_pitch / 4;
-    width  = mbi->framebuffer_width;
-    height = mbi->framebuffer_height;
+    frame_buffer = (GFX_Canvas) {
+        .px        = (uint32*)(uint32)mbi->framebuffer_addr,
+        .px_stride = mbi->framebuffer_pitch / 4,
+        .px_w      = mbi->framebuffer_width,
+        .px_h      = mbi->framebuffer_height,
+    };
 
     (void)main();
 
@@ -268,34 +272,38 @@ extern void kernelMain(uint32 magic, struct multiboot_info* mbi)
     outb(0x40, divisor >> 8);       // Data     hi byte
 }
 
-void hal_put_pixel(int x, int y, uint32 rgba)
+static inline uint32 rgba_to_argb(uint32 rgba)
 {
-    if (x < 0 || y < 0 || x >= (int)width || y >= (int)height)
-        return;
-    fb[y * pitch + x] = rgba >> 8;
+    uint32 r = (rgba >> 24) & 0xFF;
+    uint32 g = (rgba >> 16) & 0xFF;
+    uint32 b = (rgba >> 8)  & 0xFF;
+    uint32 a = (rgba)       & 0xFF;
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void hal_clear(uint32 rgba)
+void hal_present(GFX_Canvas buffer, int32 mx, int32 my)
 {
-    (void)rgba;
-    for (uint32 y = 0; y < height; y++)
-        for (uint32 x = 0; x < width; x++)
-            fb[y * pitch + x] = rgba >> 8;
-}
+    for (int i = 0; i < (buffer.px_stride * buffer.px_h); i++) {
+        frame_buffer.px[i] = rgba_to_argb(buffer.px[i]);
+    }
 
-void hal_present(void)
-{
-    // nothing for now, pixels instantly render to screen
-    // TODO: This may be causing the render issue
+    // gfx_fill_rect(frame_buffer, mx, my, 8, 16, COL(0xFF,0xFF, 0xFF, 0xFF));
+    for (int y = 0; y < 16; y++) {
+        for (int x = 0; x < 8; x++) {
+            frame_buffer.px[(my + y) * frame_buffer.px_stride + (mx + x)] = rgba_to_argb(COL(0xFF, 0xFF, 0xFF, 0xFF));
+        }
+    }
 }
 
 uint32 hal_get_width()
 {
-    return width;
+    return frame_buffer.px_w;
 }
+
 uint32 hal_get_height()
 {
-    return height;
+    return frame_buffer.px_h;
 }
 
 void switch_to(void (*func)(void))

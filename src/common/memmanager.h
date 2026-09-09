@@ -62,6 +62,7 @@ Region* region_create(uint64 capacity)
         Region* ret = unused;
         unused      = unused->next;
         ret->next   = (Region*)0;
+        ret->size   = 0;
         return ret;
     }
 
@@ -165,9 +166,13 @@ void arena_free(Arena* arena)
 {
     for (Region *part = arena->first, *next = (Region*)0; part != (Region*)0; part = next) {
         next       = part->next;
+        part->size = 0;
         part->next = unused;
         unused     = part;
     }
+
+    arena->first = (Region*)0;
+    arena->last  = (Region*)0;
 }
 
 #endif

@@ -107,7 +107,7 @@ int main()
             for (int i = 0; i < 3; i++) {
                 if (vt[i] != -1) {
                     t[i]   = uvs[vt[i] - 1];
-                    t[i].v = 1.0f - t[i].v; // Blender user bottom-up texturig
+                    t[i].v = 1.0f - t[i].v;     // Blender user bottom-up texturig
                 }
             }
 

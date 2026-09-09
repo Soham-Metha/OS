@@ -1,4 +1,4 @@
-export PREFIX := ./tools/cross
+export PREFIX := ~/Downloads/LLVM-23.1.0-Linux-X64/
 export PATH := $(PREFIX)/bin:$(PATH)
 
 .ONESHELL:
@@ -6,13 +6,11 @@ SHELL  := /bin/bash
 BUILDS := ./build
 SRC    := ./src
 
-NAT_CC := i686-elf-gcc
-NAT_AS := i686-elf-as
-NAT_LD := i686-elf-ld
+CC     := clang-23
 
 CFLAGS := -Wall -Wextra -Werror -Wfatal-errors -Wswitch-enum -pedantic -O3 -std=c2x
-CFLAGS += -ffreestanding -fno-builtin -I $(SRC)
-LIBS   :=
+CFLAGS += -ffreestanding -fno-builtin -g
+LIBS   := -I $(SRC)
 
 _HAL   := $(BUILDS)/hal_browser.o
 _ITR   := $(BUILDS)/interrupt.o
@@ -38,15 +36,18 @@ clean: | $(BUILDS)
 # ============================================================
 ifeq ($(TARGET),native) # Native target
 # ============================================================
-
-CC     := $(NAT_CC)
+NAT_TARGET := --target=i686-elf -m32
+CFLAGS     += $(NAT_TARGET)
+CFLAGS     += -mno-sse -mno-sse2 -mno-mmx -msoft-float
+LD         := ld.lld
+LFLAGS     := -m elf_i386 -T $(SRC)/platform/i386/native.ld
 
 all: clean $(_ISO)
 
 run_all: all
 	@qemu-system-i386 -enable-kvm -drive format=raw,file="$(_ISO)" -vga std
 
-$(_HAL): $(SRC)/hal/native/boot.c $(SRC)/hal/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/i386/boot.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -54,26 +55,18 @@ $(_HAL): $(SRC)/hal/native/boot.c $(SRC)/hal/hal.h | $(BUILDS)
 else # Browser / WASM target
 # ============================================================
 
-ifeq ($(COMPILER),clang)
-CC     := clang-15
-LD     := wasm-ld
-CFLAGS += --target=wasm32-unknown-unknown
-LFLAGS := --allow-undefined --no-entry --initial-memory=9437184 --global-base=1024 -z stack-size=16384
-LFLAGS += --export=main --export=kernel_irq_wrapper --export-table
-else
-CC     := emcc
-LD     := emcc
-CFLAGS += -matomics -mbulk-memory
-LFLAGS := -sMINIFY_HTML=0 -Wl,--no-entry -s INITIAL_MEMORY=15MB -s STANDALONE_WASM=1 -Wl,--shared-memory
-LFLAGS += -s EXPORTED_FUNCTIONS=['_main','_kernel_irq_wrapper'] -s ERROR_ON_UNDEFINED_SYMBOLS=0
-endif
+WEB_TARGET := --target=wasm32-unknown-unknown
+CFLAGS     += $(WEB_TARGET)
+LD         := wasm-ld
+LFLAGS     := --allow-undefined --no-entry --initial-memory=33554432 --global-base=524288 -z stack-size=524288
+LFLAGS     += --export=kernelMain --export=kernel_irq_wrapper --export-table
 
 all: clean $(EXEC_FILE)
 
 run_all: all
 	@python3 -m http.server 8000
 
-$(_HAL): $(SRC)/hal/browser/hal_browser.c $(SRC)/hal/hal.h | $(BUILDS)
+$(_HAL): $(SRC)/hal/wasm32/hal_browser.c $(SRC)/hal/hal.h | $(BUILDS)
 	@$(CC) $(CFLAGS) $(LIBS) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -108,7 +101,6 @@ $(_SHELL): $(SRC)/apps/shell.c $(SRC)/apps/shell.h | $(BUILDS)
 # ============================================================
 
 $(EXEC_FILE): $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@source ./tools/emsdk/emsdk_env.sh
 	@$(LD) $(LFLAGS) $^ -o $@ && \
 	printf "\e[32m		[ LINK  COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
@@ -121,9 +113,9 @@ $(_ISO): $(_NATIVE_KERNEL)
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
 $(_NATIVE_KERNEL): $(_NATIVE_BOOT_A) $(_OSAPI) $(_SHELL) $(_KERN) $(_HAL) $(_ITR) $(_EVENT)
-	@$(NAT_LD) -m elf_i386 -T $(SRC)/platform/native/native.ld  $^ -o $@ && \
+	@$(LD) $(LFLAGS)  $^ -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"
 
-$(_NATIVE_BOOT_A): $(SRC)/hal/native/boot.S | $(BUILDS)
-	@$(NAT_AS) --32 $< -o $@ && \
+$(_NATIVE_BOOT_A): $(SRC)/hal/i386/boot.S | $(BUILDS)
+	@$(CC) $(NAT_TARGET) -c $< -o $@ && \
 	printf "\e[32m		[ BUILD COMPLETED ]\t: [ $@ ] \e[0m\n\n"

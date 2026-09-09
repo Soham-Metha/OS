@@ -15,11 +15,11 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "graphics.h"
 #include "examples/generated/fish.c"
 #include "examples/generated/img_ex.c"
 #include "examples/generated/space.c"
 #include "examples/generated/space_tex.c"
+#include "graphics.h"
 
 // Examples available:
 // ---- | ------------ | PX_PIKA   | CANVAS_PIKA   | 256x256
@@ -180,15 +180,17 @@ void insert_circ(struct Circ queue[], int idx, struct Circ c)
 }
 
 static float angle1 = 0;
-void gfx_3d_test(GFX_Canvas canvas)
+void gfx_3d_test(GFX_Canvas canvas, int radius, float focal)
 {
     angle1 += 0.02f;
-    float s1        = fast_sin(angle1 * 0.7f);
-    float c1        = fast_cos(angle1 * 0.7f);
-    float s2        = fast_sin(angle1);
-    float c2        = fast_cos(angle1);
-    float s3        = fast_sin(angle1 * 0.5f);
-    float c3        = fast_cos(angle1 * 0.5f);
+    float s1 = fast_sin(angle1);
+float c1 = fast_cos(angle1);
+
+float s2 = fast_sin(angle1 * 0.6f);
+float c2 = fast_cos(angle1 * 0.6f);
+
+float s3 = fast_sin(angle1 * 0.3f);
+float c3 = fast_cos(angle1 * 0.3f);
 
     int grid_count  = 5;
     float grid_pad  = 0.5f / grid_count;
@@ -211,8 +213,8 @@ void gfx_3d_test(GFX_Canvas canvas)
 
                 z += 0.6f;     // move cube away from camera
 
-                float px = x / z;
-                float py = y / z;
+                float px = focal * x / z;
+                float py = focal * y / z;
 
                 // normalize to screen
                 px       = (px + 1) / 2;
@@ -226,7 +228,7 @@ void gfx_3d_test(GFX_Canvas canvas)
                     (struct Circ) {
                         .x   = px * canvas.px_w,
                         .y   = py * canvas.px_h,
-                        .r   = 8 / canvas.scale,
+                        .r   = radius / canvas.scale,
                         .col = COL(r, g, b, 255),
                         .z   = z });
                 idx += 1;
@@ -256,13 +258,17 @@ void gfx_3d_test2(GFX_Canvas canvas)
 {
     angle2 += 0.05f;
     PX_SPACE;
-    static GFX_Canvas tex   = CANVAS_SPACE;
-    static Tri3f mesh[]     = MESH_SHIP2;
-    static Point3f light    = { .z = -1 };
+    static GFX_Canvas tex = CANVAS_SPACE;
+    static Tri3f mesh[]   = MESH_SHIP2;
+    static Point3f light  = {
+         .x = -1.0f,
+         .y = 0.5f,
+         .z = -1.0f
+    };
 
     static bool initialized = false;
     static Mat4f mTransProjView;
-    static float *depth_buff;
+    static float* depth_buff;
     if (!initialized) {
         // Fixed operations
         // move object away from camera before render
@@ -273,7 +279,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             matrix_project(0.01f, 250.0f, 90.0f, canvas.px_w, canvas.px_h),
             matrix_viewport());
 
-        depth_buff = malloc(canvas.px_w*canvas.px_h); // TODO: shouldn't use malloc here?
+        depth_buff     = malloc(canvas.px_w * canvas.px_h * sizeof(float));     // TODO: shouldn't use malloc here?
         initialized    = true;
     }
 
@@ -290,8 +296,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             p3f_add(camera, vLookDir),
             (Point3f) { .y = 1 })));
 
-    for(int idx = 0; idx < canvas.px_w*canvas.px_h; idx++)
-    {
+    for (int idx = 0; idx < canvas.px_w * canvas.px_h; idx++) {
         depth_buff[idx] = 0.0f;
     }
 
@@ -307,7 +312,7 @@ void gfx_3d_test2(GFX_Canvas canvas)
             .texture[2] = mesh[i].texture[2],
         };
 
-        Point3f pCamRay = p3f_sub(trans.vertex[0], camera);
+        Point3f pCamRay = p3f_normalize(p3f_sub(trans.vertex[0], camera));
         Point3f normal  = p3f_normalize(
              p3f_cross(
                  p3f_sub(trans.vertex[1], trans.vertex[0]),
@@ -316,10 +321,24 @@ void gfx_3d_test2(GFX_Canvas canvas)
         if (p3f_dot(normal, pCamRay) >= 0)
             continue;
 
-        float dp = p3f_dot(normal, light);
-        if (dp > 1.0f) dp = 1.0f;
-        if (dp < 0.1f) dp = 0.1f;
-        trans.shade = dp;
+        float ambient = 0.1f;
+        float diffuse = p3f_dot(normal, light);
+        if (diffuse > 1.0f) diffuse = 1.0f;
+        if (diffuse < 0.0f) diffuse = 0.0f;
+
+        trans.shade = lerp(ambient, 1.0f, diffuse);
+
+        float highlight = -p3f_dot(normal, pCamRay);
+        if (highlight > 1.0f) highlight = 1.0f;
+        if (highlight < 0.0f) highlight = 0.0f;
+        highlight *= highlight;
+        highlight *= highlight;
+
+        trans.shade = lerp(
+            trans.shade,
+            1.0f,
+            highlight
+        );
 
         Tri3f clipped[2];
         uint8 clip_cnt = tri_clip(
@@ -333,24 +352,24 @@ void gfx_3d_test2(GFX_Canvas canvas)
 
             // Translate, Project and Viewport
             Tri3f proj = {
-                .shade      = clipped[j].shade,
-                .vertex[0]  = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
-                .vertex[1]  = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
-                .vertex[2]  = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
+                .shade     = clipped[j].shade,
+                .vertex[0] = p3f_mul_mat(clipped[j].vertex[0], mTransProjView),
+                .vertex[1] = p3f_mul_mat(clipped[j].vertex[1], mTransProjView),
+                .vertex[2] = p3f_mul_mat(clipped[j].vertex[2], mTransProjView),
             };
 
-            proj.texture[0] = p2f_div(clipped[j].texture[0], proj.vertex[0].w);
-            proj.texture[1] = p2f_div(clipped[j].texture[1], proj.vertex[1].w);
-            proj.texture[2] = p2f_div(clipped[j].texture[2], proj.vertex[2].w);
+            proj.texture[0]   = p2f_div(clipped[j].texture[0], proj.vertex[0].w);
+            proj.texture[1]   = p2f_div(clipped[j].texture[1], proj.vertex[1].w);
+            proj.texture[2]   = p2f_div(clipped[j].texture[2], proj.vertex[2].w);
 
             proj.texture[0].w = 1.0f / proj.vertex[0].w;
             proj.texture[1].w = 1.0f / proj.vertex[1].w;
             proj.texture[2].w = 1.0f / proj.vertex[2].w;
 
             // TODO: should p3f/p2f propogate w? currently they dont
-            proj.vertex[0] = p3f_div(proj.vertex[0], proj.vertex[0].w);
-            proj.vertex[1] = p3f_div(proj.vertex[1], proj.vertex[1].w);
-            proj.vertex[2] = p3f_div(proj.vertex[2], proj.vertex[2].w);
+            proj.vertex[0]    = p3f_div(proj.vertex[0], proj.vertex[0].w);
+            proj.vertex[1]    = p3f_div(proj.vertex[1], proj.vertex[1].w);
+            proj.vertex[2]    = p3f_div(proj.vertex[2], proj.vertex[2].w);
 
             Tri3f tri_q[8];
             int q_count      = 0;
@@ -390,7 +409,6 @@ void gfx_3d_test2(GFX_Canvas canvas)
             }
         }
     }
-
 }
 
 void gfx_testt(GFX_Canvas canvas)

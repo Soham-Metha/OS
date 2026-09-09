@@ -2,16 +2,19 @@
 <html lang="en">
   <head>
     <title>webOS</title>
-    <link rel="stylesheet" href="./src/platform/browser/style.css" />
+    <link rel="stylesheet" href="./src/platform/wasm32/style.css" />
   </head>
   <body>
     <canvas id="screen" width="1800" height="900"></canvas>
 
-    <script src="./src/platform/browser/hal.js"></script>
+    <script src="./src/platform/wasm32/hal.js"></script>
     <script type="module">
       (async function () {
         await boot();
-        window.kernel.wasm.exports.main();
+        window.kernel.wasm.exports.kernelMain(
+            window.innerWidth,
+            window.innerHeight
+        );
         setInterval(() => {
           window.kernel.wasm.exports.kernel_irq_wrapper(
             IRQ_TIMER,

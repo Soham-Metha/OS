@@ -2,11 +2,11 @@ window.kernel = {
   wasm: null,
 };
 
-const memory = new WebAssembly.Memory({
-  initial: 144,
-  maximum: 144,
-  shared: true,
-});
+// const memory = new WebAssembly.Memory({
+//   initial: 144,
+//   maximum: 144,
+//   shared: true,
+// });
 
 const IRQ_TIMER = 0;
 const IRQ_KEYBOARD = 1;
@@ -25,8 +25,7 @@ canvas.height = window.innerHeight;
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
-const imageData = ctx.createImageData(WIDTH, HEIGHT);
-const fb = imageData.data;
+const imageData = new ImageData(WIDTH, HEIGHT);
 
 // ===============================
 // keyboard
@@ -66,6 +65,18 @@ window.addEventListener("keyup", (e) => {
   window.kernel.wasm.exports.kernel_irq_wrapper(IRQ_KEYBOARD, breakcode, 0, 0);
 });
 
+canvas.addEventListener("click", () => {
+  canvas.requestPointerLock();
+});
+
+document.addEventListener("pointerlockchange", () => {
+  if (document.pointerLockElement === canvas) {
+      console.log("Pointer locked");
+  } else {
+      console.log("Pointer unlocked");
+  }
+});
+
 canvas.addEventListener("mousemove", (e) => {
   window.kernel.wasm.exports.kernel_irq_wrapper(
     IRQ_MOUSE,
@@ -97,35 +108,22 @@ canvas.addEventListener("mouseup", (e) => {
 // HAL exports (WASM imports)
 // ===============================
 
-function __hal_put_pixel(x, y, rgba) {
-  if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return;
+function __hal_present(ptr, width, height, stride) {
+  const memory = window.kernel.wasm.exports.memory;
 
-  const idx = (y * WIDTH + x) * 4;
-  fb[idx + 0] = (rgba >> 24) & 0xff; // R
-  fb[idx + 1] = (rgba >> 16) & 0xff; // G
-  fb[idx + 2] = (rgba >> 8) & 0xff; // B
-  fb[idx + 3] = (rgba >> 0) & 0xff; // A
-}
+  const pixels = new Uint8ClampedArray(
+      memory.buffer,
+      ptr,
+      stride * height * 4
+  );
 
-function __hal_clear(rgba) {
-  for (let idx = 0; idx < fb.length; idx += 4) {
-    fb[idx + 0] = (rgba >> 24) & 0xff; // R
-    fb[idx + 1] = (rgba >> 16) & 0xff; // G
-    fb[idx + 2] = (rgba >> 8) & 0xff; // B
-    fb[idx + 3] = (rgba >> 0) & 0xff; // A
-  }
-}
+  const imageData = new ImageData(
+      pixels,
+      width,
+      height
+  );
 
-function __hal_present() {
   ctx.putImageData(imageData, 0, 0);
-}
-
-function __hal_get_width() {
-  return WIDTH;
-}
-
-function __hal_get_height() {
-  return HEIGHT;
 }
 
 // ===============================
@@ -138,12 +136,8 @@ async function boot() {
 
   const imports = {
     env: {
-      __hal_put_pixel,
-      __hal_clear,
       __hal_present,
-      __hal_get_width,
-      __hal_get_height,
-      memory,
+      // memory,
     },
   };
 

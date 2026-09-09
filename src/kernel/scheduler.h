@@ -79,7 +79,7 @@ void schedule()
     if (next != current) {
         current          = next;
         current->t_state = TASK_RUNNING;
-        switch_to(current->entry);
+        switch_to(current->entry);     // TODO: fix switching/pre-empting logic
         if (current->t_state != TASK_WAITING)
             current->t_state = TASK_EXITED;
     }
@@ -101,7 +101,7 @@ void enque_runque(Task* t)
 
 void create_task(func f)
 {
-    Task* t    = (Task*)malloc(sizeof(Task)); // TODO: shouldn't use malloc here
+    Task* t    = (Task*)malloc(sizeof(Task));     // TODO: shouldn't use malloc here
     t->t_id    = next_pid++;
     t->t_state = TASK_READY;
     t->entry   = f;
