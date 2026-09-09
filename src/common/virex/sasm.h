@@ -85,75 +85,24 @@ typedef union {
 // NOTE: keep list sorted by string len. Adding/removing insts may affect lookup, See "getOpcodeDetailsFromName"
 #define ISA_OPCODE_LIST(X) \
     X(DONOP,  0, 0) \
-    X(INVOK,  1, 0) \
-    X(SPOPR,  1, 0) \
     X(SHUTS,  0, 0) \
-    X(SETR,   1, 1) \
-    X(CALL,   1, 0) \
-    X(LOOP,   1, 1) \
-    X(PUSH,   1, 0) \
-    X(SPOP,   0, 0) \
-    X(SWAP,   1, 0) \
-    X(ADDI,   0, 0) \
-    X(SUBI,   0, 0) \
-    X(MULI,   0, 0) \
-    X(DIVI,   0, 0) \
-    X(MODI,   0, 0) \
-    X(ADDU,   0, 0) \
-    X(SUBU,   0, 0) \
-    X(MULU,   0, 0) \
-    X(DIVU,   0, 0) \
-    X(MODU,   0, 0) \
-    X(ADDF,   0, 0) \
-    X(SUBF,   0, 0) \
-    X(MULF,   0, 0) \
-    X(DIVF,   0, 0) \
-    X(JMPU,   1, 0) \
-    X(JMPC,   1, 0) \
-    X(ANDB,   0, 0) \
-    X(NOTB,   0, 0) \
-    X(COPY,   1, 1) \
-    X(DUPS,   1, 0) \
-    X(RET,    0, 0) \
-    X(NOT,    0, 0) \
-    X(EQI,    0, 0) \
-    X(GEI,    0, 0) \
-    X(GTI,    0, 0) \
-    X(LEI,    0, 0) \
-    X(LTI,    0, 0) \
-    X(NEI,    0, 0) \
-    X(EQU,    0, 0) \
-    X(GEU,    0, 0) \
-    X(GTU,    0, 0) \
-    X(LEU,    0, 0) \
-    X(LTU,    0, 0) \
-    X(NEU,    0, 0) \
-    X(EQF,    0, 0) \
-    X(GEF,    0, 0) \
-    X(GTF,    0, 0) \
-    X(LEF,    0, 0) \
-    X(LTF,    0, 0) \
-    X(NEF,    0, 0) \
-    X(ORB,    0, 0) \
-    X(XOR,    0, 0) \
-    X(SHR,    0, 0) \
-    X(SHL,    0, 0) \
-    X(I2F,    0, 0) \
-    X(U2F,    0, 0) \
-    X(F2I,    0, 0) \
-    X(F2U,    0, 0) \
-    X(READ1U, 0, 0) \
-    X(READ2U, 0, 0) \
-    X(READ4U, 0, 0) \
-    X(READ8U, 0, 0) \
-    X(READ1I, 0, 0) \
-    X(READ2I, 0, 0) \
-    X(READ4I, 0, 0) \
-    X(READ8I, 0, 0) \
-    X(WRITE1, 0, 0) \
-    X(WRITE2, 0, 0) \
-    X(WRITE4, 0, 0) \
-    X(WRITE8, 0, 0)
+    X(INVOK,  1, 0) \
+    X(SPOPR,  1, 0) X(SETR,   1, 1) X(COPY,   1, 1) \
+    X(PUSH,   1, 0) X(SPOP,   0, 0) X(DUPS,   1, 0) X(SWAP,   1, 0) \
+    X(ADDI,   0, 0) X(SUBI,   0, 0) X(MULI,   0, 0) X(DIVI,   0, 0) X(MODI,   0, 0) \
+    X(ADDU,   0, 0) X(SUBU,   0, 0) X(MULU,   0, 0) X(DIVU,   0, 0) X(MODU,   0, 0) \
+    X(ADDF,   0, 0) X(SUBF,   0, 0) X(MULF,   0, 0) X(DIVF,   0, 0) \
+    X(JMPU,   1, 0) X(RET,    0, 0) X(CALL,   1, 0) \
+    X(JMPC,   1, 0) X(LOOP,   1, 1) \
+    X(NOT,    0, 0) X(NOTB,   0, 0) \
+    X(EQI,    0, 0) X(GEI,    0, 0) X(GTI,    0, 0) X(LEI,    0, 0) X(LTI,    0, 0) X(NEI,    0, 0) \
+    X(EQU,    0, 0) X(GEU,    0, 0) X(GTU,    0, 0) X(LEU,    0, 0) X(LTU,    0, 0) X(NEU,    0, 0) \
+    X(EQF,    0, 0) X(GEF,    0, 0) X(GTF,    0, 0) X(LEF,    0, 0) X(LTF,    0, 0) X(NEF,    0, 0) \
+    X(ANDB,   0, 0) X(ORB,    0, 0) X(XOR,    0, 0) X(SHR,    0, 0) X(SHL,    0, 0) \
+    X(I2F,    0, 0) X(U2F,    0, 0) X(F2I,    0, 0) X(F2U,    0, 0) \
+    X(READ1U, 0, 0) X(READ2U, 0, 0) X(READ4U, 0, 0) X(READ8U, 0, 0) \
+    X(READ1I, 0, 0) X(READ2I, 0, 0) X(READ4I, 0, 0) X(READ8I, 0, 0) \
+    X(WRITE1, 0, 0) X(WRITE2, 0, 0) X(WRITE4, 0, 0) X(WRITE8, 0, 0)
 
 #define OPCODE_ENUM(name, op1, op2) \
     INST_##name,
@@ -605,30 +554,11 @@ static OpcodeDetails OpcodeDetailsLUT[NUMBER_OF_INSTS] = {
 
 bool getOpcodeDetailsFromName(String_View name, OpcodeDetails* out_ptr)
 {
-    Opcode type = 0, last = NUMBER_OF_INSTS;
-    switch (name.len) {
-    case 5:
-        type = INST_DONOP;
-        last = INST_SHUTS;
-    break; case 4:
-        type = INST_SETR;
-        last = INST_DUPS;
-    break; case 3:
-        type = INST_RET;
-        last = INST_F2U;
-    break; case 6:
-        type = INST_READ1U;
-        last = INST_WRITE8;
-    break; default:
-        last = NUMBER_OF_INSTS;
-        break;
-    }
-    while (type <= last) {
+    for (Opcode type = 0, last = NUMBER_OF_INSTS; type < last; type += 1) {
         if (sv_compare(STR(OpcodeDetailsLUT[type].name), name)) {
             *out_ptr = OpcodeDetailsLUT[type];
             return true;
         }
-        type += 1;
     }
 
     return false;
@@ -1864,7 +1794,7 @@ bool fetchCachedSasmTokenFromSasmTokenizer(Tokenizer* tokenizer, Token* output, 
                 token.type = TOKEN_TYPE_NUMBER;
                 token.text = sv_split_by_condition(&tokenizer->source, isNumber);
             } else if (tokenizer->source.len >= 3 && *tokenizer->source.data == '[' && tokenizer->source.data[3] == ']') {
-                try(tokenizer->source.len <= 4, FLFmt ": ERROR: Check register name %c\n", FLArg(location), *tokenizer->source.data);
+                try(tokenizer->source.len >= 4, FLFmt ": ERROR: Check register name %c\n", FLArg(location), *tokenizer->source.data);
                 sv_split_by_len(&tokenizer->source, 1);
                 uint64 index = 0;
                 try(sv_index_of(tokenizer->source, ']', &index), FLFmt ": ERROR: Could not find closing \'\n", FLArg(location));
