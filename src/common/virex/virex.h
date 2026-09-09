@@ -233,7 +233,7 @@ VM_Error executeInst(Vm* vm)
 
     uint32 ip = REG_GET(u32, REG_IP);
     Instruction inst = { .type = vm $code[ip++] };
-    OpcodeDetails details = getOpcodeDetails(inst.type);
+    OpcodeDetails details = opcode_get_details(inst.type);
 
     for (uint8 i = 0; i < details.operand_cnt; ++i) {
         if (ip + sizeof(struct Operand) > vm $code_size) {
