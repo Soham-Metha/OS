@@ -57,8 +57,8 @@ typedef VM_Error (*InternalVmCall)(Vm* vm);
 
 struct VmCalls
 {
-    InternalVmCall VmCallI[INTERNAL_VMCALLS_CAPACITY];
-    uint32 internalVmCallsDefined;
+    InternalVmCall call[INTERNAL_VMCALLS_CAPACITY];
+    uint32 count;
 };
 
 union Registers {
@@ -108,10 +108,12 @@ struct Vm {
 #define $code ->prog.code
 #define $code_size ->prog.code_size
 
+#define $op(n) .opr[n].value.u32
+
 #define $stack_top ->cpu.registers.reg[REG_SP].u32
 #define $reg ->cpu.registers.reg
 
-#define $vm_call ->vmCalls.VmCallI
+#define $vm_call ->vmCalls.call
 
 void setFlag(Meta f, CPU* cpu, bool state);
 bool getFlag(Meta f, const CPU* cpu);
@@ -123,8 +125,6 @@ bool executeProgram(Vm* vm, int i);
 VM_Error executeInst(Vm* vm);
 
 const char* getNameOfError(const VM_Error);
-inline QuadWord stack_pop(Vm* vm);
-inline void stack_push(Vm* vm, QuadWord val);
 
 #endif
 
@@ -161,8 +161,8 @@ inline bool getFlag(Meta f, const CPU* cpu)
 
 bool loadInternalCallIntoVm(Vm* vm, InternalVmCall call)
 {
-    try(vm->vmCalls.internalVmCallsDefined < INTERNAL_VMCALLS_CAPACITY, "VMCall cap exceeded!", "");
-    vm->vmCalls.VmCallI[vm->vmCalls.internalVmCallsDefined++] = call;
+    try(vm->vmCalls.count < INTERNAL_VMCALLS_CAPACITY, "VMCall cap exceeded!", "");
+    vm->vmCalls.call[vm->vmCalls.count++] = call;
     return true;
 ret_err:
     return false;
@@ -226,15 +226,19 @@ ret_err:
     return false;
 }
 
-inline QuadWord stack_pop(Vm* vm)
-{
-    return vm $stack[--vm $stack_top];
-}
-
-inline void stack_push(Vm* vm, QuadWord val)
-{
-    vm $stack[vm $stack_top++] = val;
-}
+#pragma clang diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#define STACK_POP(vm)                   \
+    ({                                  \
+        if (vm $stack_top < 1)          \
+            return ERR_STACK_UNDERFLOW; \
+        vm $stack[--vm $stack_top];     \
+    })
+#define STACK_PUSH(vm, val)                  \
+    {                                        \
+        if (vm $stack_top >= STACK_CAPACITY) \
+            return ERR_STACK_OVERFLOW;       \
+        vm $stack[vm $stack_top++] = val;    \
+    }
 
 bool executeProgram(Vm* vm, int lim)
 {
@@ -252,22 +256,18 @@ ret_err:
 
 #define READ_OP(type, out)                             \
     {                                                  \
-        if (vm $stack_top < 1)                         \
-            return ERR_STACK_UNDERFLOW;                \
-        const MemoryAddr addr = stack_pop(vm).u32;     \
+        const MemoryAddr addr = STACK_POP(vm).u32;     \
         if (addr >= MAX_MEMORY_CAPACITY)               \
             return ERR_ILLEGAL_MEMORY_ACCESS;          \
         type tmp;                                      \
         memcpy(&tmp, &vm $memory[addr], sizeof(type)); \
-        stack_push(vm, quadwordFrom##out(tmp));        \
+        STACK_PUSH(vm, quadwordFrom##out(tmp));        \
     }
 
 #define WRITE_OP(type, size)                              \
     {                                                     \
-        if (vm $stack_top < 2)                            \
-            return ERR_STACK_UNDERFLOW;                   \
-        const type value      = stack_pop(vm).u32;        \
-        const MemoryAddr addr = stack_pop(vm).u32;        \
+        const type value      = STACK_POP(vm).u32;        \
+        const MemoryAddr addr = STACK_POP(vm).u32;        \
         if (addr >= MAX_MEMORY_CAPACITY - size)           \
             return ERR_ILLEGAL_MEMORY_ACCESS;             \
         memcpy(&vm $memory[addr], &value, sizeof(value)); \
@@ -275,19 +275,17 @@ ret_err:
 
 #define BINARY_OP(in, out, op)                          \
     {                                                   \
-        if (vm $stack_top < 2)                          \
-            return ERR_STACK_UNDERFLOW;                 \
-        in opr2      = stack_pop(vm).in;                \
-        in opr1      = stack_pop(vm).in;                \
+        in opr2      = STACK_POP(vm).in;                \
+        in opr1      = STACK_POP(vm).in;                \
         QuadWord res = quadwordFrom##out(opr1 op opr2); \
-        stack_push(vm, res);                            \
+        STACK_PUSH(vm, res);                            \
     }
 
 #define STACK_CAST(src, dst, cast)                  \
     {                                               \
-        src opr      = stack_pop(vm).src;           \
+        src opr      = STACK_POP(vm).src;           \
         QuadWord res = quadwordFrom##dst(cast opr); \
-        stack_push(vm, res);                        \
+        STACK_PUSH(vm, res);                        \
     }
 
 VM_Error executeInst(Vm* vm)
@@ -320,81 +318,68 @@ VM_Error executeInst(Vm* vm)
     // printf("\nenter : %d %s | %d=%d | %d=%d", inst.type, details.name, inst.opr[0].kind, inst.opr[0].value, inst.opr[1].kind, inst.opr[1].value);
     switch (inst.type) {
     // =============================== Misc ==============================
-    case INST_DONOP:
+           case INST_DONOP:
     break; case INST_SHUTS: setFlag(META_HALT, &vm->cpu, 1);
     // ========================= env interaction =========================
     break; case INST_INVOK:
-        if (inst.opr[0].value.u32 > vm->vmCalls.internalVmCallsDefined) return ERR_ILLEGAL_OPERAND;
-        if (!vm $vm_call[inst.opr[0].value.u32])                        return ERR_NULL_CALL;
-        const VM_Error err = vm $vm_call[inst.opr[0].value.u32](vm);
+        if (inst $op(0) > vm->vmCalls.count) return ERR_ILLEGAL_OPERAND;
+        if (!vm $vm_call[inst $op(0)])       return ERR_NULL_CALL;
+        const VM_Error err = vm $vm_call[inst $op(0)](vm);
         if (err != ERR_OK) return err;
     // ============================ Registers ============================
     break; case INST_SETR:
-        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.opr[0].value.u32].u32 = inst.opr[1].value.u32;
+        if (inst $op(0) < REG_U0 || inst $op(0) > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst $op(0)].u32 = inst $op(1);
     break; case INST_COPY:
-        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.opr[0].value.u32].u32 = vm $reg[inst.opr[1].value.u32].u32;
+        if (inst $op(0) < REG_U0 || inst $op(0) > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst $op(0)].u32 = vm $reg[inst $op(1)].u32;
     break; case INST_SPOPR:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.opr[0].value.u32] = stack_pop(vm);
+        if (inst $op(0) < REG_U0 || inst $op(0) > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst $op(0)].u32 = STACK_POP(vm).u32;
     // =============================== Stack ===============================
-    break; case INST_PUSH:
-        if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
-        stack_push(vm, inst.opr[0].value);
-    break; case INST_SPOP:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        stack_pop(vm);
+    break; case INST_PUSH: STACK_PUSH(vm, inst.opr[0].value);
+    break; case INST_SPOP: STACK_POP(vm);
     break; case INST_DUPS:
-        if (vm $stack_top >= STACK_CAPACITY)   return ERR_STACK_OVERFLOW;
-        if (vm $stack_top <= inst.opr[0].value.u32) return ERR_STACK_UNDERFLOW;
-        stack_push(vm, vm $stack[vm $stack_top - 1 - inst.opr[0].value.u32]);
+        if (vm $stack_top <= inst $op(0)) return ERR_STACK_UNDERFLOW;
+        STACK_PUSH(vm, vm $stack[vm $stack_top - 1 - inst $op(0)]);
     break; case INST_SWAP:
-        if (inst.opr[0].value.u32 >= vm $stack_top) return ERR_STACK_UNDERFLOW;
+        if (vm $stack_top <= inst $op(0)) return ERR_STACK_UNDERFLOW;
         const u32 a  = vm $stack_top - 1;
-        const u32 b  = vm $stack_top - 1 - inst.opr[0].value.u32;
+        const u32 b  = vm $stack_top - 1 - inst $op(0);
         QuadWord tmp = vm $stack[a];
         vm $stack[a] = vm $stack[b];
         vm $stack[b] = tmp;
     // ==================== Branching (Unconditional) ====================
-    break; case INST_JMPU:
-        vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
-    return ERR_OK; case INST_CALL:
-        if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
-        stack_push(vm, quadwordFromU64(ip));
-        vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
-    return ERR_OK; case INST_RET:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        vm $reg[REG_IP].u32 = stack_pop(vm).u32;
+    break; case INST_CALL:
+        STACK_PUSH(vm, quadwordFromU64(ip));
+        vm $reg[REG_IP].u32 = inst $op(0);
+    return ERR_OK; case INST_RET: vm $reg[REG_IP].u32 = STACK_POP(vm).u32;
+    return ERR_OK; case INST_JMPU: vm $reg[REG_IP].u32 = inst $op(0);
     // ===================== Branching (Conditional) =====================
     return ERR_OK; case INST_JMPC:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        if (stack_pop(vm).u32 > 0) {
-            vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
+        if (STACK_POP(vm).u32 > 0) {
+            vm $reg[REG_IP].u32 = inst $op(0);
             return ERR_OK;
         }
     break; case INST_LOOP:
-        vm $reg[inst.opr[0].value.u32].u32 -= 1;
-        if (vm $reg[inst.opr[0].value.u32].u32 > 0) {
-            vm $reg[REG_IP].u32 = inst.opr[1].value.u32;
+        vm $reg[inst $op(0)].u32 -= 1;
+        if (vm $reg[inst $op(0)].u32 > 0) {
+            vm $reg[REG_IP].u32 = inst $op(1);
             return ERR_OK;
         }
     // ========================= Logical (Unary) =========================
     break; case INST_NOT:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         {
-            u32 val = stack_pop(vm).u32;
+            u32 val = STACK_POP(vm).u32;
             val     = !val;
-            stack_push(vm, quadwordFromU64(val));
+            STACK_PUSH(vm, quadwordFromU64(val));
         }
     // ========================= Binary (Unary) ==========================
     break; case INST_NOTB:
-        if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         {
-            u32 val = stack_pop(vm).u32;
+            u32 val = STACK_POP(vm).u32;
             val     = ~val;
-            stack_push(vm, quadwordFromU64(val));
+            STACK_PUSH(vm, quadwordFromU64(val));
         }
     // ======================== Logical (Binary) =========================
     break; case INST_EQI: BINARY_OP(i32, U64, ==);

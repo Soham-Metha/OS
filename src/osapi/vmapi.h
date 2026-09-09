@@ -47,8 +47,8 @@ bool virex_test(void);
 
 VM_Error vmcall_write(Vm* vm)
 {
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
+    uint32 count    = STACK_POP(vm).u32;
+    MemoryAddr addr = STACK_POP(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -82,7 +82,7 @@ VM_Error vmcall_write(Vm* vm)
 VM_Error vmcall_alloc(Vm* vm)
 {
     (void)vm;
-    // stack_push(vm, region_alloc(arena, stack_pop(vm)));
+    // stack_push(vm, region_alloc(arena, STACK_POP(vm)));
 
     return ERR_OK;
 }
@@ -97,32 +97,32 @@ VM_Error vmcall_free(Vm* vm)
 
 VM_Error vmcall_print_f64(Vm* vm)
 {
-    printf(" %lf\n", stack_pop(vm).f32);
+    printf(" %lf\n", STACK_POP(vm).f32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_i64(Vm* vm)
 {
-    printf(" %" PRId64 "", stack_pop(vm).i32);
+    printf(" %" PRId64 "", STACK_POP(vm).i32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_u64(Vm* vm)
 {
-    printf(" %" PRIu64 "", stack_pop(vm).u32);
+    printf(" %" PRIu64 "", STACK_POP(vm).u32);
     return ERR_OK;
 }
 
 VM_Error vmcall_print_ptr(Vm* vm)
 {
-    printf(" %p\n", stack_pop(vm).ptr);
+    printf(" %p\n", STACK_POP(vm).ptr);
     return ERR_OK;
 }
 
 VM_Error vmcall_dump_memory(Vm* vm)
 {
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
+    uint32 count    = STACK_POP(vm).u32;
+    MemoryAddr addr = STACK_POP(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
@@ -145,9 +145,9 @@ VM_Error vmcall_dump_memory(Vm* vm)
 
 VM_Error vmcall_writeROM(Vm* vm)
 {
-    char* buffer    = stack_pop(vm).ptr;
-    uint32 count    = stack_pop(vm).u32;
-    MemoryAddr addr = stack_pop(vm).u32;
+    char* buffer    = STACK_POP(vm).ptr;
+    uint32 count    = STACK_POP(vm).u32;
+    MemoryAddr addr = STACK_POP(vm).u32;
 
     if (addr >= MAX_MEMORY_CAPACITY) {
         return ERR_ILLEGAL_MEMORY_ACCESS;
