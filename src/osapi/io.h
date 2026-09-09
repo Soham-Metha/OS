@@ -72,6 +72,43 @@ void printf(const char* fmt, ...)
         if (*fmt == '%') {
             fmt += 1;
             switch (*fmt) {
+            case '.':
+                fmt += 1;
+
+                switch (*fmt) {
+                case '*':
+                    {
+                        int precision = va_arg(vargs, int);
+                        fmt += 1;
+
+                        switch (*fmt) {
+                        case 's':
+                            {
+                                const char* str = va_arg(vargs, const char*);
+
+                                for (int i = 0; i < precision && str[i]; i++)
+                                    putch(str[i]);
+                                putch('\n');
+                                break;
+                            }
+
+                        default:
+                            putch('%');
+                            putch('.');
+                            putch('*');
+                            putch(*fmt);
+                            break;
+                        }
+
+                        break;
+                    }
+
+                default:
+                    putch('%');
+                    putch('.');
+                    putch(*fmt);
+                    break;
+                }
             case '\0':
                 putch('%');
                 goto end;
