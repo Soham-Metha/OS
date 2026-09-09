@@ -105,8 +105,8 @@ struct Vm {
 #define $memory ->mem.memory
 #define $stack ->mem.stack
 
-#define $inst ->prog.instructions
-#define $inst_cnt ->prog.instruction_count
+#define $code ->prog.code
+#define $code_size ->prog.code_size
 
 #define $stack_top ->cpu.registers.reg[REG_SP].u32
 #define $reg ->cpu.registers.reg
@@ -203,10 +203,10 @@ bool loadProgramIntoVm(Vm* vm, Sasm_Executable* exec)
         meta.mem_size, meta.mem_capacity);
 
     vm $reg[REG_IP].u32 = meta.entry;
-    // vm->prog.instruction_count = fread(vm->prog.instructions, sizeof(vm->prog.instructions[0]), meta.prog_size, f);
+    // vm $code_size = fread(vm $code, sizeof(vm $code[0]), meta.prog_size, f);
     vm->prog            = exec->prog;
-    try(vm->prog.instruction_count == meta.prog_size, "ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
-        vm->prog.instruction_count, meta.prog_size);
+    try(vm $code_size == meta.prog_size, "ERROR: read %" PRIu64 " program instructions, but expected %" PRIu64 "\n",
+        vm $code_size, meta.prog_size);
 
     for (DataEntry i = 0; i < meta.mem_size; i++) {
         vm->mem.memory[i] = exec->memory[i];
@@ -292,69 +292,78 @@ ret_err:
 
 VM_Error executeInst(Vm* vm)
 {
-    if (vm $reg[REG_IP].u32 >= vm $inst_cnt) {
-        printf("error tring to access instruction at '%d', but there are only '%d' instructions", vm $reg[REG_IP].u32, vm $inst_cnt);
+    if (vm $reg[REG_IP].u32 >= vm $code_size) {
+        printf("error tring to access instruction at '%d', but there are only '%d' instructions", vm $reg[REG_IP].u32, vm $code_size);
         return ERR_ILLEGAL_INST_ACCESS;
     }
 
-    Instruction inst = vm $inst[vm $reg[REG_IP].u32];
-    // register value dereferencing
-    // 0         <= val < reg count   => val == register id
-    // reg_count <= val < 2*reg_count => val == value of register with ID (val - reg_count)
-    if (inst.opr1IsReg && inst.operand.u32 > REG_COUNT) {
-        inst.operand.u32 = vm $reg[inst.operand.u32 % REG_COUNT].u32;
-    }
-    if (inst.opr2IsReg && inst.operand2.u32 > REG_COUNT) {
-        inst.operand2.u32 = vm $reg[inst.operand2.u32 % REG_COUNT].u32;
+    uint32 ip = vm $reg[REG_IP].u32;
+    Instruction inst = { .type = vm $code[ip++] };
+    OpcodeDetails details = getOpcodeDetails(inst.type);
+
+    for (uint8 i = 0; i < details.operand_cnt; ++i) {
+        Opr_Kind kind;
+        QuadWord value;
+
+        memcpy(&kind, &vm $code[ip], sizeof(kind));
+        ip += sizeof(kind);
+        memcpy(&value, &vm $code[ip], sizeof(value));
+        ip += sizeof(value);
+
+        if (kind == OPR_REGISTER_INDIRECT) {
+            value.u32 = vm $reg[value.u32].u32;
+        }
+        inst.opr[i].kind = kind;
+        inst.opr[i].value = value;
     }
 
-    // printf("\nenter : %d %s", inst.type, OpcodeDetailsLUT[inst.type].name);
+    // printf("\nenter : %d %s | %d=%d | %d=%d", inst.type, details.name, inst.opr[0].kind, inst.opr[0].value, inst.opr[1].kind, inst.opr[1].value);
     switch (inst.type) {
     // =============================== Misc ==============================
     case INST_DONOP:
     break; case INST_SHUTS: setFlag(META_HALT, &vm->cpu, 1);
     // ========================= env interaction =========================
     break; case INST_INVOK:
-        if (inst.operand.u32 > vm->vmCalls.internalVmCallsDefined) return ERR_ILLEGAL_OPERAND;
-        if (!vm $vm_call[inst.operand.u32])                        return ERR_NULL_CALL;
-        const VM_Error err = vm $vm_call[inst.operand.u32](vm);
+        if (inst.opr[0].value.u32 > vm->vmCalls.internalVmCallsDefined) return ERR_ILLEGAL_OPERAND;
+        if (!vm $vm_call[inst.opr[0].value.u32])                        return ERR_NULL_CALL;
+        const VM_Error err = vm $vm_call[inst.opr[0].value.u32](vm);
         if (err != ERR_OK) return err;
     // ============================ Registers ============================
     break; case INST_SETR:
-        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.operand.u32].u32 = inst.operand2.u32;
+        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst.opr[0].value.u32].u32 = inst.opr[1].value.u32;
     break; case INST_COPY:
-        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.operand.u32].u32 = vm $reg[inst.operand2.u32].u32;
+        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst.opr[0].value.u32].u32 = vm $reg[inst.opr[1].value.u32].u32;
     break; case INST_SPOPR:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
-        if (inst.operand.u32 < REG_U0 || inst.operand.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
-        vm $reg[inst.operand.u32] = stack_pop(vm);
+        if (inst.opr[0].value.u32 < REG_U0 || inst.opr[0].value.u32 > REG_U9) return ERR_ILLEGAL_OPERAND;
+        vm $reg[inst.opr[0].value.u32] = stack_pop(vm);
     // =============================== Stack ===============================
     break; case INST_PUSH:
         if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
-        stack_push(vm, inst.operand);
+        stack_push(vm, inst.opr[0].value);
     break; case INST_SPOP:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         stack_pop(vm);
     break; case INST_DUPS:
         if (vm $stack_top >= STACK_CAPACITY)   return ERR_STACK_OVERFLOW;
-        if (vm $stack_top <= inst.operand.u32) return ERR_STACK_UNDERFLOW;
-        stack_push(vm, vm $stack[vm $stack_top - 1 - inst.operand.u32]);
+        if (vm $stack_top <= inst.opr[0].value.u32) return ERR_STACK_UNDERFLOW;
+        stack_push(vm, vm $stack[vm $stack_top - 1 - inst.opr[0].value.u32]);
     break; case INST_SWAP:
-        if (inst.operand.u32 >= vm $stack_top) return ERR_STACK_UNDERFLOW;
+        if (inst.opr[0].value.u32 >= vm $stack_top) return ERR_STACK_UNDERFLOW;
         const u32 a  = vm $stack_top - 1;
-        const u32 b  = vm $stack_top - 1 - inst.operand.u32;
+        const u32 b  = vm $stack_top - 1 - inst.opr[0].value.u32;
         QuadWord tmp = vm $stack[a];
         vm $stack[a] = vm $stack[b];
         vm $stack[b] = tmp;
     // ==================== Branching (Unconditional) ====================
     break; case INST_JMPU:
-        vm $reg[REG_IP].u32 = inst.operand.u32;
+        vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
     return ERR_OK; case INST_CALL:
         if (vm $stack_top >= STACK_CAPACITY) return ERR_STACK_OVERFLOW;
-        stack_push(vm, quadwordFromU64(vm $reg[REG_IP].u32 + 1));
-        vm $reg[REG_IP].u32 = inst.operand.u32;
+        stack_push(vm, quadwordFromU64(ip));
+        vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
     return ERR_OK; case INST_RET:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         vm $reg[REG_IP].u32 = stack_pop(vm).u32;
@@ -362,13 +371,13 @@ VM_Error executeInst(Vm* vm)
     return ERR_OK; case INST_JMPC:
         if (vm $stack_top < 1) return ERR_STACK_UNDERFLOW;
         if (stack_pop(vm).u32 > 0) {
-            vm $reg[REG_IP].u32 = inst.operand.u32;
+            vm $reg[REG_IP].u32 = inst.opr[0].value.u32;
             return ERR_OK;
         }
     break; case INST_LOOP:
-        vm $reg[inst.operand.u32].u32 -= 1;
-        if (vm $reg[inst.operand.u32].u32 > 0) {
-            vm $reg[REG_IP].u32 = inst.operand2.u32;
+        vm $reg[inst.opr[0].value.u32].u32 -= 1;
+        if (vm $reg[inst.opr[0].value.u32].u32 > 0) {
+            vm $reg[REG_IP].u32 = inst.opr[1].value.u32;
             return ERR_OK;
         }
     // ========================= Logical (Unary) =========================
@@ -460,7 +469,7 @@ VM_Error executeInst(Vm* vm)
         return ERR_ILLEGAL_INST;
     }
 
-    vm $reg[REG_IP].u32++;
+    vm $reg[REG_IP].u32 = ip;
     return ERR_OK;
 }
 

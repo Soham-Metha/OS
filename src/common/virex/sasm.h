@@ -52,24 +52,24 @@ typedef union {
     void* ptr;
 } QuadWord;
 
-#define MAX_MEMORY_CAPACITY 2048      // Max amount of memory initially assigned to a sasm program
-#define MAX_PROGRAM_CAPACITY 1024     // Max amount of instructions in any sasm program
-#define INTERNAL_VMCALLS_CAPACITY 1024
-#define BINDINGS_CAPACITY 1024
-#define LABELS_CAPACITY 1024
+#define MAX_OPERAND_CNT 2             // Per instruction
+#define MAX_MEMORY_CAPACITY 2048      // Max amount of memory initially assigned to a sasm program (in bytes)
+#define MAX_PROGRAM_CAPACITY 2048     // Max size of any program's instructions (in bytes)
+#define INTERNAL_VMCALLS_CAPACITY 64
+#define BINDINGS_CAPACITY 256
+#define LABELS_CAPACITY 256
 #define MAX_INCLUDE_LEVEL 10
 #define STACK_CAPACITY 1024
 #define FILE_MAGIC 0x484f53
 #define FILE_VERSION 0x4D41
-#define DEFERRED_ASSERTS_CAPACITY 1024
 #define STRING_LENGTHS_CAPACITY 1024
-#define INCLUDE_PATHS_CAPACITY 1024
+#define INCLUDE_PATHS_CAPACITY 128
 
 #define COMMENT_SYMBOL ';'
 #define PREP_SYMBOL '%'
 
-#define $instructionCount ->prog.instruction_count
-#define $instructions ->prog.instructions
+#define $code ->prog.code
+#define $code_size ->prog.code_size
 #define Token_Fmt "%s"
 #define Token_Arg(token) token_kind_name((token).kind)
 
@@ -80,31 +80,30 @@ typedef union {
 
 // ---------------------------------------------------------------------------------------------------
 
-// X(name, has_operand, has_operand2)
+// X(name, op_cnt)
 // NOTE: inst handler in virex.h
-// NOTE: keep list sorted by string len. Adding/removing insts may affect lookup, See "getOpcodeDetailsFromName"
 #define ISA_OPCODE_LIST(X) \
-    X(DONOP,  0, 0) \
-    X(SHUTS,  0, 0) \
-    X(INVOK,  1, 0) \
-    X(SPOPR,  1, 0) X(SETR,   1, 1) X(COPY,   1, 1) \
-    X(PUSH,   1, 0) X(SPOP,   0, 0) X(DUPS,   1, 0) X(SWAP,   1, 0) \
-    X(ADDI,   0, 0) X(SUBI,   0, 0) X(MULI,   0, 0) X(DIVI,   0, 0) X(MODI,   0, 0) \
-    X(ADDU,   0, 0) X(SUBU,   0, 0) X(MULU,   0, 0) X(DIVU,   0, 0) X(MODU,   0, 0) \
-    X(ADDF,   0, 0) X(SUBF,   0, 0) X(MULF,   0, 0) X(DIVF,   0, 0) \
-    X(JMPU,   1, 0) X(RET,    0, 0) X(CALL,   1, 0) \
-    X(JMPC,   1, 0) X(LOOP,   1, 1) \
-    X(NOT,    0, 0) X(NOTB,   0, 0) \
-    X(EQI,    0, 0) X(GEI,    0, 0) X(GTI,    0, 0) X(LEI,    0, 0) X(LTI,    0, 0) X(NEI,    0, 0) \
-    X(EQU,    0, 0) X(GEU,    0, 0) X(GTU,    0, 0) X(LEU,    0, 0) X(LTU,    0, 0) X(NEU,    0, 0) \
-    X(EQF,    0, 0) X(GEF,    0, 0) X(GTF,    0, 0) X(LEF,    0, 0) X(LTF,    0, 0) X(NEF,    0, 0) \
-    X(ANDB,   0, 0) X(ORB,    0, 0) X(XOR,    0, 0) X(SHR,    0, 0) X(SHL,    0, 0) \
-    X(I2F,    0, 0) X(U2F,    0, 0) X(F2I,    0, 0) X(F2U,    0, 0) \
-    X(READ1U, 0, 0) X(READ2U, 0, 0) X(READ4U, 0, 0) X(READ8U, 0, 0) \
-    X(READ1I, 0, 0) X(READ2I, 0, 0) X(READ4I, 0, 0) X(READ8I, 0, 0) \
-    X(WRITE1, 0, 0) X(WRITE2, 0, 0) X(WRITE4, 0, 0) X(WRITE8, 0, 0)
+    X(DONOP,  0) \
+    X(SHUTS,  0) \
+    X(INVOK,  1) \
+    X(SPOPR,  1) X(SETR,   2) X(COPY,   2) \
+    X(PUSH,   1) X(SPOP,   0) X(DUPS,   1) X(SWAP,   1) \
+    X(ADDI,   0) X(SUBI,   0) X(MULI,   0) X(DIVI,   0) X(MODI,   0) \
+    X(ADDU,   0) X(SUBU,   0) X(MULU,   0) X(DIVU,   0) X(MODU,   0) \
+    X(ADDF,   0) X(SUBF,   0) X(MULF,   0) X(DIVF,   0) \
+    X(JMPU,   1) X(RET,    0) X(CALL,   1) \
+    X(JMPC,   1) X(LOOP,   2) \
+    X(NOT,    0) X(NOTB,   0) \
+    X(EQI,    0) X(GEI,    0) X(GTI,    0) X(LEI,    0) X(LTI,    0) X(NEI,    0) \
+    X(EQU,    0) X(GEU,    0) X(GTU,    0) X(LEU,    0) X(LTU,    0) X(NEU,    0) \
+    X(EQF,    0) X(GEF,    0) X(GTF,    0) X(LEF,    0) X(LTF,    0) X(NEF,    0) \
+    X(ANDB,   0) X(ORB,    0) X(XOR,    0) X(SHR,    0) X(SHL,    0) \
+    X(I2F,    0) X(U2F,    0) X(F2I,    0) X(F2U,    0) \
+    X(READ1U, 0) X(READ2U, 0) X(READ4U, 0) X(READ8U, 0) \
+    X(READ1I, 0) X(READ2I, 0) X(READ4I, 0) X(READ8I, 0) \
+    X(WRITE1, 0) X(WRITE2, 0) X(WRITE4, 0) X(WRITE8, 0)
 
-#define OPCODE_ENUM(name, op1, op2) \
+#define OPCODE_ENUM(name, op_cnt) \
     INST_##name,
 
 typedef enum {
@@ -136,6 +135,14 @@ typedef enum {
     REG_SP,
     REG_COUNT,
 } RegID;
+
+typedef enum {
+    OPR_NONE,
+    OPR_DIRECT,
+    OPR_REGISTER,
+    OPR_REGISTER_INDIRECT,
+    OPR_CNT,
+} Opr_Kind;
 
 enum StmtType {
     STMT_INST,
@@ -248,24 +255,25 @@ typedef struct {
 #define FLFmt "%.*s:%d"
 #define FLArg(location) Str_Fmt(location.filePath), location.lineNumber
 
+struct Operand {
+    Opr_Kind kind;
+    QuadWord value;
+};
+
 struct Instruction {
     Opcode type;
-    QuadWord operand;
-    QuadWord operand2;
-    bool opr1IsReg;
-    bool opr2IsReg;
+    struct Operand opr[2];
 };
 
 struct OpcodeDetails {
     Opcode type;
     const char* name;
-    bool has_operand;
-    bool has_operand2;
+    uint8 operand_cnt;
 };
 
 struct Program {
-    Instruction instructions[MAX_PROGRAM_CAPACITY]; /**< The array of instructions */
-    DataEntry instruction_count;                    /**< The number of instructions in the program */
+    Byte code[MAX_PROGRAM_CAPACITY];
+    DataEntry code_size;
 };
 
 struct Memory {
@@ -334,8 +342,7 @@ struct SasmLexer {
 
 struct InstStmt {
     Opcode type;
-    Expr operand;
-    Expr operand2;
+    Expr operands[MAX_OPERAND_CNT];
 };
 
 struct LabelStmt {
@@ -538,12 +545,11 @@ EvalResult resultUnresolved(Binding* unresolvedBinding);
 FuncallArg* parseFuncallArgs(Arena* arena, Tokenizer* tokenizer, FileLocation location);
 EvalResult evaluateExpression(Sasm_Context* sasm, Expr expr, FileLocation location);
 
-#define OPCODE_DETAILS(opcode, op1, op2) \
+#define OPCODE_DETAILS(opcode, op_cnt) \
     [INST_##opcode] = {                  \
         .type = INST_##opcode,           \
         .name = #opcode,                 \
-        .has_operand = op1,              \
-        .has_operand2 = op2,             \
+        .operand_cnt = op_cnt            \
     },
 
 static OpcodeDetails OpcodeDetailsLUT[NUMBER_OF_INSTS] = {
@@ -872,33 +878,27 @@ bool sasm_resolve_operands(Sasm_Context* sasm)
     Scope* savedScope = sasm->scope;
 
     for (uint32 i = 0; i < sasm->symbolsCount; ++i) {
-        try((sasm->symbols[i].scope), "invalid operand scope!", "");
-        sasm->scope           = sasm->symbols[i].scope;
+        UnresolvedOperand* symbol = &sasm->symbols[i];
 
-        InstAddr addr         = sasm->symbols[i].addr;
-        Expr expr             = sasm->symbols[i].expr;
-        FileLocation location = sasm->symbols[i].location;
+        try(symbol->scope, "invalid operand scope!", "");
+        sasm->scope = symbol->scope;
 
-        EvalResult result     = evaluateExpression(sasm, expr, location);
-        try(result.status == EVAL_STATUS_OK, "invalid operand status %d", result.status);
-        sasm $instructions[addr].operand = result.value;
-        if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
-            sasm $instructions[addr].opr1IsReg = true;
+        EvalResult oper     = evaluateExpression(sasm, symbol->expr, symbol->location);
+        try(oper.status == EVAL_STATUS_OK, "invalid operand status %d", oper.status);
+
+        Opr_Kind kind = OPR_DIRECT;
+
+        if (symbol->expr.type == EXPR_REG) kind = OPR_REGISTER;
+        if (symbol->expr.type == EXPR_FUNCALL && symbol->expr.value.funcall->args->value.type == EXPR_REG) {
+            if (sv_compare(symbol->expr.value.funcall->name, STR("val"))) {
+                kind = OPR_REGISTER_INDIRECT;
+            } else if (sv_compare(symbol->expr.value.funcall->name, STR("ref"))) {
+                kind = OPR_REGISTER;
+            }
         }
 
-        OpcodeDetails inst_def = getOpcodeDetails(sasm $instructions[addr].type);
-        try(inst_def.has_operand, "trying to resolve operand for an inst that doesnt expect an operand!", "");
-
-        if (!inst_def.has_operand2)
-            continue;
-        i += 1;
-        Expr expr2         = sasm->symbols[i].expr;
-        EvalResult result2 = evaluateExpression(sasm, expr2, location);
-        try(result2.status == EVAL_STATUS_OK, "invalid operand status %d", result2.status);
-        sasm $instructions[addr].operand2 = result2.value;
-        if (expr.type == EXPR_FUNCALL && expr.value.funcall->args->value.type == EXPR_REG) {
-            sasm $instructions[addr].opr2IsReg = true;
-        }
+        memcpy(&sasm $code[symbol->addr], &kind, sizeof(kind));
+        memcpy(&sasm $code[symbol->addr + sizeof(kind)], &oper.value, sizeof(oper.value));
     }
 
     sasm->scope = savedScope;
@@ -993,12 +993,12 @@ void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm)
                  .magic        = FILE_MAGIC,
                  .version      = FILE_VERSION,
                  .entry        = sasm->entry,
-                 .prog_size    = sasm $instructionCount,
+                 .prog_size    = sasm $code_size,
                  .mem_size     = sasm->mem_size,
                  .mem_capacity = sasm->mem_capacity,
                  },
         .prog = {
-                 .instruction_count = sasm $instructionCount,
+                 .code_size = sasm $code_size,
                  }
     };
 
@@ -1006,8 +1006,8 @@ void sasm_generate_executable(Sasm_Executable* exec, Sasm_Context* sasm)
         exec->memory[i] = sasm->memory[i];
     }
 
-    for (DataEntry i = 0; i < sasm->prog.instruction_count; i++) {
-        exec->prog.instructions[i] = sasm->prog.instructions[i];
+    for (DataEntry i = 0; i < sasm $code_size; i++) {
+        exec $code[i] = sasm $code[i];
     }
 }
 
@@ -1172,16 +1172,10 @@ CodeBlock sasm_line_parse_codeblock(Arena* arena, SasmLexer* lineInterpreter)
                 statement.kind            = STMT_INST;
                 statement.value.inst.type = details.type;
 
-                if (details.has_operand) {
-                    String_View opr1             = sv_trim(sv_split_by_delim(&operandList, ' '));
-                    Expr operand                 = parseExprFromStr(arena, opr1, location);
-                    statement.value.inst.operand = operand;
-                }
-
-                if (details.has_operand2) {
-                    String_View opr2              = sv_trim(operandList);
-                    Expr operand                  = parseExprFromStr(arena, opr2, location);
-                    statement.value.inst.operand2 = operand;
+                for (uint8 i = 0; i < details.operand_cnt; ++i) {
+                    operandList = sv_trim(operandList);
+                    String_View opr = sv_trim(sv_split_by_delim(&operandList, ' '));
+                    statement.value.inst.operands[i] = parseExprFromStr(arena, opr, location);
                 }
                 try(sasm_codeblock_push(arena, &result, statement), "Unable to push into codeblock!", "");
                 moveSasmLexerToNextLine(lineInterpreter, NULL);
@@ -1470,27 +1464,13 @@ EvalResult resolveFuncall(Sasm_Context* sasm, Expr expr, FileLocation location)
 
         return resultOK(addr, BIND_TYPE_UINT);
     }
-    if (sv_compare(expr.value.funcall->name, STR("ref"))) {
+    if (sv_compare(expr.value.funcall->name, STR("ref")) || sv_compare(expr.value.funcall->name, STR("val"))) {
+        // intent (register direct/indirect) is determined while resolving operands, to determine the Opr_Kind
         try(checkFuncArgs(expr.value.funcall, 1, location), "Incorrect arity! Expected %d arg(s).", 1);
-
-        try(expr.value.funcall->args->value.type == EXPR_REG, FLFmt ": ERROR: ref expects a register ",
-            FLArg(location));
+        try(expr.value.funcall->args->value.type == EXPR_REG, FLFmt ": ERROR: ref expects a register ", FLArg(location));
 
         result = evaluateExpression(sasm, expr.value.funcall->args->value, location);
         return result;
-    }
-    if (sv_compare(expr.value.funcall->name, STR("val"))) {
-        try(checkFuncArgs(expr.value.funcall, 1, location), "Incorrect arity! Expected %d arg(s).", 1);
-
-        try(expr.value.funcall->args->value.type == EXPR_REG, FLFmt ": ERROR: val expects a register ",
-            FLArg(location));
-
-        result = evaluateExpression(sasm, expr.value.funcall->args->value, location);
-        if (result.status == EVAL_STATUS_DEFERRED)
-            return result;
-
-        uint32 val = result.value.u32 + REG_COUNT;
-        return resultOK(quadwordFromU64(val), BIND_TYPE_UINT);
     }
     err(FLFmt ": ERROR: Unknown translation time function `%.*s`\n",
         FLArg(location), Str_Fmt(expr.value.funcall->name));
@@ -1613,19 +1593,22 @@ ret_err:
 
 bool translateSasmInstruction(Sasm_Context* sasm, InstStmt inst, FileLocation location)
 {
-    try(sasm $instructionCount < MAX_PROGRAM_CAPACITY, "Max instruction count exceeded!", "");
-    sasm $instructions[sasm $instructionCount].type         = inst.type;
-    sasm $instructions[sasm $instructionCount].operand.u32  = 0;
-    sasm $instructions[sasm $instructionCount].operand2.u32 = 0;
+    OpcodeDetails details = getOpcodeDetails(inst.type);
 
-    OpcodeDetails details                                   = getOpcodeDetails(inst.type);
-    if (details.has_operand) {
-        try(pushUnresolvedOperand(sasm, sasm $instructionCount, inst.operand, location), "Unable to defer operand!", "");
+    uint32 operand_size = sizeof(struct Operand);
+    uint32 bytes_needed = sizeof(Opcode) + details.operand_cnt * operand_size;
+
+    try(sasm $code_size + bytes_needed <= MAX_PROGRAM_CAPACITY, "Max program capacity exceeded!", "");
+    sasm $code[sasm $code_size++] = (Opcode)inst.type;
+
+    for (uint8 i = 0; i < details.operand_cnt; i++) {
+        uint32 offset = sasm $code_size;
+        sasm $code_size += operand_size;
+
+        try(i < MAX_OPERAND_CNT, "The operand count specified for this instruction is greater than the max allowed! (MAX_OPERAND_CNT=%d)", MAX_OPERAND_CNT);
+        try(pushUnresolvedOperand(sasm, offset, inst.operands[i], location), "Unable to defer operand!", "");
     }
-    if (details.has_operand2) {
-        try(pushUnresolvedOperand(sasm, sasm $instructionCount, inst.operand2, location), "Unable to defer operand!", "");
-    }
-    sasm $instructionCount += 1;
+
     return true;
 ret_err:
     return false;
@@ -1682,7 +1665,7 @@ bool translateSasmStatementChain(Sasm_Context* sasm, StmtNode* block)
                 try(binding->status == BIND_STATUS_DEFERRED, "binding already defined!", "");
 
                 binding->status    = BIND_STATUS_EVALUATED;
-                binding->value.u32 = sasm $instructionCount;
+                binding->value.u32 = sasm $code_size;
             }
         break; case STMT_SCOPE:
             sasm_scope_push(sasm);
